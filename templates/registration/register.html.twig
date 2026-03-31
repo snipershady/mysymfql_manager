@@ -1,19 +1,51 @@
-{% extends 'base.html.twig' %}
+{% extends 'layouts/auth.html.twig' %}
 
-{% block title %}Register{% endblock %}
+{% block title %}Registrazione{% endblock %}
 
-{% block body %}
-    <h1>Register</h1>
+{% block card_title %}Crea il tuo account{% endblock %}
 
+{% block content %}
     {{ form_errors(registrationForm) }}
 
-    {{ form_start(registrationForm) }}
-        {{ form_row(registrationForm.username) }}
-        {{ form_row(registrationForm.plainPassword, {
-            label: 'Password'
-        }) }}
-        {{ form_row(registrationForm.agreeTerms) }}
+    {{ form_start(registrationForm, {attr: {novalidate: 'novalidate'}}) }}
 
-        <button type="submit" class="btn">Register</button>
+        <div class="mb-3">
+            <label class="form-label fw-semibold">
+                <i class="fa-solid fa-user me-1 text-muted"></i> Username
+            </label>
+            {{ form_widget(registrationForm.username, {attr: {class: 'form-control', placeholder: 'Scegli un username'}}) }}
+            {{ form_errors(registrationForm.username) }}
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold">
+                <i class="fa-solid fa-lock me-1 text-muted"></i> Password
+            </label>
+            {{ form_widget(registrationForm.plainPassword, {attr: {class: 'form-control', placeholder: 'Minimo 6 caratteri'}}) }}
+            {{ form_errors(registrationForm.plainPassword) }}
+        </div>
+
+        <div class="mb-4">
+            <div class="form-check">
+                {{ form_widget(registrationForm.agreeTerms, {attr: {class: 'form-check-input'}}) }}
+                <label class="form-check-label" for="{{ registrationForm.agreeTerms.vars.id }}">
+                    Accetto i termini e le condizioni d'uso
+                </label>
+            </div>
+            {{ form_errors(registrationForm.agreeTerms) }}
+        </div>
+
+        <div class="d-grid">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="fa-solid fa-user-plus me-2"></i>Registrati
+            </button>
+        </div>
+
     {{ form_end(registrationForm) }}
+{% endblock %}
+
+{% block auth_footer %}
+    <div class="auth-footer">
+        Hai già un account? <a href="{{ path('app_login') }}">Accedi</a>
+    </div>
 {% endblock %}

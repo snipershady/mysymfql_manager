@@ -1,0 +1,347 @@
+{% extends 'base.html.twig' %}
+
+{% block head_extra %}
+<style>
+    :root {
+        --sidebar-width: 260px;
+        --sidebar-bg: #1a2332;
+        --sidebar-color: #adb5bd;
+        --sidebar-active-bg: #0d6efd;
+        --sidebar-active-color: #fff;
+        --sidebar-hover-bg: rgba(255,255,255,.08);
+        --topbar-height: 56px;
+    }
+
+    body {
+        background-color: #f0f2f5;
+        font-size: .9rem;
+    }
+
+    /* ── Sidebar ── */
+    #sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: var(--sidebar-width);
+        height: 100vh;
+        background: var(--sidebar-bg);
+        z-index: 1050;
+        display: flex;
+        flex-direction: column;
+        transition: width .25s ease;
+        overflow-x: hidden;
+    }
+
+    #sidebar .sidebar-brand {
+        height: var(--topbar-height);
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        padding: 0 1.25rem;
+        color: #fff;
+        font-weight: 700;
+        font-size: 1.05rem;
+        text-decoration: none;
+        border-bottom: 1px solid rgba(255,255,255,.08);
+        white-space: nowrap;
+    }
+
+    #sidebar .sidebar-brand i {
+        font-size: 1.3rem;
+        color: #0d6efd;
+        flex-shrink: 0;
+    }
+
+    #sidebar .nav-section-label {
+        padding: 1.25rem 1.25rem .35rem;
+        font-size: .65rem;
+        font-weight: 600;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: #6c757d;
+        white-space: nowrap;
+    }
+
+    #sidebar .nav-link {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        padding: .55rem 1.25rem;
+        color: var(--sidebar-color);
+        border-radius: 0;
+        white-space: nowrap;
+        transition: background .15s, color .15s;
+        text-decoration: none;
+        font-size: .875rem;
+    }
+
+    #sidebar .nav-link i {
+        width: 1.1rem;
+        text-align: center;
+        flex-shrink: 0;
+        font-size: .9rem;
+    }
+
+    #sidebar .nav-link:hover {
+        background: var(--sidebar-hover-bg);
+        color: #fff;
+    }
+
+    #sidebar .nav-link.active {
+        background: var(--sidebar-active-bg);
+        color: var(--sidebar-active-color);
+    }
+
+    #sidebar .sidebar-footer {
+        margin-top: auto;
+        border-top: 1px solid rgba(255,255,255,.08);
+        padding: .75rem 0;
+    }
+
+    /* ── Top navbar ── */
+    #topbar {
+        position: fixed;
+        top: 0;
+        left: var(--sidebar-width);
+        right: 0;
+        height: var(--topbar-height);
+        z-index: 1040;
+        background: #fff;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        align-items: center;
+        padding: 0 1.5rem;
+        gap: 1rem;
+        transition: left .25s ease;
+    }
+
+    #topbar .topbar-toggle {
+        background: none;
+        border: none;
+        color: #6c757d;
+        font-size: 1.1rem;
+        cursor: pointer;
+        padding: .25rem .5rem;
+        border-radius: .375rem;
+        line-height: 1;
+    }
+
+    #topbar .topbar-toggle:hover {
+        background: #f0f2f5;
+        color: #212529;
+    }
+
+    #topbar .topbar-title {
+        font-weight: 600;
+        color: #212529;
+        font-size: .95rem;
+    }
+
+    #topbar .topbar-right {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+    }
+
+    /* ── Page wrapper ── */
+    #page-wrapper {
+        margin-left: var(--sidebar-width);
+        padding-top: var(--topbar-height);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        transition: margin-left .25s ease;
+    }
+
+    #page-content {
+        flex: 1;
+        padding: 1.75rem;
+    }
+
+    /* ── Sidebar collapsed ── */
+    body.sidebar-collapsed #sidebar {
+        width: 64px;
+    }
+
+    body.sidebar-collapsed #sidebar .sidebar-brand span,
+    body.sidebar-collapsed #sidebar .nav-link span,
+    body.sidebar-collapsed #sidebar .nav-section-label {
+        display: none;
+    }
+
+    body.sidebar-collapsed #topbar,
+    body.sidebar-collapsed #page-wrapper {
+        left: 64px;
+        margin-left: 64px;
+    }
+
+    /* ── Cards ── */
+    .card {
+        border: none;
+        box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    }
+
+    .card-header {
+        background: #fff;
+        border-bottom: 1px solid #e9ecef;
+        font-weight: 600;
+    }
+
+    /* ── Stat cards ── */
+    .stat-card {
+        border-left: 4px solid;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+        #sidebar {
+            left: calc(-1 * var(--sidebar-width));
+        }
+
+        body.sidebar-open #sidebar {
+            left: 0;
+        }
+
+        #topbar,
+        #page-wrapper {
+            left: 0 !important;
+            margin-left: 0 !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+{# ── Sidebar ── #}
+<nav id="sidebar">
+    <a href="{{ path('app_default') }}" class="sidebar-brand">
+        <i class="fa-solid fa-database"></i>
+        <span>MySQL Manager</span>
+    </a>
+
+    <div class="flex-grow-1 overflow-y-auto">
+        <div class="nav-section-label">Generale</div>
+        <a href="{{ path('app_default') }}"
+           class="nav-link {% if app.request.attributes.get('_route') == 'app_default' %}active{% endif %}">
+            <i class="fa-solid fa-gauge"></i>
+            <span>Dashboard</span>
+        </a>
+
+        <div class="nav-section-label">Database</div>
+        <a href="#" class="nav-link">
+            <i class="fa-solid fa-database"></i>
+            <span>I miei database</span>
+        </a>
+        <a href="#" class="nav-link">
+            <i class="fa-solid fa-table"></i>
+            <span>Tabelle</span>
+        </a>
+
+        <div class="nav-section-label">Operazioni</div>
+        <a href="#" class="nav-link">
+            <i class="fa-solid fa-cloud-arrow-down"></i>
+            <span>Backup</span>
+        </a>
+        <a href="#" class="nav-link">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <span>Ripristino</span>
+        </a>
+
+        <div class="nav-section-label">Sistema</div>
+        <a href="#" class="nav-link">
+            <i class="fa-solid fa-list-check"></i>
+            <span>Process List</span>
+        </a>
+        <a href="#" class="nav-link">
+            <i class="fa-solid fa-clipboard-list"></i>
+            <span>Audit Log</span>
+        </a>
+        <a href="#" class="nav-link">
+            <i class="fa-solid fa-users"></i>
+            <span>Utenti MySQL</span>
+        </a>
+    </div>
+
+    <div class="sidebar-footer">
+        <a href="{{ path('app_logout') }}" class="nav-link text-danger">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span>Logout</span>
+        </a>
+    </div>
+</nav>
+
+{# ── Top navbar ── #}
+<header id="topbar">
+    <button class="topbar-toggle" id="sidebarToggle" title="Espandi/Comprimi sidebar">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+    <span class="topbar-title">{% block page_title %}Dashboard{% endblock %}</span>
+
+    <div class="topbar-right">
+        {% if app.user %}
+            <span class="text-muted small d-none d-md-inline">
+                <i class="fa-solid fa-circle-user me-1"></i>{{ app.user.userIdentifier }}
+            </span>
+            <div class="vr mx-1 d-none d-md-block"></div>
+            <a href="#" class="btn btn-sm btn-outline-secondary">
+                <i class="fa-solid fa-key me-1"></i><span class="d-none d-md-inline">Cambia password</span>
+            </a>
+            <a href="{{ path('app_logout') }}" class="btn btn-sm btn-outline-danger">
+                <i class="fa-solid fa-right-from-bracket me-1"></i><span class="d-none d-md-inline">Logout</span>
+            </a>
+        {% else %}
+            <a href="{{ path('app_login') }}" class="btn btn-sm btn-primary">
+                <i class="fa-solid fa-right-to-bracket me-1"></i>Login
+            </a>
+        {% endif %}
+    </div>
+</header>
+
+{# ── Page wrapper ── #}
+<div id="page-wrapper">
+    <main id="page-content">
+        {# Breadcrumb #}
+        {% set breadcrumb = block('breadcrumb') %}
+        {% if breadcrumb is not empty %}
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ path('app_default') }}">Home</a></li>
+                {{ breadcrumb|raw }}
+            </ol>
+        </nav>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="text-center text-muted py-3 border-top bg-white" style="font-size:.8rem;">
+        MySQL Manager &mdash; &copy; {{ "now"|date("Y") }}
+    </footer>
+</div>
+
+<script>
+    (function () {
+        const toggle = document.getElementById('sidebarToggle');
+        const body = document.body;
+        const COLLAPSED_KEY = 'sidebarCollapsed';
+
+        if (localStorage.getItem(COLLAPSED_KEY) === '1') {
+            body.classList.add('sidebar-collapsed');
+        }
+
+        toggle.addEventListener('click', () => {
+            if (window.innerWidth <= 768) {
+                body.classList.toggle('sidebar-open');
+            } else {
+                body.classList.toggle('sidebar-collapsed');
+                localStorage.setItem(COLLAPSED_KEY, body.classList.contains('sidebar-collapsed') ? '1' : '0');
+            }
+        });
+    })();
+</script>
+{% endblock %}
+
+{% block scripts_extra %}{% endblock %}
+
+{% block breadcrumb %}{% endblock %}

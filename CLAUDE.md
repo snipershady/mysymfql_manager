@@ -4,6 +4,7 @@
 - PHP >=8.4 + >=Symfony 8.0
 - Doctrine/orm ^3.6 + MySQL >=8.4.8
 - Twig ^3.2
+- JavaScript con standard ES15
 
 ## Dipendenze CDN front-end
 - Bootstrap 5.3.8 css: <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/css/bootstrap.min.css" integrity="sha512-2bBQCjcnw658Lho4nlXJcc6WkV/UxpE/sAokbXPxQNGqmNdQrWqtw26Ns9kFF/yG792pKR1Sx8/Y1Lf1XN4GKA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -16,6 +17,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js" integrity="sha384-/RlQG9uf0M2vcTw3CX7fbqgbj/h8wKxw7C3zu9/GxcBPRKOEcESxaxufwRXqzq6n" crossorigin="anonymous"></script>
     <script src="https://cdn.datatables.net/v/bs5/jszip-3.10.1/dt-2.3.7/b-3.2.6/b-html5-3.2.6/b-print-3.2.6/date-1.6.3/datatables.min.js" integrity="sha384-XoQCVVIYV2853g5L/gmdyvIXhpYiaZFoJVT2oyHuyLWas0ZPhqRD0vIT5N3/8rEc" crossorigin="anonymous"></script>
 
+## Architettura front-end
+- tutti gli script e le chiamate XHR saranno fatti in JS ES15 e fetch(), jQuery resta come dipendenza solo per DataTables
 
 ## Obiettivo
 Applicativo web per gestire MySQL, con MFA obbligatorio,
