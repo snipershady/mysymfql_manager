@@ -111,7 +111,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
             throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
         }
     }
-    
+
     public function showCreateTable(string $table): array
     {
         $query = sprintf('SHOW CREATE TABLE %s;', $this->quoteIdentifier($table));

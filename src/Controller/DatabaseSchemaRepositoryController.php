@@ -672,7 +672,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         return $this->json(['is_valid' => $optimize && $optimizeAlter && $analyze]);
     }
-    
+
     #[Route('/table-show-create', name: 'app_table_show_create', methods: ['GET'])]
     public function tableShowCreate(
         EffectivePrimitiveTypeIdentifierService $epti,
@@ -688,7 +688,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         $createTable = $databaseRepositoryPdo->showCreateTable($table);
 
-        return $this->json(['is_valid' => true, 'data'=> $createTable]);
+        return $this->json(['is_valid' => true, 'data' => $createTable]);
     }
 
     #[Route('/backup-list', name: 'app_schema_backup_list', methods: ['GET'])]
@@ -738,9 +738,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
     #[Route('/backup-download', name: 'app_schema_backup_download', methods: ['GET'])]
     public function backupDownload(
-            MysqldumpManager $mysqldumpManager,
-            DatabaseOwnerRepository $allOwnedDatabased,
-            DatabaseOwnerRepository $databaseOwnerRepository): BinaryFileResponse
+        MysqldumpManager $mysqldumpManager,
+        DatabaseOwnerRepository $allOwnedDatabased,
+        DatabaseOwnerRepository $databaseOwnerRepository): BinaryFileResponse
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {

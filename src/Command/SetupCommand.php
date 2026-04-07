@@ -36,7 +36,7 @@ class SetupCommand extends Command
         $envLocalPath = $projectDir.'/.env.local';
 
         if ($this->needsEnvSetup($envLocalPath)) {
-            $result = $this->setupEnv($input, $output, $io, $envLocalPath);
+            $result = $this->setupEnv($io, $envLocalPath);
 
             if (Command::SUCCESS !== $result) {
                 return $result;
@@ -145,16 +145,10 @@ class SetupCommand extends Command
 
         $content = file_get_contents($envLocalPath);
 
-        foreach (['APP_SECRET', 'SQLCLIENT_ENCRYPTION_KEY', 'ALTCHAKEY', 'APP_DB_NAME', 'APP_DB_HOSTNAME', 'APP_DB_USER', 'APP_DB_PASSWORD', 'BACKUP_PATH'] as $key) {
-            if (!preg_match('/^'.$key.'=(?!CHANGE\s*$)\S/m', $content)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any(['APP_SECRET', 'SQLCLIENT_ENCRYPTION_KEY', 'ALTCHAKEY', 'APP_DB_NAME', 'APP_DB_HOSTNAME', 'APP_DB_USER', 'APP_DB_PASSWORD', 'BACKUP_PATH'], fn ($key): bool => !preg_match('/^'.$key.'=(?!CHANGE\s*$)\S/m', $content));
     }
 
-    private function setupEnv(InputInterface $input, OutputInterface $output, SymfonyStyle $io, string $envLocalPath): int
+    private function setupEnv(SymfonyStyle $io, string $envLocalPath): int
     {
         $io->section('.env.local configuration');
 
@@ -164,9 +158,9 @@ class SetupCommand extends Command
         $altchaKey = bin2hex(random_bytes(32));
 
         $io->writeln('Automatically generated keys:');
-        $io->writeln(" * APP_SECRET              = $appSecret");
-        $io->writeln(" * SQLCLIENT_ENCRYPTION_KEY = $encryptionKey");
-        $io->writeln(" * ALTCHAKEY               = $altchaKey");
+        $io->writeln(' * APP_SECRET              = '.$appSecret);
+        $io->writeln(' * SQLCLIENT_ENCRYPTION_KEY = '.$encryptionKey);
+        $io->writeln(' * ALTCHAKEY               = '.$altchaKey);
         $io->newLine();
 
         // Read existing .env.local to preserve any existing values
@@ -183,7 +177,7 @@ class SetupCommand extends Command
 
         $notEmpty = static function (?string $value, string $label): string {
             if (empty(trim((string) $value))) {
-                throw new \RuntimeException("$label cannot be empty.");
+                throw new \RuntimeException($label.' cannot be empty.');
             }
 
             return trim($value);
@@ -191,12 +185,12 @@ class SetupCommand extends Command
 
         $io->section('Database configuration');
 
-        $dbName = $io->ask('Database name (APP_DB_NAME)', $this->existingOrNull($existing, 'APP_DB_NAME'), static fn (?string $v) => $notEmpty($v, 'Database name'));
-        $dbHost = $io->ask('Database host (APP_DB_HOSTNAME)', $this->existingOrNull($existing, 'APP_DB_HOSTNAME'), static fn (?string $v) => $notEmpty($v, 'Database host'));
-        $dbPort = $io->ask('Database port (APP_DB_PORT)', $this->existingOrNull($existing, 'APP_DB_PORT') ?? '3306', static fn (?string $v) => $notEmpty($v, 'Database port'));
-        $dbUser = $io->ask('Database user (APP_DB_USER)', $this->existingOrNull($existing, 'APP_DB_USER'), static fn (?string $v) => $notEmpty($v, 'Database user'));
-        $dbPass = $io->askHidden('Database password (APP_DB_PASSWORD)', static fn (?string $v) => $notEmpty($v, 'Database password'));
-        $backupPath = $io->ask('Backup path (BACKUP_PATH)', $this->existingOrNull($existing, 'BACKUP_PATH'), static fn (?string $v) => $notEmpty($v, 'Backup path'));
+        $dbName = $io->ask('Database name (APP_DB_NAME)', $this->existingOrNull($existing, 'APP_DB_NAME'), static fn (?string $v): string => $notEmpty($v, 'Database name'));
+        $dbHost = $io->ask('Database host (APP_DB_HOSTNAME)', $this->existingOrNull($existing, 'APP_DB_HOSTNAME'), static fn (?string $v): string => $notEmpty($v, 'Database host'));
+        $dbPort = $io->ask('Database port (APP_DB_PORT)', $this->existingOrNull($existing, 'APP_DB_PORT') ?? '3306', static fn (?string $v): string => $notEmpty($v, 'Database port'));
+        $dbUser = $io->ask('Database user (APP_DB_USER)', $this->existingOrNull($existing, 'APP_DB_USER'), static fn (?string $v): string => $notEmpty($v, 'Database user'));
+        $dbPass = $io->askHidden('Database password (APP_DB_PASSWORD)', static fn (?string $v): string => $notEmpty($v, 'Database password'));
+        $backupPath = $io->ask('Backup path (BACKUP_PATH)', $this->existingOrNull($existing, 'BACKUP_PATH'), static fn (?string $v): string => $notEmpty($v, 'Backup path'));
 
         $io->section('Mailer configuration');
 
@@ -207,22 +201,22 @@ class SetupCommand extends Command
         $managedKeys = ['APP_SECRET', 'SQLCLIENT_ENCRYPTION_KEY', 'ALTCHAKEY', 'APP_DB_NAME', 'APP_DB_HOSTNAME', 'APP_DB_PORT', 'APP_DB_USER', 'APP_DB_PASSWORD', 'BACKUP_PATH', 'MAILER_DSN'];
 
         $lines = [
-            "APP_SECRET=$appSecret",
-            "SQLCLIENT_ENCRYPTION_KEY=$encryptionKey",
-            "ALTCHAKEY=$altchaKey",
-            "APP_DB_NAME=$dbName",
-            "APP_DB_HOSTNAME=$dbHost",
-            "APP_DB_PORT=$dbPort",
-            "APP_DB_USER=$dbUser",
-            "APP_DB_PASSWORD=$dbPass",
-            "BACKUP_PATH=$backupPath",
-            "MAILER_DSN=$mailerDsn",
+            'APP_SECRET='.$appSecret,
+            'SQLCLIENT_ENCRYPTION_KEY='.$encryptionKey,
+            'ALTCHAKEY='.$altchaKey,
+            'APP_DB_NAME='.$dbName,
+            'APP_DB_HOSTNAME='.$dbHost,
+            'APP_DB_PORT='.$dbPort,
+            'APP_DB_USER='.$dbUser,
+            'APP_DB_PASSWORD='.$dbPass,
+            'BACKUP_PATH='.$backupPath,
+            'MAILER_DSN='.$mailerDsn,
         ];
 
         // Preserve any other existing keys not managed here
         foreach ($existing as $k => $v) {
             if (!in_array($k, $managedKeys, true)) {
-                $lines[] = "$k=$v";
+                $lines[] = sprintf('%s=%s', $k, $v);
             }
         }
 
