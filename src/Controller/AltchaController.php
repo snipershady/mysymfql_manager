@@ -23,16 +23,16 @@ final class AltchaController extends AbstractController
         $options = new ChallengeOptions(
             algorithm: Algorithm::SHA512,
             maxNumber: $randomIntValue,
-            expires: new \DateTimeImmutable()->add(new \DateInterval('PT2M')) // Scade tra 2 min
+            expires: new \DateTimeImmutable()->add(new \DateInterval('PT2M')) // Expires in 2 min
         );
         $challenge = $altcha->createChallenge($options);
 
-        // Converti in formato compatibile con il widget JavaScript
-        // Il widget si aspetta "maxnumber" (minuscolo) non "maxNumber"
+        // Convert to format compatible with the JavaScript widget
+        // The widget expects "maxnumber" (lowercase) not "maxNumber"
         $challengeData = [
             'algorithm' => $challenge->algorithm,
             'challenge' => $challenge->challenge,
-            'maxnumber' => $challenge->maxNumber, // Converti da camelCase a lowercase
+            'maxnumber' => $challenge->maxNumber, // Convert from camelCase to lowercase
             'salt' => $challenge->salt,
             'signature' => $challenge->signature,
         ];

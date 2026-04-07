@@ -35,7 +35,7 @@ class AppUserAdminType extends AbstractType
                 'mapped' => false,
                 'required' => false,
                 'trim' => true,
-                'attr' => ['placeholder' => 'Lascia vuoto per non modificare'],
+                'attr' => ['placeholder' => 'Leave blank to keep unchanged'],
             ])
         ;
     }

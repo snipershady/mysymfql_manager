@@ -3,21 +3,21 @@
 namespace App\Dto;
 
 /**
- * Rappresenta l'output di SHOW ENGINE INNODB STATUS in forma strutturata.
+ * Represents the output of SHOW ENGINE INNODB STATUS in structured form.
  *
- * Il testo grezzo viene suddiviso nelle sezioni standard di InnoDB
- * (BACKGROUND THREAD, SEMAPHORES, TRANSACTIONS, FILE I/O, ecc.) e reso
- * disponibile sia come mappa nome→contenuto che tramite proprietà tipizzate
- * per i valori più comuni.
+ * The raw text is split into the standard InnoDB sections
+ * (BACKGROUND THREAD, SEMAPHORES, TRANSACTIONS, FILE I/O, etc.) and made
+ * available both as a name→content map and via typed properties
+ * for the most common values.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
 final readonly class InnodbStatus
 {
     /**
-     * @param \DateTimeImmutable|null $generatedAt Timestamp estratto dall'header del report
-     * @param string                  $rawStatus   Testo grezzo integrale del campo Status
-     * @param array<string, string>   $sections    Mappa nome-sezione → contenuto testuale
+     * @param \DateTimeImmutable|null $generatedAt Timestamp extracted from the report header
+     * @param string                  $rawStatus   Full raw text of the Status field
+     * @param array<string, string>   $sections    Section name → text content map
      */
     public function __construct(
         public ?\DateTimeImmutable $generatedAt,
@@ -27,7 +27,7 @@ final readonly class InnodbStatus
     }
 
     /**
-     * Costruisce il DTO dalla riga PDO::FETCH_ASSOC di SHOW ENGINE INNODB STATUS.
+     * Builds the DTO from the PDO::FETCH_ASSOC row of SHOW ENGINE INNODB STATUS.
      *
      * @param array<string, mixed> $row
      */
@@ -43,8 +43,8 @@ final readonly class InnodbStatus
     }
 
     /**
-     * Restituisce il contenuto di una sezione per nome (case-insensitive).
-     * Ritorna null se la sezione non è presente nel report.
+     * Returns the content of a section by name (case-insensitive).
+     * Returns null if the section is not present in the report.
      */
     public function getSection(string $name): ?string
     {
@@ -54,13 +54,13 @@ final readonly class InnodbStatus
     }
 
     // -------------------------------------------------------------------------
-    // Parser interni
+    // Internal parsers
     // -------------------------------------------------------------------------
 
     /**
-     * Estrae il timestamp dall'header del report.
+     * Extracts the timestamp from the report header.
      *
-     * L'header ha la forma:
+     * The header has the form:
      *   =====================================
      *   2024-04-01 12:34:56 0x7f1a2b3c4d5e INNODB MONITOR OUTPUT
      *   =====================================
@@ -77,15 +77,15 @@ final readonly class InnodbStatus
     }
 
     /**
-     * Suddivide il testo grezzo nelle sezioni InnoDB.
+     * Splits the raw text into InnoDB sections.
      *
-     * Le sezioni sono delimitate da righe composte solo da trattini (`-{3,}`),
-     * seguite dal nome della sezione, seguite da un'altra riga di trattini:
+     * Sections are delimited by lines composed only of dashes (`-{3,}`),
+     * followed by the section name, followed by another line of dashes:
      *
      *   -----------------
      *   BACKGROUND THREAD
      *   -----------------
-     *   <contenuto>
+     *   <content>
      *
      * @return array<string, string>
      */
@@ -99,22 +99,22 @@ final readonly class InnodbStatus
         while ($i < $total) {
             $line = rtrim($lines[$i]);
 
-            // Riconosci una riga di soli trattini (almeno 3)
+            // Recognise a line composed only of dashes (at least 3)
             if (preg_match('/^-{3,}$/', $line)) {
                 $nameLine = isset($lines[$i + 1]) ? rtrim($lines[$i + 1]) : '';
                 $closingLine = isset($lines[$i + 2]) ? rtrim($lines[$i + 2]) : '';
 
-                // Verifica che la riga successiva sia il nome e quella dopo sia ancora trattini
+                // Verify that the next line is the name and the one after is dashes again
                 if ('' !== $nameLine && preg_match('/^-{3,}$/', $closingLine)) {
                     $sectionName = strtoupper($nameLine);
-                    $i += 3; // salta le tre righe dell'intestazione
+                    $i += 3; // skip the three header lines
 
-                    // Raccoglie il contenuto fino alla prossima intestazione o fine testo
+                    // Collect content until the next header or end of text
                     $contentLines = [];
                     while ($i < $total) {
                         $current = rtrim($lines[$i]);
 
-                        // Prossima intestazione: riga di trattini seguita da nome e trattini
+                        // Next header: line of dashes followed by name and dashes
                         if (
                             preg_match('/^-{3,}$/', $current)
                             && isset($lines[$i + 1], $lines[$i + 2])
@@ -124,7 +124,7 @@ final readonly class InnodbStatus
                             break;
                         }
 
-                        // Fine del report (riga di segni '=')
+                        // End of report (line of '=' signs)
                         if (preg_match('/^={3,}$/', $current)) {
                             break;
                         }

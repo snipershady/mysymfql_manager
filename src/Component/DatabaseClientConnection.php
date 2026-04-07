@@ -5,13 +5,13 @@ namespace App\Component;
 use App\Entity\SqlClient;
 
 /**
- * Registry di connessioni PDO per client MySQL gestiti.
+ * PDO connection registry for managed MySQL clients.
  *
- * Implementa il pattern Singleton-per-client: ogni SqlClient (identificato
- * dal proprio ID) mantiene una PDO dedicata per tutta la durata della
- * richiesta HTTP. Il database non viene selezionato nel DSN perché questa
- * classe gestisce connessioni a livello di server; la selezione del database
- * avviene a runtime tramite USE o query parametrizzate.
+ * Implements the Singleton-per-client pattern: each SqlClient (identified
+ * by its own ID) maintains a dedicated PDO for the entire duration of the
+ * HTTP request. The database is not selected in the DSN because this
+ * class manages server-level connections; database selection happens
+ * at runtime via USE or parameterised queries.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  *
@@ -30,12 +30,12 @@ final class DatabaseClientConnection
     }
 
     /**
-     * Restituisce la PDO associata al SqlClient dato.
-     * La connessione viene creata al primo accesso e riutilizzata nelle
-     * chiamate successive con lo stesso client.
+     * Returns the PDO associated with the given SqlClient.
+     * The connection is created on first access and reused in
+     * subsequent calls with the same client.
      *
-     * @throws \InvalidArgumentException se host o username sono mancanti
-     * @throws \PDOException             in caso di errore di connessione
+     * @throws \InvalidArgumentException if host or username are missing
+     * @throws \PDOException             in case of connection error
      */
     public static function getInstance(SqlClient $sqlClient): \PDO
     {
@@ -47,8 +47,8 @@ final class DatabaseClientConnection
     }
 
     /**
-     * Rimuove la connessione dal registry, forzando la riconnessione alla
-     * prossima chiamata a getInstance(). Utile in caso di errore recuperabile.
+     * Removes the connection from the registry, forcing reconnection on
+     * the next call to getInstance(). Useful in case of a recoverable error.
      */
     public static function reset(): void
     {
@@ -58,10 +58,10 @@ final class DatabaseClientConnection
     private static function createConnection(SqlClient $sqlClient): \PDO
     {
         $host = $sqlClient->getHost()
-            ?? throw new \InvalidArgumentException('SqlClient: host obbligatorio.');
+            ?? throw new \InvalidArgumentException('SqlClient: host is required.');
 
         $user = $sqlClient->getUsername()
-            ?? throw new \InvalidArgumentException('SqlClient: username obbligatorio.');
+            ?? throw new \InvalidArgumentException('SqlClient: username is required.');
 
         $pass = $sqlClient->getPassword() ?? '';
         $port = $sqlClient->getPort() ?? 3306;

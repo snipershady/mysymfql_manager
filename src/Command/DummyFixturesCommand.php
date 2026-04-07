@@ -15,7 +15,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'dummy-fixtures',
-    description: 'Crea due database e li popola con dati di prova',
+    description: 'Creates two databases and populates them with test data',
 )]
 class DummyFixturesCommand extends Command
 {
@@ -50,12 +50,12 @@ class DummyFixturesCommand extends Command
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
 
-        // Dropp di tutti i possibili elementi esistenti per il testing
+        // Drop all possible existing elements for testing
         $databaseRepositoryPdo->dropUser(self::DB_NAME_USER);
         $databaseRepositoryPdo->dropDatabase(self::DB_NAME_TESTING_ONE);
         $databaseRepositoryPdo->dropDatabase(self::DB_NAME_TESTING_TWO);
 
-        // Creo e popolo DB1
+        // Create and populate DB1
         $databaseRepositoryPdo->createDatabase(self::DB_NAME_TESTING_ONE);
         $databaseRepositoryPdo->createUser(self::DB_NAME_USER, self::DB_NAME_PASSWORD);
         $databaseRepositoryPdo->grantPrivileges(self::DB_NAME_TESTING_ONE, self::DB_NAME_USER);
@@ -66,12 +66,12 @@ class DummyFixturesCommand extends Command
         $databaseRepositoryPdo->createDummyTableTwo();
         $databaseRepositoryPdo->populateDummiTableTwo();
 
-        // Creo e popolo DB2
+        // Create and populate DB2
         $databaseRepositoryPdo->createDatabase(self::DB_NAME_TESTING_TWO);
         $databaseRepositoryPdo->grantPrivileges(self::DB_NAME_TESTING_TWO, self::DB_NAME_USER);
         $databaseRepositoryPdo->flushPrivileges();
 
-        $io->success('Database dummy creati con successo');
+        $io->success('Dummy databases created successfully');
 
         return Command::SUCCESS;
     }

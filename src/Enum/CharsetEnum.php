@@ -5,7 +5,7 @@ namespace App\Enum;
 /**
  * Description of CharsetEnum.
  *
- * Rappresenta i principali set di caratteri (charset) supportati da MySQL 8.4 e superiori.
+ * Represents the main character sets (charset) supported by MySQL 8.4 and later.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
@@ -13,105 +13,105 @@ enum CharsetEnum: string
 {
     /**
      * <p>Unicode (4-byte).
-     *  Il set di caratteri raccomandato per tutte le nuove applicazioni.
-     *  Supporta l'intera gamma di caratteri Unicode, inclusi emoji e simboli matematici complessi.
-     *  È il default in MySQL 8.0+.
+     *  The recommended character set for all new applications.
+     *  Supports the full range of Unicode characters, including emoji and complex mathematical symbols.
+     *  It is the default in MySQL 8.0+.
      * </p>.
      */
     case UTF8MB4 = 'utf8mb4';
 
     /**
      * <p>Unicode (3-byte).
-     *  Versione legacy di UTF-8 che supporta solo il Basic Multilingual Plane (BMP).
-     *  Nota: Deprecato in MySQL 8.0 in favore di utf8mb4.
+     *  Legacy version of UTF-8 that supports only the Basic Multilingual Plane (BMP).
+     *  Note: Deprecated in MySQL 8.0 in favour of utf8mb4.
      * </p>.
      */
     #[\Deprecated(message: 'use utfmb4 instead', since: '8.0')]
     case UTF8MB3 = 'utf8mb3';
 
     /**
-     * <p>Alias per utf8mb3.
-     *  In MySQL 8.4, 'utf8' è un alias per 'utf8mb3', ma il comportamento cambierà in futuro per puntare a 'utf8mb4'.
+     * <p>Alias for utf8mb3.
+     *  In MySQL 8.4, 'utf8' is an alias for 'utf8mb3', but the behaviour will change in the future to point to 'utf8mb4'.
      * </p>.
      */
     case UTF8 = 'utf8';
 
     /**
      * <p>cp1252 West European (ISO 8859-1).
-     *  Set di caratteri storico molto comune in Europa occidentale.
+     *  Historic character set very common in Western Europe.
      * </p>.
      */
     case LATIN1 = 'latin1';
 
     /**
      * <p>US ASCII (7-bit).
-     *  Supporta solo i caratteri standard inglesi (0-127).
+     *  Supports only standard English characters (0-127).
      * </p>.
      */
     case ASCII = 'ascii';
 
     /**
      * <p>Binary (byte stream).
-     *  Set di caratteri per dati binari, non esegue conversioni di case o ordinamenti linguistici.
+     *  Character set for binary data, does not perform case conversions or linguistic sorting.
      * </p>.
      */
     case BINARY = 'binary';
 
     /**
      * <p>UTF-16 Unicode.
-     *  Rappresentazione a 16-bit dei caratteri Unicode.
+     *  16-bit representation of Unicode characters.
      * </p>.
      */
     case UTF16 = 'utf16';
 
     /**
      * <p>UTF-16LE Unicode.
-     *  Rappresentazione UTF-16 in formato Little Endian.
+     *  UTF-16 representation in Little Endian format.
      * </p>.
      */
     case UTF16LE = 'utf16le';
 
     /**
      * <p>UTF-32 Unicode.
-     *  Rappresentazione a 32-bit (larghezza fissa) dei caratteri Unicode.
+     *  32-bit (fixed-width) representation of Unicode characters.
      * </p>.
      */
     case UTF32 = 'utf32';
 
     /**
-     * <p>UTF-8 per set di caratteri Unicode per l'Europa centrale.
-     *  Comune per lingue come polacco, ceco, ungherese.
+     * <p>UTF-8 for the Unicode character set for Central Europe.
+     *  Common for languages such as Polish, Czech, and Hungarian.
      * </p>.
      */
     case LATIN2 = 'latin2';
 
     /**
-     * <p>Set di caratteri per lingue cirilliche.
+     * <p>Character set for Cyrillic languages.
      * </p>.
      */
     case CP1251 = 'cp1251';
 
     /**
-     * <p>Set di caratteri per lingue dell'Europa occidentale (Windows).
-     *  Simile a latin1 ma con estensioni proprietarie.
+     * <p>Character set for Western European languages (Windows).
+     *  Similar to latin1 but with proprietary extensions.
      * </p>.
      */
     case CP1250 = 'cp1250';
 
     /**
-     * <p>Set di caratteri greco.
+     * <p>Greek character set.
      * </p>.
      */
     case GREEK = 'greek';
 
     /**
-     * <p>Set di caratteri ebraico.
+     * <p>Hebrew character set.
      * </p>.
      */
     case HEBREW = 'hebrew';
 
     /**
-     * <p>Set di caratteri arabo.
+     * <p>Arabic character set.
      * </p>.
      */
     case ARABIC = 'arabic';

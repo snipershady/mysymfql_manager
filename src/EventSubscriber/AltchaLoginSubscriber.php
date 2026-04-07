@@ -42,7 +42,7 @@ final readonly class AltchaLoginSubscriber implements EventSubscriberInterface
         $altchaPayload = $request->request->get('altcha', '');
 
         if ('' === $altchaPayload) {
-            throw new CustomUserMessageAuthenticationException('Completa la verifica CAPTCHA.');
+            throw new CustomUserMessageAuthenticationException('Please complete the CAPTCHA verification.');
         }
 
         $epti = new EffectivePrimitiveTypeIdentifierService();
@@ -51,7 +51,7 @@ final readonly class AltchaLoginSubscriber implements EventSubscriberInterface
         $altcha = new Altcha($hmacKey);
 
         if (!$altcha->verifySolution($altchaPayload, checkExpires: true)) {
-            throw new CustomUserMessageAuthenticationException('Verifica CAPTCHA non valida o scaduta. Riprova.');
+            throw new CustomUserMessageAuthenticationException('CAPTCHA verification invalid or expired. Please try again.');
         }
     }
 }

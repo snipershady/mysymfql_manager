@@ -15,7 +15,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'app:setup-sqlclient',
-    description: 'Registra un server MySQL (SqlClient) nel database applicativo',
+    description: 'Registers a MySQL server (SqlClient) in the application database',
 )]
 class SetupSqlClientCommand extends Command
 {
@@ -30,11 +30,11 @@ class SetupSqlClientCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addArgument('name', InputArgument::REQUIRED, 'Nome identificativo del server (es. Produzione)')
-            ->addArgument('host', InputArgument::REQUIRED, 'Hostname o IP del server MySQL (es. 192.168.1.10)')
-            ->addArgument('username', InputArgument::REQUIRED, 'Username MySQL (es. manager)')
-            ->addArgument('password', InputArgument::REQUIRED, 'Password MySQL')
-            ->addOption('port', 'p', InputOption::VALUE_OPTIONAL, 'Porta MySQL', 3306);
+            ->addArgument('name', InputArgument::REQUIRED, 'Server identifier name (e.g. Production)')
+            ->addArgument('host', InputArgument::REQUIRED, 'MySQL server hostname or IP (e.g. 192.168.1.10)')
+            ->addArgument('username', InputArgument::REQUIRED, 'MySQL username (e.g. manager)')
+            ->addArgument('password', InputArgument::REQUIRED, 'MySQL password')
+            ->addOption('port', 'p', InputOption::VALUE_OPTIONAL, 'MySQL port', 3306);
     }
 
     #[\Override]
@@ -49,13 +49,13 @@ class SetupSqlClientCommand extends Command
         $port = (int) $input->getOption('port');
 
         if (null !== $this->sqlClientRepository->findOneBy(['host' => $host])) {
-            $io->error(sprintf('Un server con host "%s" è già registrato.', $host));
+            $io->error(sprintf('A server with host "%s" is already registered.', $host));
 
             return Command::FAILURE;
         }
 
         if (null !== $this->sqlClientRepository->findOneByName($name)) {
-            $io->error(sprintf('Un server con nome "%s" è già registrato.', $name));
+            $io->error(sprintf('A server with name "%s" is already registered.', $name));
 
             return Command::FAILURE;
         }
@@ -71,7 +71,7 @@ class SetupSqlClientCommand extends Command
         $this->entityManager->flush();
 
         $io->success(sprintf(
-            'Server MySQL registrato con successo: [%s] %s@%s:%d (id: %d)',
+            'MySQL server registered successfully: [%s] %s@%s:%d (id: %d)',
             $name,
             $username,
             $host,

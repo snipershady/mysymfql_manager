@@ -3,21 +3,21 @@
 namespace App\Service;
 
 /**
- * Cifratura simmetrica autenticata per campi sensibili su DB.
+ * Authenticated symmetric encryption for sensitive DB fields.
  *
- * Algoritmo: XSalsa20-Poly1305 (sodium_crypto_secretbox)
- *   - Cifratura autenticata (AEAD): garantisce confidenzialità e integrità.
- *   - Nonce casuale da 192 bit per ogni operazione: non riutilizzabile.
- *   - Resistente ad attacchi a canale laterale (implementazione constant-time).
+ * Algorithm: XSalsa20-Poly1305 (sodium_crypto_secretbox)
+ *   - Authenticated encryption (AEAD): guarantees confidentiality and integrity.
+ *   - Random 192-bit nonce per operation: not reusable.
+ *   - Resistant to side-channel attacks (constant-time implementation).
  *
- * Formato storage su DB: "$enc$:" + base64url(nonce || ciphertext)
- *   - Il prefisso permette di distinguere valori cifrati da quelli in chiaro.
- *   - Nonce: 24 byte (SODIUM_CRYPTO_SECRETBOX_NONCEBYTES)
- *   - Ciphertext: plaintext + MAC da 16 byte (SODIUM_CRYPTO_SECRETBOX_MACBYTES)
+ * DB storage format: "$enc$:" + base64url(nonce || ciphertext)
+ *   - The prefix allows distinguishing encrypted values from plaintext ones.
+ *   - Nonce: 24 bytes (SODIUM_CRYPTO_SECRETBOX_NONCEBYTES)
+ *   - Ciphertext: plaintext + 16-byte MAC (SODIUM_CRYPTO_SECRETBOX_MACBYTES)
  *
- * Generazione chiave:
+ * Key generation:
  *   php -r "echo sodium_bin2hex(sodium_crypto_secretbox_keygen());"
- * → 64 caratteri hex da copiare in SQLCLIENT_ENCRYPTION_KEY nel .env.local
+ * → 64 hex characters to copy into SQLCLIENT_ENCRYPTION_KEY in .env.local
  */
 final readonly class FieldEncryptor
 {
@@ -30,7 +30,7 @@ final readonly class FieldEncryptor
         $key = sodium_hex2bin($encryptionKey);
 
         if (SODIUM_CRYPTO_SECRETBOX_KEYBYTES !== strlen($key)) {
-            throw new \RuntimeException(sprintf('La chiave di cifratura deve essere di %d byte (%d caratteri hex).', SODIUM_CRYPTO_SECRETBOX_KEYBYTES, SODIUM_CRYPTO_SECRETBOX_KEYBYTES * 2));
+            throw new \RuntimeException(sprintf('The encryption key must be %d bytes (%d hex characters).', SODIUM_CRYPTO_SECRETBOX_KEYBYTES, SODIUM_CRYPTO_SECRETBOX_KEYBYTES * 2));
         }
 
         $this->key = $key;
@@ -50,12 +50,12 @@ final readonly class FieldEncryptor
     }
 
     /**
-     * @throws \RuntimeException se il MAC non è valido (dati corrotti o chiave errata)
+     * @throws \RuntimeException if the MAC is invalid (corrupted data or wrong key)
      */
     public function decrypt(string $encrypted): string
     {
         if (!$this->isEncrypted($encrypted)) {
-            throw new \InvalidArgumentException('Il valore fornito non è cifrato con questo algoritmo.');
+            throw new \InvalidArgumentException('The provided value is not encrypted with this algorithm.');
         }
 
         $raw = sodium_base642bin(
@@ -64,7 +64,7 @@ final readonly class FieldEncryptor
         );
 
         if (strlen($raw) <= SODIUM_CRYPTO_SECRETBOX_NONCEBYTES) {
-            throw new \RuntimeException('Payload cifrato malformato.');
+            throw new \RuntimeException('Malformed encrypted payload.');
         }
 
         $nonce = substr($raw, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
@@ -73,7 +73,7 @@ final readonly class FieldEncryptor
         $plaintext = sodium_crypto_secretbox_open($ciphertext, $nonce, $this->key);
 
         if (false === $plaintext) {
-            throw new \RuntimeException('Decifratura fallita: dati corrotti o chiave di cifratura errata.');
+            throw new \RuntimeException('Decryption failed: corrupted data or wrong encryption key.');
         }
 
         return $plaintext;

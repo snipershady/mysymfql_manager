@@ -14,7 +14,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'app:backup-all',
-    description: 'Esegue il backup completo di tutti i database di un server MySQL',
+    description: 'Performs a full backup of all databases on a MySQL server',
 )]
 class BackupAllCommand extends Command
 {
@@ -28,7 +28,7 @@ class BackupAllCommand extends Command
     #[\Override]
     protected function configure(): void
     {
-        $this->addArgument('name', InputArgument::REQUIRED, 'Nome del server MySQL (es. mithrandir_manager)');
+        $this->addArgument('name', InputArgument::REQUIRED, 'MySQL server name (e.g. mithrandir_manager)');
     }
 
     #[\Override]
@@ -40,7 +40,7 @@ class BackupAllCommand extends Command
 
         $sqlClient = $this->sqlClientRepository->findOneByName($name);
         if (null === $sqlClient) {
-            $io->error(sprintf('Nessun server configurato con name "%s".', $name));
+            $io->error(sprintf('No server configured with name "%s".', $name));
 
             return Command::FAILURE;
         }
@@ -49,12 +49,12 @@ class BackupAllCommand extends Command
         $databases = $repo->getDatabasesWithStats();
 
         if (empty($databases)) {
-            $io->warning('Nessun database trovato sul server.');
+            $io->warning('No databases found on the server.');
 
             return Command::SUCCESS;
         }
 
-        $io->title(sprintf('Backup di %d database su %s', count($databases), $name));
+        $io->title(sprintf('Backup of %d database(s) on %s', count($databases), $name));
 
         $success = 0;
         $failure = 0;
@@ -70,14 +70,14 @@ class BackupAllCommand extends Command
                     $io->writeln(sprintf('<fg=green>OK</> <fg=gray>(%s)</>', basename((string) $result['backup_filename'])));
                     ++$success;
                 } else {
-                    $io->writeln('<fg=red>FALLITO</>');
+                    $io->writeln('<fg=red>FAILED</>');
                     if (!empty($result['output'])) {
                         $io->writeln(array_map(fn (string $l): string => '    '.$l, $result['output']));
                     }
                     ++$failure;
                 }
             } catch (\Throwable $e) {
-                $io->writeln(sprintf('<fg=red>ERRORE: %s</>', $e->getMessage()));
+                $io->writeln(sprintf('<fg=red>ERROR: %s</>', $e->getMessage()));
                 ++$failure;
             }
         }
@@ -85,18 +85,18 @@ class BackupAllCommand extends Command
         $io->newLine();
 
         if (0 === $failure) {
-            $io->success(sprintf('Tutti i %d backup completati con successo.', $success));
+            $io->success(sprintf('All %d backup(s) completed successfully.', $success));
 
             return Command::SUCCESS;
         }
 
         if (0 === $success) {
-            $io->error(sprintf('Tutti i %d backup falliti.', $failure));
+            $io->error(sprintf('All %d backup(s) failed.', $failure));
 
             return Command::FAILURE;
         }
 
-        $io->warning(sprintf('%d backup completati, %d falliti.', $success, $failure));
+        $io->warning(sprintf('%d backup(s) completed, %d failed.', $success, $failure));
 
         return Command::FAILURE;
     }

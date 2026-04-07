@@ -10,11 +10,11 @@ use Doctrine\ORM\Event\PreUpdateEventArgs;
 use Doctrine\ORM\Events;
 
 /**
- * Cifra la password di SqlClient prima di scriverla su DB e la decifra
- * dopo il caricamento, in modo trasparente per il resto dell'applicazione.
+ * Encrypts the SqlClient password before writing it to the DB and decrypts it
+ * after loading, in a way that is transparent to the rest of the application.
  *
- * Dopo il PostLoad viene aggiornato lo snapshot del UnitOfWork con il valore
- * decifrato, così Doctrine non rileva un falso "campo modificato" al prossimo
+ * After PostLoad the UnitOfWork snapshot is updated with the decrypted value,
+ * so Doctrine does not detect a false "modified field" on the next
  * flush (dirty tracking prevention).
  */
 #[AsEntityListener(event: Events::postLoad, entity: SqlClient::class)]
@@ -27,8 +27,8 @@ final readonly class SqlClientListener
     }
 
     /**
-     * Decifra la password dopo il caricamento dal DB.
-     * Aggiorna lo snapshot UoW per evitare dirty tracking spurio.
+     * Decrypts the password after loading from the DB.
+     * Updates the UoW snapshot to avoid spurious dirty tracking.
      */
     public function postLoad(SqlClient $entity, PostLoadEventArgs $args): void
     {
@@ -41,14 +41,14 @@ final readonly class SqlClientListener
         $decrypted = $this->encryptor->decrypt($password);
         $entity->setPassword($decrypted);
 
-        // Aggiorna lo snapshot originale nel UoW per evitare che Doctrine
-        // rilevi il campo come modificato e tenti un UPDATE non necessario.
+        // Update the original snapshot in the UoW to prevent Doctrine
+        // from detecting the field as modified and attempting an unnecessary UPDATE.
         $uow = $args->getObjectManager()->getUnitOfWork();
         $uow->setOriginalEntityProperty(spl_object_id($entity), 'password', $decrypted);
     }
 
     /**
-     * Cifra la password prima di un INSERT.
+     * Encrypts the password before an INSERT.
      */
     public function prePersist(SqlClient $entity): void
     {
@@ -56,8 +56,8 @@ final readonly class SqlClientListener
     }
 
     /**
-     * Cifra la password prima di un UPDATE, solo se è stata effettivamente
-     * modificata e il nuovo valore non è già cifrato.
+     * Encrypts the password before an UPDATE, only if it was actually
+     * changed and the new value is not already encrypted.
      */
     public function preUpdate(SqlClient $entity, PreUpdateEventArgs $args): void
     {
@@ -67,7 +67,7 @@ final readonly class SqlClientListener
 
         $this->encryptIfNeeded($entity);
 
-        // Comunica a Doctrine il valore aggiornato del campo nel changeset.
+        // Notify Doctrine of the updated field value in the changeset.
         $args->setNewValue('password', $entity->getPassword());
     }
 

@@ -22,11 +22,11 @@ final readonly class MysqldumpManager
     {
         $disabledFunctions = array_map(trim(...), explode(',', ini_get('disable_functions')));
         if (in_array('exec', $disabledFunctions, true)) {
-            throw new \RuntimeException('La funzione exec() è disabilitata in PHP. Per abilitarla, rimuovere "exec" da "disable_functions" nel file php.ini (es. /etc/php/8.x/fpm/php.ini) e riavviare PHP-FPM.');
+            throw new \RuntimeException('The exec() function is disabled in PHP. To enable it, remove "exec" from "disable_functions" in the php.ini file (e.g. /etc/php/8.x/fpm/php.ini) and restart PHP-FPM.');
         }
 
         if (!shell_exec('which mysqldump 2>/dev/null')) {
-            throw new \RuntimeException('Il comando mysqldump non è stato trovato nel PATH di sistema. Installarlo con: "apt install mysql-client" (Debian/Ubuntu) oppure "yum install mysql" (RHEL/CentOS), poi verificare che sia raggiungibile nel PATH dell\'utente che esegue PHP.');
+            throw new \RuntimeException('The mysqldump command was not found in the system PATH. Install it with: "apt install mysql-client" (Debian/Ubuntu) or "yum install mysql" (RHEL/CentOS), then verify it is accessible in the PATH of the user running PHP.');
         }
 
         $this->epti = new EffectivePrimitiveTypeIdentifierService();
@@ -39,11 +39,11 @@ final readonly class MysqldumpManager
     public function createBackup(SqlClient $sqlClient, string $dbName, ?string $table = null): array
     {
         if (!preg_match('/^\w+$/', $dbName)) {
-            throw new \InvalidArgumentException(sprintf('Nome database non valido: "%s". Sono ammessi solo caratteri alfanumerici e underscore.', $dbName));
+            throw new \InvalidArgumentException(sprintf('Invalid database name: "%s". Only alphanumeric characters and underscores are allowed.', $dbName));
         }
 
         if (null !== $table && !preg_match('/^\w+$/', $table)) {
-            throw new \InvalidArgumentException(sprintf('Nome tabella non valido: "%s". Sono ammessi solo caratteri alfanumerici e underscore.', $table));
+            throw new \InvalidArgumentException(sprintf('Invalid table name: "%s". Only alphanumeric characters and underscores are allowed.', $table));
         }
 
         $host = $sqlClient->getHost();
@@ -53,9 +53,9 @@ final readonly class MysqldumpManager
         $dateString = $now->format('Y-m-d_H-i-s');
 
         if (!is_dir($this->backupPath) && !mkdir($this->backupPath, 0755, true)) {
-            $msg = sprintf('Impossibile creare la directory di backup: %s', $this->backupPath);
+            $msg = sprintf('Unable to create the backup directory: %s', $this->backupPath);
 
-            // throw new \RuntimeException(sprintf('Impossibile creare la directory di backup: %s', $this->backupPath));
+            // throw new \RuntimeException(sprintf('Unable to create the backup directory: %s', $this->backupPath));
             return [
                 'is_valid' => false,
                 'exec_result' => null,
@@ -66,10 +66,10 @@ final readonly class MysqldumpManager
             ];
         }
 
-        // Evitare di esporre la password del db in chiaro
+        // Avoid exposing the database password in plaintext
         $cnfFile = tempnam(sys_get_temp_dir(), 'mysqldump_');
         if (false === $cnfFile) {
-            $msg = 'Impossibile creare il file temporaneo per le credenziali mysqldump.';
+            $msg = 'Unable to create the temporary file for mysqldump credentials.';
 
             // throw new \RuntimeException($msg);
             return [
@@ -145,8 +145,8 @@ final readonly class MysqldumpManager
         );
 
         $filtered = $isAdmin ? $files : array_filter($files, function (string $file) use ($allowedDbNames): bool {
-            // Formato: bkp_YYYY-MM-DD_HH-II-SS_dbName_suffix.sql
-            // Rimuove il prefisso fisso per isolare dbName_suffix.sql
+            // Format: bkp_YYYY-MM-DD_HH-II-SS_dbName_suffix.sql
+            // Remove the fixed prefix to isolate dbName_suffix.sql
             $rest = (string) preg_replace('/^bkp_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_/', '', basename($file));
 
             return array_any($allowedDbNames, fn (string $dbName): bool => str_starts_with($rest, $dbName.'_'));
@@ -194,20 +194,20 @@ final readonly class MysqldumpManager
     public function restoreBackup(SqlClient $sqlClient, string $dbName, string $backupFilename, ?string $table = null): array
     {
         if (!preg_match('/^\w+$/', $dbName)) {
-            throw new \InvalidArgumentException(sprintf('Nome database non valido: "%s". Sono ammessi solo caratteri alfanumerici e underscore.', $dbName));
+            throw new \InvalidArgumentException(sprintf('Invalid database name: "%s". Only alphanumeric characters and underscores are allowed.', $dbName));
         }
 
         if (null !== $table && !preg_match('/^\w+$/', $table)) {
-            throw new \InvalidArgumentException(sprintf('Nome tabella non valido: "%s". Sono ammessi solo caratteri alfanumerici e underscore.', $table));
+            throw new \InvalidArgumentException(sprintf('Invalid table name: "%s". Only alphanumeric characters and underscores are allowed.', $table));
         }
 
         $realPath = realpath($backupFilename);
         if (false === $realPath || !str_starts_with($realPath, realpath($this->backupPath).DIRECTORY_SEPARATOR)) {
-            throw new \InvalidArgumentException('Il file di backup deve trovarsi nella directory di backup configurata.');
+            throw new \InvalidArgumentException('The backup file must be located in the configured backup directory.');
         }
 
         if (!is_readable($realPath)) {
-            throw new \RuntimeException(sprintf('Il file di backup non è leggibile: %s', $realPath));
+            throw new \RuntimeException(sprintf('The backup file is not readable: %s', $realPath));
         }
 
         $host = $sqlClient->getHost();
@@ -216,7 +216,7 @@ final readonly class MysqldumpManager
 
         $cnfFile = tempnam(sys_get_temp_dir(), 'mysqlrestore_');
         if (false === $cnfFile) {
-            throw new \RuntimeException('Impossibile creare il file temporaneo per le credenziali mysql.');
+            throw new \RuntimeException('Unable to create the temporary file for mysql credentials.');
         }
 
         file_put_contents($cnfFile, sprintf("[client]\npassword=%s\n", addslashes((string) $pass)));

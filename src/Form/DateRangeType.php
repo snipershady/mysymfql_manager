@@ -16,7 +16,7 @@ class DateRangeType extends AbstractType
         $builder
                 ->add('from', DateType::class, ['required' => true])
                 ->add('to', DateType::class, ['required' => true])
-                ->add('filtra', SubmitType::class)
+                ->add('filtra', SubmitType::class, ['label' => 'Filter'])
         ;
     }
 

@@ -3,7 +3,7 @@
 namespace App\Dto;
 
 /**
- * Rappresenta una riga di performance_schema.processlist.
+ * Represents a row from performance_schema.processlist.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
@@ -23,7 +23,7 @@ final readonly class ProcessList
     }
 
     /**
-     * @param array<string, mixed> $row Riga proveniente da PDO::FETCH_ASSOC
+     * @param array<string, mixed> $row Row coming from PDO::FETCH_ASSOC
      */
     public static function fromArray(array $row): self
     {

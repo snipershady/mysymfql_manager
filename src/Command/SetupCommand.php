@@ -16,7 +16,7 @@ use Symfony\Component\Process\Process;
 
 #[AsCommand(
     name: 'app:setup',
-    description: 'Inizializza la struttura dati e crea il primo utente amministratore',
+    description: 'Initializes the data structure and creates the first administrator user',
 )]
 class SetupCommand extends Command
 {
@@ -42,7 +42,7 @@ class SetupCommand extends Command
                 return $result;
             }
 
-            $io->note('Riesegui il comando per completare il setup: php bin/console app:setup');
+            $io->note('Re-run the command to complete the setup: php bin/console app:setup');
 
             return Command::SUCCESS;
         }
@@ -53,13 +53,13 @@ class SetupCommand extends Command
             $count = (int) $this->connection->fetchOne('SELECT COUNT(*) FROM app_user');
 
             if ($count > 0) {
-                $io->warning('Setup già eseguito');
+                $io->warning('Setup already completed');
 
                 return Command::SUCCESS;
             }
         }
 
-        $io->section('Creazione struttura dati in corso...');
+        $io->section('Creating data structure...');
 
         $consolePath = $projectDir.'/bin/console';
         $php = \PHP_BINARY;
@@ -70,7 +70,7 @@ class SetupCommand extends Command
         });
 
         if (!$diff->isSuccessful()) {
-            $io->error('Errore durante la generazione della migration (diff).');
+            $io->error('Error during migration generation (diff).');
 
             return Command::FAILURE;
         }
@@ -81,19 +81,19 @@ class SetupCommand extends Command
         });
 
         if (!$migrate->isSuccessful()) {
-            $io->error("Errore durante l'esecuzione della migration.");
+            $io->error('Error during migration execution.');
 
             return Command::FAILURE;
         }
 
-        $io->section('Creazione utente amministratore');
+        $io->section('Creating administrator user');
 
         $helper = $this->getHelper('question');
 
         $usernameQuestion = new Question('Username: ');
         $usernameQuestion->setValidator(static function (?string $value): string {
             if (empty(trim((string) $value))) {
-                throw new \RuntimeException('Il username non può essere vuoto.');
+                throw new \RuntimeException('The username cannot be empty.');
             }
 
             return trim($value);
@@ -102,7 +102,7 @@ class SetupCommand extends Command
         $emailQuestion = new Question('Email: ');
         $emailQuestion->setValidator(static function (?string $value): string {
             if (empty(trim((string) $value))) {
-                throw new \RuntimeException('L\'email non può essere vuota.');
+                throw new \RuntimeException('The email cannot be empty.');
             }
 
             return trim($value);
@@ -113,7 +113,7 @@ class SetupCommand extends Command
         $passwordQuestion->setHiddenFallback(false);
         $passwordQuestion->setValidator(static function (?string $value): string {
             if (empty($value)) {
-                throw new \RuntimeException('La password non può essere vuota.');
+                throw new \RuntimeException('The password cannot be empty.');
             }
 
             return $value;
@@ -132,7 +132,7 @@ class SetupCommand extends Command
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
-        $io->success('Setup eseguito con successo, ora puoi eseguire il login');
+        $io->success('Setup completed successfully, you can now log in');
 
         return Command::SUCCESS;
     }
@@ -156,14 +156,14 @@ class SetupCommand extends Command
 
     private function setupEnv(InputInterface $input, OutputInterface $output, SymfonyStyle $io, string $envLocalPath): int
     {
-        $io->section('Configurazione .env.local');
+        $io->section('.env.local configuration');
 
         // Auto-generate secret keys
         $appSecret = bin2hex(random_bytes(32));
         $encryptionKey = sodium_bin2hex(sodium_crypto_secretbox_keygen());
         $altchaKey = bin2hex(random_bytes(32));
 
-        $io->writeln('Chiavi generate automaticamente:');
+        $io->writeln('Automatically generated keys:');
         $io->writeln(" * APP_SECRET              = $appSecret");
         $io->writeln(" * SQLCLIENT_ENCRYPTION_KEY = $encryptionKey");
         $io->writeln(" * ALTCHAKEY               = $altchaKey");
@@ -183,25 +183,25 @@ class SetupCommand extends Command
 
         $notEmpty = static function (?string $value, string $label): string {
             if (empty(trim((string) $value))) {
-                throw new \RuntimeException("$label non può essere vuoto.");
+                throw new \RuntimeException("$label cannot be empty.");
             }
 
             return trim($value);
         };
 
-        $io->section('Configurazione database');
+        $io->section('Database configuration');
 
-        $dbName = $io->ask('Nome database (APP_DB_NAME)', $this->existingOrNull($existing, 'APP_DB_NAME'), static fn (?string $v) => $notEmpty($v, 'Nome database'));
-        $dbHost = $io->ask('Host database (APP_DB_HOSTNAME)', $this->existingOrNull($existing, 'APP_DB_HOSTNAME'), static fn (?string $v) => $notEmpty($v, 'Host database'));
-        $dbPort = $io->ask('Porta database (APP_DB_PORT)', $this->existingOrNull($existing, 'APP_DB_PORT') ?? '3306', static fn (?string $v) => $notEmpty($v, 'Porta database'));
-        $dbUser = $io->ask('Utente database (APP_DB_USER)', $this->existingOrNull($existing, 'APP_DB_USER'), static fn (?string $v) => $notEmpty($v, 'Utente database'));
-        $dbPass = $io->askHidden('Password database (APP_DB_PASSWORD)', static fn (?string $v) => $notEmpty($v, 'Password database'));
-        $backupPath = $io->ask('Percorso backup (BACKUP_PATH)', $this->existingOrNull($existing, 'BACKUP_PATH'), static fn (?string $v) => $notEmpty($v, 'Percorso backup'));
+        $dbName = $io->ask('Database name (APP_DB_NAME)', $this->existingOrNull($existing, 'APP_DB_NAME'), static fn (?string $v) => $notEmpty($v, 'Database name'));
+        $dbHost = $io->ask('Database host (APP_DB_HOSTNAME)', $this->existingOrNull($existing, 'APP_DB_HOSTNAME'), static fn (?string $v) => $notEmpty($v, 'Database host'));
+        $dbPort = $io->ask('Database port (APP_DB_PORT)', $this->existingOrNull($existing, 'APP_DB_PORT') ?? '3306', static fn (?string $v) => $notEmpty($v, 'Database port'));
+        $dbUser = $io->ask('Database user (APP_DB_USER)', $this->existingOrNull($existing, 'APP_DB_USER'), static fn (?string $v) => $notEmpty($v, 'Database user'));
+        $dbPass = $io->askHidden('Database password (APP_DB_PASSWORD)', static fn (?string $v) => $notEmpty($v, 'Database password'));
+        $backupPath = $io->ask('Backup path (BACKUP_PATH)', $this->existingOrNull($existing, 'BACKUP_PATH'), static fn (?string $v) => $notEmpty($v, 'Backup path'));
 
-        $io->section('Configurazione mailer');
+        $io->section('Mailer configuration');
 
         $mailerDefault = $this->existingOrNull($existing, 'MAILER_DSN') ?? 'null://null';
-        $mailerDsn = $io->ask('MAILER_DSN (Invio per mantenere il default)', $mailerDefault) ?: $mailerDefault;
+        $mailerDsn = $io->ask('MAILER_DSN (Press Enter to keep the default)', $mailerDefault) ?: $mailerDefault;
 
         // Build and write .env.local
         $managedKeys = ['APP_SECRET', 'SQLCLIENT_ENCRYPTION_KEY', 'ALTCHAKEY', 'APP_DB_NAME', 'APP_DB_HOSTNAME', 'APP_DB_PORT', 'APP_DB_USER', 'APP_DB_PASSWORD', 'BACKUP_PATH', 'MAILER_DSN'];
@@ -228,7 +228,7 @@ class SetupCommand extends Command
 
         file_put_contents($envLocalPath, implode("\n", $lines)."\n");
 
-        $io->success('File .env.local configurato correttamente.');
+        $io->success('.env.local file configured successfully.');
 
         return Command::SUCCESS;
     }

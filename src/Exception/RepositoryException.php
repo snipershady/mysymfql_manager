@@ -3,7 +3,7 @@
 namespace App\Exception;
 
 /**
- * Exception utilizzata dai vari repository in caso di fallimento nei vari metodi di recupero dei dati.
+ * Exception used by the various repositories when data retrieval methods fail.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
@@ -11,6 +11,6 @@ class RepositoryException extends \Exception
 {
     public function __construct(string $message = '', int $code = 0, ?\Throwable $throwable = null)
     {
-        parent::__construct($message.(null !== $throwable ? ', msg del chiamante = '.$throwable->getMessage() : ''), $code, $throwable);
+        parent::__construct($message.(null !== $throwable ? ', caller message = '.$throwable->getMessage() : ''), $code, $throwable);
     }
 }

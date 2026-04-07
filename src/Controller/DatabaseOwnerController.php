@@ -35,7 +35,7 @@ final class DatabaseOwnerController extends AbstractController
             $entityManager->persist($databaseOwner);
             $entityManager->flush();
 
-            $this->addFlash('success', 'Assegnazione creata con successo.');
+            $this->addFlash('success', 'Assignment created successfully.');
 
             return $this->redirectToRoute('app_database_owner_index', [], Response::HTTP_SEE_OTHER);
         }
@@ -55,7 +55,7 @@ final class DatabaseOwnerController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             $entityManager->flush();
 
-            $this->addFlash('success', 'Assegnazione aggiornata con successo.');
+            $this->addFlash('success', 'Assignment updated successfully.');
 
             return $this->redirectToRoute('app_database_owner_index', [], Response::HTTP_SEE_OTHER);
         }
@@ -73,7 +73,7 @@ final class DatabaseOwnerController extends AbstractController
             $entityManager->remove($databaseOwner);
             $entityManager->flush();
 
-            $this->addFlash('success', 'Assegnazione eliminata.');
+            $this->addFlash('success', 'Assignment deleted.');
         }
 
         return $this->redirectToRoute('app_database_owner_index', [], Response::HTTP_SEE_OTHER);

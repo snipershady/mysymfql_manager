@@ -36,7 +36,7 @@ class RegistrationController extends AbstractController
             $altchaPayload = $request->request->get('altcha', '');
 
             if ('' === $altchaPayload) {
-                $this->addFlash('error', 'Completa la verifica CAPTCHA.');
+                $this->addFlash('error', 'Please complete the CAPTCHA verification.');
 
                 return $this->redirectToRoute('app_register');
             }
@@ -45,7 +45,7 @@ class RegistrationController extends AbstractController
             $altcha = new Altcha($hmacKey);
 
             if (!$altcha->verifySolution($altchaPayload, checkExpires: true)) {
-                $this->addFlash('error', 'Verifica CAPTCHA non valida o scaduta. Riprova.');
+                $this->addFlash('error', 'CAPTCHA verification invalid or expired. Please try again.');
 
                 return $this->redirectToRoute('app_register');
             }
@@ -85,22 +85,22 @@ class RegistrationController extends AbstractController
             $oldPlainPassword = $epti->getTypedValue($form->get('oldPlainPassword')->getData(), true, true);
             $newPlainPassword = $epti->getTypedValue($form->get('newPlainPassword')->getData(), true, true);
 
-            // Verifica se la vecchia password è corretta
+            // Verify whether the old password is correct
             if (!$userPasswordHasher->isPasswordValid($user, $oldPlainPassword)) {
-                $this->addFlash('error', 'La password inserita non corrisponde a quella in uso');
+                $this->addFlash('error', 'The entered password does not match the current one');
 
                 return $this->redirectToRoute('app_change_password');
             }
 
-            // Hash e imposta la nuova password
+            // Hash and set the new password
             $hashedPassword = $userPasswordHasher->hashPassword($user, $newPlainPassword);
             $user->setPassword($hashedPassword);
 
-            // Salva l'utente
+            // Save the user
             $entityManager->persist($user);
             $entityManager->flush();
 
-            $this->addFlash('success', 'Password aggiornata con successo');
+            $this->addFlash('success', 'Password updated successfully');
 
             return $this->redirectToRoute('app_default');
         }
@@ -129,27 +129,27 @@ class RegistrationController extends AbstractController
             $secret = $epti->getTypedValueFromEnv(needle: 'APP_SECRET', trim: true, forceString: true, sanitizeHtml: true);
 
             if (!$user instanceof AppUser) {
-                $this->addFlash('success', "E' stata inviata la nuova password alla mail inserita");
+                $this->addFlash('success', 'A new password has been sent to the provided email address');
             } else {
-                // Hash e imposta la nuova password
+                // Hash and set the new password
                 $newPlainPassword = md5(microtime(true).$secret);
                 $hashedPassword = $userPasswordHasher->hashPassword($user, $newPlainPassword);
                 $user->setPassword($hashedPassword);
 
-                // Salva l'utente
+                // Save the user
                 $entityManager->persist($user);
                 $entityManager->flush();
 
-                // Invia email all'utente con la nuova password
+                // Send email to the user with the new password
                 $now = new DateTimeIt();
                 $nowString = $now->format('Y-m-d H:i:s');
-                $msg = '<p>'.$prefix.' - La tua nuova password è '.$newPlainPassword.'</p><p>Data: '.$nowString.'</p>';
-                $subject = $prefix.' - Richiesta reset password '.$nowString;
+                $msg = '<p>'.$prefix.' - Your new password is '.$newPlainPassword.'</p><p>Date: '.$nowString.'</p>';
+                $subject = $prefix.' - Password reset request '.$nowString;
 
                 $addressTo = new Address($email, $user->getUserIdentifier());
                 $response = $emailHubService->emailResetPassword($addressTo, $msg, $subject);
 
-                $this->addFlash('success', "E' stata inviata la nuova password alla mail inserita");
+                $this->addFlash('success', 'A new password has been sent to the provided email address');
             }
 
             return $this->redirectToRoute('app_default');

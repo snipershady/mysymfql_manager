@@ -566,9 +566,9 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
     /**
      * <p>
-     * -- Verifica se il db è abilitato a mostrare i processi da performance_schema
+     * -- Check if the db is enabled to show processes from performance_schema
      * SHOW VARIABLES LIKE 'performance_schema_show_processlist';
-     * -- Se è OFF, attivala (richiede privilegi globali)
+     * -- If it is OFF, enable it (requires global privileges)
      * SET GLOBAL performance_schema_show_processlist = ON;
      * </p>.
      *

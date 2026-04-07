@@ -32,7 +32,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     ): JsonResponse {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
-            return $this->json(['error' => 'Non autorizzato'], 401);
+            return $this->json(['error' => 'Unauthorized'], 401);
         }
 
         $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
@@ -41,7 +41,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $sqlClient = \array_find($ownedClients, fn ($ownedClient): bool => $ownedClient->getName() === $name);
 
         if (null === $sqlClient) {
-            return $this->json(['error' => 'Server non trovato o accesso negato'], Response::HTTP_NOT_FOUND);
+            return $this->json(['error' => 'Server not found or access denied'], Response::HTTP_NOT_FOUND);
         }
         $repo = new DatabaseSchemaRepository($sqlClient);
 
@@ -84,7 +84,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
-            return $this->json(['is_valid' => false, 'message' => 'Non Autorizzato.'], Response::HTTP_UNAUTHORIZED);
+            return $this->json(['is_valid' => false, 'message' => 'Unauthorized.'], Response::HTTP_UNAUTHORIZED);
         }
 
         $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
@@ -97,32 +97,32 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $privileges = $epti->getTypedValueFromPost(needle: 'privileges', trim: true, forceString: true, sanitizeHtml: false);
 
         if ('' === $username) {
-            return $this->json(['is_valid' => false, 'message' => 'Parametro username non può essere vuoto'], Response::HTTP_BAD_REQUEST);
+            return $this->json(['is_valid' => false, 'message' => 'Parameter username cannot be empty'], Response::HTTP_BAD_REQUEST);
         }
 
         if ('' === $dbName) {
-            return $this->json(['is_valid' => false, 'message' => 'Parametro db_name non può essere vuoto'], Response::HTTP_BAD_REQUEST);
+            return $this->json(['is_valid' => false, 'message' => 'Parameter db_name cannot be empty'], Response::HTTP_BAD_REQUEST);
         }
 
         if ('' === $name) {
-            return $this->json(['is_valid' => false, 'message' => 'Parametro name non può essere vuoto'], Response::HTTP_BAD_REQUEST);
+            return $this->json(['is_valid' => false, 'message' => 'Parameter name cannot be empty'], Response::HTTP_BAD_REQUEST);
         }
 
         if ('' === $password) {
-            return $this->json(['is_valid' => false, 'message' => 'Parametro password non può essere vuoto'], Response::HTTP_BAD_REQUEST);
+            return $this->json(['is_valid' => false, 'message' => 'Parameter password cannot be empty'], Response::HTTP_BAD_REQUEST);
         }
 
         if ('' === $userHost) {
-            return $this->json(['is_valid' => false, 'message' => 'Parametro user_host non può essere vuoto'], Response::HTTP_BAD_REQUEST);
+            return $this->json(['is_valid' => false, 'message' => 'Parameter user_host cannot be empty'], Response::HTTP_BAD_REQUEST);
         }
 
         if ('' === $privileges) {
-            return $this->json(['is_valid' => false, 'message' => 'Parametro privileges non può essere vuoto'], Response::HTTP_BAD_REQUEST);
+            return $this->json(['is_valid' => false, 'message' => 'Parameter privileges cannot be empty'], Response::HTTP_BAD_REQUEST);
         }
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (null === $sqlClient) {
-            return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
+            return $this->json(['is_valid' => false, 'message' => 'Server not found.'], Response::HTTP_NOT_FOUND);
         }
 
         $charset = CharsetEnum::tryFrom($charsetVal) ?? CharsetEnum::UTF8MB4;
@@ -136,15 +136,15 @@ final class DatabaseSchemaRepositoryController extends AbstractController
             $repo->grantPrivileges($dbName, $username, $privileges, $userHost);
             $repo->flushPrivileges();
         } catch (\Exception $exception) {
-            return $this->json(['is_valid' => false, 'message' => 'Eccezione: '.$exception->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return $this->json(['is_valid' => false, 'message' => 'Exception: '.$exception->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
-        // Qui assegno il database appena creato all'user come "owner"
+        // Assign the newly created database to the user as "owner"
         $dbowner = new DatabaseOwner()->setDbName($dbName)->setOwner($user)->setSqlClient($sqlClient);
         $entityManagerInterface->persist($dbowner);
         $entityManagerInterface->flush();
 
-        return $this->json(['is_valid' => true, 'message' => 'Database creato con successo.']);
+        return $this->json(['is_valid' => true, 'message' => 'Database created successfully.']);
     }
 
     #[Route('/tables', name: 'app_schema_tables', methods: ['GET'])]
@@ -183,7 +183,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     ): JsonResponse {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
-            return $this->json(['is_valid' => false, 'message' => 'Non Autorizzato.'], Response::HTTP_UNAUTHORIZED);
+            return $this->json(['is_valid' => false, 'message' => 'Unauthorized.'], Response::HTTP_UNAUTHORIZED);
         }
 
         $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
@@ -275,7 +275,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $sqlClient = $sqlClientRepository->findOneByName($name);
 
         if (null === $sqlClient) {
-            return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
+            return $this->json(['is_valid' => false, 'message' => 'Server not found.'], Response::HTTP_NOT_FOUND);
         }
 
         $repo = new DatabaseSchemaRepository($sqlClient);
@@ -283,7 +283,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         return $this->json([
             'is_valid' => $ok,
-            'message' => $ok ? sprintf('Processo %d terminato.', $pid) : sprintf('Impossibile terminare il processo %d.', $pid),
+            'message' => $ok ? sprintf('Process %d terminated.', $pid) : sprintf('Unable to terminate process %d.', $pid),
         ]);
     }
 
@@ -336,7 +336,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (null === $sqlClient) {
-            return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
+            return $this->json(['is_valid' => false, 'message' => 'Server not found.'], Response::HTTP_NOT_FOUND);
         }
 
         $repo = new DatabaseSchemaRepository($sqlClient);
@@ -347,7 +347,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         return $this->json([
             'is_valid' => $ok,
-            'message' => $ok ? 'Utente eliminato con successo.' : "Errore durante l'eliminazione.",
+            'message' => $ok ? 'User deleted successfully.' : 'Error during deletion.',
         ]);
     }
 
@@ -363,7 +363,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (null === $sqlClient) {
-            return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
+            return $this->json(['is_valid' => false, 'message' => 'Server not found.'], Response::HTTP_NOT_FOUND);
         }
 
         $repo = new DatabaseSchemaRepository($sqlClient);
@@ -371,7 +371,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         return $this->json([
             'is_valid' => $ok,
-            'message' => $ok ? 'Password aggiornata con successo.' : "Errore durante l'aggiornamento della password.",
+            'message' => $ok ? 'Password updated successfully.' : 'Error during password update.',
         ]);
     }
 
@@ -389,7 +389,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (null === $sqlClient) {
-            return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
+            return $this->json(['is_valid' => false, 'message' => 'Server not found.'], Response::HTTP_NOT_FOUND);
         }
 
         $repo = new DatabaseSchemaRepository($sqlClient);
@@ -397,7 +397,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $repo->grantPrivileges($dbName, $username, $privileges, $userHost);
         $repo->flushPrivileges();
 
-        return $this->json(['is_valid' => true, 'message' => 'Utente creato con successo.']);
+        return $this->json(['is_valid' => true, 'message' => 'User created successfully.']);
     }
 
     #[Route('/db-user-grants-data', name: 'app_schema_db_user_grants_data', methods: ['GET'])]
@@ -408,7 +408,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     ): JsonResponse {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
-            return $this->json(['error' => 'Non autorizzato'], 401);
+            return $this->json(['error' => 'Unauthorized'], 401);
         }
 
         $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
@@ -417,7 +417,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (null === $sqlClient) {
-            return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
+            return $this->json(['is_valid' => false, 'message' => 'Server not found.'], Response::HTTP_NOT_FOUND);
         }
 
         $repo = new DatabaseSchemaRepository($sqlClient);
@@ -436,7 +436,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
-            return $this->json(['is_valid' => false, 'message' => 'Non autorizzato'], Response::HTTP_UNAUTHORIZED);
+            return $this->json(['is_valid' => false, 'message' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
 
         $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
@@ -447,7 +447,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (null === $sqlClient) {
-            return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
+            return $this->json(['is_valid' => false, 'message' => 'Server not found.'], Response::HTTP_NOT_FOUND);
         }
 
         /** @var list<array{db: string, privileges: string}> $grants */
@@ -471,7 +471,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         $repo->flushPrivileges();
 
-        return $this->json(['is_valid' => true, 'message' => 'Permessi aggiornati con successo.']);
+        return $this->json(['is_valid' => true, 'message' => 'Permissions updated successfully.']);
     }
 
     #[Route('/drop-database', name: 'app_schema_drop_database', methods: ['POST'])]
@@ -481,7 +481,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
-            return $this->json(['is_valid' => false, 'message' => 'Non autorizzato'], Response::HTTP_UNAUTHORIZED);
+            return $this->json(['is_valid' => false, 'message' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
 
         $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
@@ -489,7 +489,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (null === $sqlClient) {
-            return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
+            return $this->json(['is_valid' => false, 'message' => 'Server not found.'], Response::HTTP_NOT_FOUND);
         }
 
         $repo = new DatabaseSchemaRepository($sqlClient);
@@ -497,7 +497,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         return $this->json([
             'is_valid' => $ok,
-            'message' => $ok ? 'Database eliminato con successo.' : "Errore durante l'eliminazione.",
+            'message' => $ok ? 'Database deleted successfully.' : 'Error during deletion.',
         ]);
     }
 
@@ -508,7 +508,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
-            return $this->json(['is_valid' => false, 'message' => 'Non autorizzato'], Response::HTTP_UNAUTHORIZED);
+            return $this->json(['is_valid' => false, 'message' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
 
         $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
@@ -517,7 +517,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (null === $sqlClient) {
-            return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
+            return $this->json(['is_valid' => false, 'message' => 'Server not found.'], Response::HTTP_NOT_FOUND);
         }
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
@@ -527,7 +527,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         return $this->json([
             'is_valid' => $ok,
-            'message' => $ok ? 'Tabella svuotata con successo.' : 'Errore durante lo svuotamento.',
+            'message' => $ok ? 'Table emptied successfully.' : 'Error during table truncation.',
         ]);
     }
 
@@ -538,7 +538,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
-            return $this->json(['is_valid' => false, 'message' => 'Non autorizzato'], Response::HTTP_UNAUTHORIZED);
+            return $this->json(['is_valid' => false, 'message' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
 
         $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
@@ -547,7 +547,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (null === $sqlClient) {
-            return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
+            return $this->json(['is_valid' => false, 'message' => 'Server not found.'], Response::HTTP_NOT_FOUND);
         }
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
@@ -557,7 +557,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         return $this->json([
             'is_valid' => $ok,
-            'message' => $ok ? 'Tabella eliminata con successo.' : "Errore durante l'eliminazione.",
+            'message' => $ok ? 'Table deleted successfully.' : 'Error during deletion.',
         ]);
     }
 
@@ -569,7 +569,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
-            return $this->json(['is_valid' => false, 'message' => 'Non autorizzato'], Response::HTTP_UNAUTHORIZED);
+            return $this->json(['is_valid' => false, 'message' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
 
         $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
@@ -578,14 +578,14 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (null === $sqlClient) {
-            return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
+            return $this->json(['is_valid' => false, 'message' => 'Server not found.'], Response::HTTP_NOT_FOUND);
         }
 
         $result = $mysqldumpManager->createBackup($sqlClient, $dbName, $table);
 
         return $this->json([
             'is_valid' => $result['is_valid'],
-            'message' => $result['is_valid'] ? 'Backup completato con successo.' : 'Errore durante il backup.',
+            'message' => $result['is_valid'] ? 'Backup completed successfully.' : 'Error during backup.',
             'backup_filename' => basename((string) $result['backup_filename']),
             'msg' => $result['msg'],
         ]);
@@ -599,7 +599,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     ): Response {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
-            return $this->json(['is_valid' => false, 'message' => 'Non autorizzato'], Response::HTTP_UNAUTHORIZED);
+            return $this->json(['is_valid' => false, 'message' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
 
         $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
@@ -626,7 +626,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
-            return $this->json(['is_valid' => false, 'message' => 'Non autorizzato'], Response::HTTP_UNAUTHORIZED);
+            return $this->json(['is_valid' => false, 'message' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
         $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $dbName = $epti->getTypedValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
@@ -634,7 +634,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (null === $sqlClient) {
-            return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
+            return $this->json(['is_valid' => false, 'message' => 'Server not found.'], Response::HTTP_NOT_FOUND);
         }
 
         $allOwnedDatabased = $databaseOwnerRepository->findAllByOwner($user);
@@ -642,14 +642,14 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $selectedBackup = \array_find($backups, fn ($backup): bool => $backup->filename === $backupFilename);
 
         if (!$selectedBackup) {
-            return $this->json(['is_valid' => false, 'message' => 'File di backup non trovato.'], Response::HTTP_NOT_FOUND);
+            return $this->json(['is_valid' => false, 'message' => 'Backup file not found.'], Response::HTTP_NOT_FOUND);
         }
 
         $result = $mysqldumpManager->restoreBackup($sqlClient, $dbName, $selectedBackup->path);
 
         return $this->json([
             'is_valid' => $result['is_valid'],
-            'message' => $result['is_valid'] ? 'Ripristino completato con successo.' : 'Errore durante il ripristino.',
+            'message' => $result['is_valid'] ? 'Restore completed successfully.' : 'Error during restore.',
         ]);
     }
 
@@ -696,7 +696,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
-            return $this->json(['is_valid' => false, 'message' => 'Non autorizzato'], Response::HTTP_UNAUTHORIZED);
+            return $this->json(['is_valid' => false, 'message' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
         $allOwnedDatabased = $databaseOwnerRepository->findAllByOwner($user);
 
@@ -710,7 +710,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
-            return $this->json(['is_valid' => false, 'message' => 'Non autorizzato'], Response::HTTP_UNAUTHORIZED);
+            return $this->json(['is_valid' => false, 'message' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
 
         $epti = new EffectivePrimitiveTypeIdentifierService();
@@ -722,12 +722,12 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $backup = \array_find($backups, fn ($b): bool => $b->filename === $filename);
 
         if (!$backup) {
-            throw $this->createNotFoundException('File di backup non trovato.');
+            throw $this->createNotFoundException('Backup file not found.');
         }
 
         $content = file_get_contents($backup->path);
         if (false === $content) {
-            throw new \RuntimeException('Impossibile leggere il file di backup.');
+            throw new \RuntimeException('Unable to read the backup file.');
         }
 
         return new Response($content, 200, [
@@ -744,7 +744,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
-            return $this->json(['is_valid' => false, 'message' => 'Non autorizzato'], Response::HTTP_UNAUTHORIZED);
+            return $this->json(['is_valid' => false, 'message' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
 
         $epti = new EffectivePrimitiveTypeIdentifierService();
@@ -755,7 +755,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $backup = \array_find($backups, fn ($b): bool => $b->filename === $filename);
 
         if (!$backup) {
-            throw $this->createNotFoundException('File di backup non trovato.');
+            throw $this->createNotFoundException('Backup file not found.');
         }
 
         $response = new BinaryFileResponse($backup->path);
@@ -769,7 +769,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
-            return $this->json(['is_valid' => false, 'message' => 'Non autorizzato'], Response::HTTP_UNAUTHORIZED);
+            return $this->json(['is_valid' => false, 'message' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
         $epti = new EffectivePrimitiveTypeIdentifierService();
         $filename = $epti->getTypedValueFromPost(needle: 'filename', trim: true, forceString: true, sanitizeHtml: true);
@@ -779,14 +779,14 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $backup = \array_find($backups, fn ($b): bool => $b->filename === $filename);
 
         if (!$backup) {
-            return $this->json(['is_valid' => false, 'message' => 'File di backup non trovato.'], Response::HTTP_NOT_FOUND);
+            return $this->json(['is_valid' => false, 'message' => 'Backup file not found.'], Response::HTTP_NOT_FOUND);
         }
 
         if (!unlink($backup->path)) {
-            return $this->json(['is_valid' => false, 'message' => 'Impossibile eliminare il file.'], 500);
+            return $this->json(['is_valid' => false, 'message' => 'Unable to delete the file.'], 500);
         }
 
-        return $this->json(['is_valid' => true, 'message' => 'Backup eliminato con successo.']);
+        return $this->json(['is_valid' => true, 'message' => 'Backup deleted successfully.']);
     }
 
     private function showDatabaseWithStatsByOwner(
@@ -801,16 +801,16 @@ final class DatabaseSchemaRepositoryController extends AbstractController
             return $databases;
         }
 
-        // Retrieve di tutti i database che l'utente possiede
+        // Retrieve all databases owned by the user
         $ownedDatabase = $databaseOwnerRepository->findAllByOwner($user);
 
-        // Rimuovo dalla lista completa dei database quelli che l'utente non possiede
+        // Remove from the full database list those not owned by the user
         $allowedDbNames = array_map(
             fn (DatabaseOwner $o): string => $o->getDbName(),
             array_filter($ownedDatabase, fn (DatabaseOwner $o): bool => $o->getSqlClient()?->getName() === $name)
         );
 
-        // Restituisco solo i database che l'utente possiede
+        // Return only the databases owned by the user
         return array_values(
             array_filter($databases, fn (array $db): bool => in_array($db['db_name'], $allowedDbNames, true))
         );

@@ -5,109 +5,109 @@ namespace App\Enum;
 /**
  * Description of CollationEnum.
  *
- * Rappresenta le principali collation supportate da MySQL 8.4 e superiori.
+ * Represents the main collations supported by MySQL 8.4 and later.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
 enum CollationEnum: string
 {
     /**
-     * <p>0900: Si basa sull'algoritmo standard Unicode 9.0.
-     *  Questo garantisce un ordinamento molto più intelligente e accurato rispetto alle vecchie collation (come utf8mb4_unicode_ci o utf8mb4_general_ci),
-     *  gestendo correttamente anche le lingue complesse e i nuovi emoji.
-     *  Accent Insensitive, Case Insensitive. Default di MySQL 8.0+.
+     * <p>0900: Based on the Unicode 9.0 standard algorithm.
+     *  This guarantees a much smarter and more accurate sort order compared to the old collations (such as utf8mb4_unicode_ci or utf8mb4_general_ci),
+     *  correctly handling complex languages and new emoji.
+     *  Accent Insensitive, Case Insensitive. Default in MySQL 8.0+.
      * </p>.
      */
     case UTF8MB4_0900_AI_CI = 'utf8mb4_0900_ai_ci';
 
     /**
-     * <p>0900: Basata sull'algoritmo standard Unicode 9.0.
-     *  Questo garantisce un ordinamento accurato gestendo correttamente lingue complesse ed emoji.
+     * <p>0900: Based on the Unicode 9.0 standard algorithm.
+     *  This guarantees an accurate sort order, correctly handling complex languages and emoji.
      *  Accent Sensitive, Case Sensitive.
      * </p>.
      */
     case UTF8MB4_0900_AS_CS = 'utf8mb4_0900_as_cs';
 
     /**
-     * <p>0900: Basata sull'algoritmo standard Unicode 9.0.
-     *  Ordinamento binario basato sui valori dei punti di codice Unicode.
-     *  Ideale per confronti esatti byte per byte in ambito Unicode.
+     * <p>0900: Based on the Unicode 9.0 standard algorithm.
+     *  Binary sort order based on Unicode code point values.
+     *  Ideal for exact byte-by-byte comparisons in a Unicode context.
      * </p>.
      */
     case UTF8MB4_0900_BIN = 'utf8mb4_0900_bin';
 
     /**
-     * <p>Basata su Unicode 5.2.0.
-     *  Collation standard pre-8.0 per il supporto multilingua completo.
+     * <p>Based on Unicode 5.2.0.
+     *  Standard pre-8.0 collation for full multilingual support.
      *  Case Insensitive.
      * </p>.
      */
     case UTF8MB4_UNICODE_CI = 'utf8mb4_unicode_ci';
 
     /**
-     * <p>Basata su Unicode 5.2.0.
-     *  Include miglioramenti specifici e una gestione dell'ordinamento più raffinata rispetto alla versione unicode_ci base.
+     * <p>Based on Unicode 5.2.0.
+     *  Includes specific improvements and a more refined sort order compared to the base unicode_ci version.
      *  Case Insensitive.
      * </p>.
      */
     case UTF8MB4_UNICODE_520_CI = 'utf8mb4_unicode_520_ci';
 
     /**
-     * <p>Collation legacy semplificata per utf8mb4.
-     *  Molto veloce nelle operazioni di confronto ma meno precisa nell'ordinamento linguistico rispetto alle versioni Unicode.
+     * <p>Simplified legacy collation for utf8mb4.
+     *  Very fast in comparison operations but less precise in linguistic sort order compared to Unicode versions.
      *  Case Insensitive.
      * </p>.
      */
     case UTF8MB4_GENERAL_CI = 'utf8mb4_general_ci';
 
     /**
-     * <p>Ordinamento binario legacy per il charset utf8mb4.
-     *  Confronta direttamente i valori numerici dei byte.
+     * <p>Legacy binary sort order for the utf8mb4 charset.
+     *  Directly compares the numeric byte values.
      * </p>.
      */
     case UTF8MB4_BIN = 'utf8mb4_bin';
 
     /**
-     * <p>Default storico di MySQL per il charset latin1 (West European).
-     *  Basato su regole di ordinamento svedesi/europee occidentali.
+     * <p>Historic MySQL default for the latin1 charset (West European).
+     *  Based on Swedish/Western European sort order rules.
      *  Case Insensitive.
      * </p>.
      */
     case LATIN1_SWEDISH_CI = 'latin1_swedish_ci';
 
     /**
-     * <p>Charset Latin1.
-     *  Regole di ordinamento multilingua standard per l'Europa occidentale.
+     * <p>Latin1 charset.
+     *  Standard multilingual sort order rules for Western Europe.
      *  Case Insensitive.
      * </p>.
      */
     case LATIN1_GENERAL_CI = 'latin1_general_ci';
 
     /**
-     * <p>Charset Latin1.
-     *  Regole di ordinamento multilingua standard, Case Sensitive.
+     * <p>Latin1 charset.
+     *  Standard multilingual sort order rules, Case Sensitive.
      * </p>.
      */
     case LATIN1_GENERAL_CS = 'latin1_general_cs';
 
     /**
-     * <p>Charset Latin1.
-     *  Ordinamento binario basato sui valori dei byte ASCII estesi.
+     * <p>Latin1 charset.
+     *  Binary sort order based on extended ASCII byte values.
      * </p>.
      */
     case LATIN1_BIN = 'latin1_bin';
 
     /**
-     * <p>Charset ASCII (7-bit).
-     *  Regole di confronto semplici per caratteri standard US-ASCII.
+     * <p>ASCII charset (7-bit).
+     *  Simple comparison rules for standard US-ASCII characters.
      *  Case Insensitive.
      * </p>.
      */
     case ASCII_GENERAL_CI = 'ascii_general_ci';
 
     /**
-     * <p>Charset ASCII.
-     *  Ordinamento binario basato sui valori dei byte 0-127.
+     * <p>ASCII charset.
+     *  Binary sort order based on byte values 0-127.
      * </p>.
      */
     case ASCII_BIN = 'ascii_bin';

@@ -21,17 +21,17 @@ class DatabaseOwnerType extends AbstractType
                 'choice_label' => fn (SqlClient $c): string => $c->getName().' — '.$c->getHost().':'.$c->getPort(),
                 'choice_attr' => fn (SqlClient $c): array => ['data-name' => $c->getName()],
                 'label' => 'Server MySQL',
-                'placeholder' => '— Seleziona un server —',
+                'placeholder' => '— Select a server —',
                 'attr' => ['class' => 'form-select'],
             ])
             ->add('dbName', TextType::class, [
-                'label' => 'Nome database',
+                'label' => 'Database name',
                 'attr' => ['class' => 'form-control font-monospace'],
             ])
             ->add('owner', EntityType::class, [
                 'class' => AppUser::class,
                 'choice_label' => 'username',
-                'label' => 'Proprietario',
+                'label' => 'Owner',
                 'attr' => ['class' => 'form-select'],
             ])
         ;
