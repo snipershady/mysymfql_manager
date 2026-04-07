@@ -1,0 +1,7 @@
+<form method="post" action="{{ path('app_sql_client_delete', {'id': sql_client.id}) }}"
+      data-confirm="Eliminare definitivamente il server {{ sql_client.host }}?">
+    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ sql_client.id) }}">
+    <button type="submit" class="btn btn-danger btn-sm">
+        <i class="fa-solid fa-trash me-1"></i>Elimina
+    </button>
+</form>

@@ -1,0 +1,21 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Modifica assegnazione{% endblock %}
+{% block page_title %}Assegnazioni database{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{{ path('app_database_owner_index') }}">Assegnazioni database</a></li>
+    <li class="breadcrumb-item active">Modifica #{{ database_owner.id }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:540px;">
+    <div class="card-header">
+        <i class="fa-solid fa-pen-to-square text-primary me-1"></i>
+        Modifica — <span class="font-monospace">{{ database_owner.dbName }}</span>
+    </div>
+    <div class="card-body">
+        {{ include('database_owner/_form.html.twig', {button_label: 'Salva modifiche'}) }}
+    </div>
+</div>
+{% endblock %}

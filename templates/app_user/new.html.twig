@@ -1,0 +1,30 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Nuovo utente{% endblock %}
+{% block page_title %}Nuovo utente{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{{ path('app_user_index') }}">Utenti applicazione</a></li>
+    <li class="breadcrumb-item active">Nuovo</li>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="fa-solid fa-user-plus text-primary"></i>
+                Crea nuovo utente
+            </div>
+            <div class="card-body">
+                {{ include('app_user/_form.html.twig') }}
+            </div>
+            <div class="card-footer">
+                <a href="{{ path('app_user_index') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fa-solid fa-arrow-left me-1"></i>Annulla
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

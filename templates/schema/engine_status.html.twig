@@ -1,0 +1,83 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Engine Status — {{ name }}{% endblock %}
+{% block page_title %}InnoDB Engine Status{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{{ path('app_schema_databases') }}">Database</a></li>
+    <li class="breadcrumb-item active">Engine Status</li>
+{% endblock %}
+
+{% block content %}
+
+<div class="card mb-3">
+    <div class="card-header d-flex align-items-center justify-content-between gap-2">
+        <span>
+            <i class="fa-solid fa-gauge-high text-info me-1"></i>
+            InnoDB Engine Status &mdash; <span class="text-muted small">{{ name }}</span>
+            {% if status.generatedAt %}
+                <span class="badge bg-secondary ms-2">
+                    <i class="fa-solid fa-clock me-1"></i>{{ status.generatedAt|date('d/m/Y H:i:s') }}
+                </span>
+            {% endif %}
+        </span>
+        <div class="d-flex gap-2">
+            <a href="{{ path('app_schema_engine_status', {name: name}) }}"
+               class="btn btn-sm btn-outline-secondary">
+                <i class="fa-solid fa-rotate-right me-1"></i>Aggiorna
+            </a>
+            <a href="{{ path('app_schema_databases') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fa-solid fa-arrow-left me-1"></i>Torna ai database
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if status.sections is empty %}
+    <div class="alert alert-warning">
+        <i class="fa-solid fa-triangle-exclamation me-2"></i>
+        Nessuna sezione trovata nell'output di SHOW ENGINE INNODB STATUS.
+    </div>
+{% else %}
+    <div class="accordion" id="accordion-innodb">
+        {% for sectionName, sectionContent in status.sections %}
+            {% set sectionId = 'section-' ~ loop.index %}
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button {% if not loop.first %}collapsed{% endif %}"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#{{ sectionId }}"
+                            aria-expanded="{{ loop.first ? 'true' : 'false' }}"
+                            aria-controls="{{ sectionId }}">
+                        <i class="fa-solid fa-layer-group text-info me-2"></i>
+                        {{ sectionName }}
+                    </button>
+                </h2>
+                <div id="{{ sectionId }}"
+                     class="accordion-collapse collapse {% if loop.first %}show{% endif %}"
+                     data-bs-parent="#accordion-innodb">
+                    <div class="accordion-body p-0">
+                        <pre class="mb-0 p-3 bg-dark text-light" style="font-size:.8rem;white-space:pre-wrap;word-break:break-word;">{{ sectionContent }}</pre>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header">
+            <button class="btn btn-sm btn-outline-secondary" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#raw-status">
+                <i class="fa-solid fa-code me-1"></i>Output grezzo completo
+            </button>
+        </div>
+        <div class="collapse" id="raw-status">
+            <div class="card-body p-0">
+                <pre class="mb-0 p-3 bg-dark text-light" style="font-size:.75rem;white-space:pre-wrap;word-break:break-word;">{{ status.rawStatus }}</pre>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+{% endblock %}

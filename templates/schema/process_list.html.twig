@@ -1,0 +1,210 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Process List — {{ name }}{% endblock %}
+{% block page_title %}Process List{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{{ path('app_schema_databases') }}">Database</a></li>
+    <li class="breadcrumb-item active">Process List</li>
+{% endblock %}
+
+{% block content %}
+
+<div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index:1100"></div>
+
+{# ── Kill by PID ── #}
+<div class="card mb-3">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="fa-solid fa-skull-crossbones text-danger me-1"></i>
+        Termina processo per PID
+    </div>
+    <div class="card-body">
+        <div class="d-flex gap-2 align-items-end" style="max-width:360px">
+            <div class="flex-grow-1">
+                <label for="kill-pid-input" class="form-label">Process ID</label>
+                <input type="number" id="kill-pid-input" class="form-control font-monospace"
+                       placeholder="es. 42" min="1">
+            </div>
+            <button id="btn-kill-pid" class="btn btn-danger mb-0">
+                <i class="fa-solid fa-stop me-1"></i>Kill
+            </button>
+        </div>
+    </div>
+</div>
+
+{# ── Process list ── #}
+<div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between gap-2">
+        <span>
+            <i class="fa-solid fa-list text-primary me-1"></i>
+            Process List &mdash; <span class="text-muted small">{{ name }}</span>
+        </span>
+        <div class="d-flex gap-2">
+            <button id="btn-refresh" class="btn btn-sm btn-outline-secondary">
+                <i class="fa-solid fa-rotate-right me-1"></i>Aggiorna
+            </button>
+            <a href="{{ path('app_schema_databases') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fa-solid fa-arrow-left me-1"></i>Torna ai database
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <table id="table-processlist" class="table table-hover align-middle w-100" style="font-size:.85rem">
+            <thead class="table-light">
+                <tr>
+                    <th style="width:70px">PID</th>
+                    <th>Utente</th>
+                    <th>Host</th>
+                    <th>Database</th>
+                    <th>Comando</th>
+                    <th style="width:70px">Tempo (s)</th>
+                    <th>Stato</th>
+                    <th>Query</th>
+                    <th class="text-end" style="width:90px">Azioni</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts_extra %}
+{{ parent() }}
+<script>
+
+const URL_GET_PROCESSLIST = '{{ path('app_show_processlist_get_data') }}';
+const URL_KILL_PROCESS    = '{{ path('app_schema_kill_process') }}';
+const CURRENT_NAME        = '{{ name|e('js') }}';
+
+function showToast(message, success) {
+    const id  = `toast-${Date.now()}`;
+    const bg  = success ? 'text-bg-success' : 'text-bg-danger';
+    const ico = success ? 'fa-circle-check' : 'fa-circle-xmark';
+    document.getElementById('toast-container').insertAdjacentHTML('beforeend', `
+        <div id="${id}" class="toast align-items-center ${bg} border-0" role="alert" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body"><i class="fa-solid ${ico} me-2"></i>${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>`);
+    const el = document.getElementById(id);
+    const t  = new bootstrap.Toast(el, { delay: 4000 });
+    t.show();
+    el.addEventListener('hidden.bs.toast', () => el.remove());
+}
+
+async function killProcess(pid, btn) {
+    const result = await Swal.fire({
+        title: `Termina processo ${pid}`,
+        text:  `Vuoi terminare forzatamente il processo con PID ${pid}?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Kill',
+        cancelButtonText: 'Annulla',
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+    });
+    if (!result.isConfirmed) return;
+
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+
+    try {
+        const fd = new FormData();
+        fd.append('name', CURRENT_NAME);
+        fd.append('pid',  pid);
+        const res  = await fetch(URL_KILL_PROCESS, { method: 'POST', body: fd });
+        const json = await res.json();
+        showToast(json.message, json.is_valid);
+        if (json.is_valid) dt.ajax.reload(null, false);
+    } catch {
+        showToast('Errore di rete.', false);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-stop"></i>'; }
+    }
+}
+
+function _renderPid(data) {
+    return `<span class="badge bg-secondary font-monospace">${data}</span>`;
+}
+
+function _renderTime(data) {
+    if (data >= 60) {
+        return `<span class="text-danger fw-semibold">${data}</span>`;
+    }
+    if (data >= 10) {
+        return `<span class="text-warning">${data}</span>`;
+    }
+    return data;
+}
+
+function _renderInfo(data) {
+    if (!data) return '<span class="text-muted">—</span>';
+    const escaped = data.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `<span class="font-monospace" style="font-size:.75rem" title="${escaped}">${escaped.substring(0, 80)}${escaped.length > 80 ? '…' : ''}</span>`;
+}
+
+function _renderActions(data, type, row) {
+    return `<button class="btn btn-sm btn-outline-danger btn-kill-row"
+                data-pid="${row.id}" title="Kill processo ${row.id}">
+                <i class="fa-solid fa-stop"></i>
+            </button>`;
+}
+
+let dt;
+
+function initDatatables() {
+    dt = $('#table-processlist').DataTable({
+        processing: true,
+        serverSide: false,
+        paging: true,
+        pageLength: 25,
+        order: [[5, 'desc']],
+        ajax: {
+            url: URL_GET_PROCESSLIST,
+            type: 'GET',
+            dataSrc: 'data',
+            data: (o) => { o.name = CURRENT_NAME; return o; },
+        },
+        columns: [
+            { data: 'id',              render: _renderPid },
+            { data: 'user' },
+            { data: 'host' },
+            { data: 'db',      render: (d) => d ?? '<span class="text-muted">—</span>' },
+            { data: 'command' },
+            { data: 'time',    render: _renderTime },
+            { data: 'state',   render: (d) => d ?? '<span class="text-muted">—</span>' },
+            { data: 'info',    render: _renderInfo },
+            { data: null,      render: _renderActions, orderable: false, className: 'text-end' },
+        ],
+        language: { url: 'https://cdn.datatables.net/plug-ins/2.3.7/i18n/it-IT.json' },
+    });
+}
+
+initDatatables();
+
+/* ── Kill per riga ── */
+document.getElementById('table-processlist').addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-kill-row');
+    if (!btn) return;
+    killProcess(parseInt(btn.dataset.pid, 10), btn);
+});
+
+/* ── Kill per PID manuale ── */
+document.getElementById('btn-kill-pid').addEventListener('click', () => {
+    const pid = parseInt(document.getElementById('kill-pid-input').value, 10);
+    if (!pid || pid < 1) {
+        Swal.fire({ title: 'Errore', text: 'Inserisci un PID valido.', icon: 'error' });
+        return;
+    }
+    killProcess(pid, null);
+});
+
+/* ── Aggiorna ── */
+document.getElementById('btn-refresh').addEventListener('click', () => {
+    dt.ajax.reload(null, false);
+});
+
+</script>
+{% endblock %}

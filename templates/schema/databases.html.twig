@@ -1,0 +1,526 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Database{% endblock %}
+{% block page_title %}Database{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item active">Database</li>
+{% endblock %}
+
+{% block content %}
+
+{# ── Modal crea database ── #}
+<div class="modal fade" id="modal-create-db" tabindex="-1" aria-labelledby="modal-create-db-label" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-create-db-label">
+                    <i class="fa-solid fa-plus-circle text-success me-2"></i>Crea nuovo database
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+
+                {# Database #}
+                <h6 class="text-uppercase text-muted fw-semibold small mb-3">
+                    <i class="fa-solid fa-database me-1"></i>Database
+                </h6>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <label for="create-db-name" class="form-label">Nome database <span class="text-danger">*</span></label>
+                        <input type="text" id="create-db-name" class="form-control font-monospace"
+                               placeholder="my_database" pattern="^\w+$"
+                               title="Solo caratteri alfanumerici e underscore" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="create-db-charset" class="form-label">Charset</label>
+                        <select id="create-db-charset" class="form-select">
+                            {% for cs in charsets %}
+                                <option value="{{ cs.value }}"{% if cs.value == 'utf8mb4' %} selected{% endif %}>
+                                    {{ cs.value }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="create-db-collation" class="form-label">Collation</label>
+                        <select id="create-db-collation" class="form-select">
+                            {% for col in collations %}
+                                <option value="{{ col.value }}"{% if col.value == 'utf8mb4_0900_ai_ci' %} selected{% endif %}>
+                                    {{ col.value }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <hr>
+
+                {# Utente #}
+                <h6 class="text-uppercase text-muted fw-semibold small mb-1">
+                    <i class="fa-solid fa-user me-1"></i>Utente <span class="text-muted fw-normal">(opzionale)</span>
+                </h6>
+                <p class="text-muted small mb-3">Lascia vuoto il nome utente per creare solo il database.</p>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label for="create-db-username" class="form-label">Nome utente</label>
+                        <input type="text" id="create-db-username" class="form-control font-monospace"
+                               placeholder="db_user" autocomplete="off">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="create-db-password" class="form-label">Password</label>
+                        <div class="input-group">
+                            <input type="password" id="create-db-password" class="form-control font-monospace"
+                                   placeholder="••••••••" autocomplete="new-password">
+                            <button class="btn btn-outline-secondary" type="button" id="btn-toggle-pw"
+                                    title="Mostra/Nascondi">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label d-block">Host utente</label>
+                        <div class="d-flex flex-wrap gap-3 pt-1">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="user-host" id="host-any" value="%" checked>
+                                <label class="form-check-label" for="host-any">% <span class="text-muted small">(qualsiasi)</span></label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="user-host" id="host-localhost" value="localhost">
+                                <label class="form-check-label" for="host-localhost">localhost</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="user-host" id="host-custom" value="__custom__">
+                                <label class="form-check-label" for="host-custom">Personalizzato</label>
+                            </div>
+                        </div>
+                        <input type="text" id="create-db-user-host-custom" class="form-control form-control-sm font-monospace mt-2"
+                               placeholder="192.168.1.%" style="display:none;">
+                    </div>
+                </div>
+
+                {# Privilegi #}
+                <div id="section-privileges">
+                    <label class="form-label fw-semibold">Privilegi</label>
+                    <div class="mb-2">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="priv-all" value="ALL PRIVILEGES">
+                            <label class="form-check-label fw-semibold text-danger" for="priv-all">ALL PRIVILEGES</label>
+                        </div>
+                    </div>
+                    <div id="priv-individual" class="row g-1">
+                        {% set privs = ['SELECT','INSERT','UPDATE','DELETE','CREATE','DROP','INDEX','ALTER','REFERENCES','CREATE VIEW','SHOW VIEW','CREATE ROUTINE','ALTER ROUTINE','EXECUTE','TRIGGER','EVENT'] %}
+                        {% for p in privs %}
+                        <div class="col-6 col-md-3">
+                            <div class="form-check">
+                                <input class="form-check-input priv-single" type="checkbox"
+                                       id="priv-{{ p|lower|replace({' ': '-'}) }}" value="{{ p }}">
+                                <label class="form-check-label small" for="priv-{{ p|lower|replace({' ': '-'}) }}">{{ p }}</label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" id="btn-create-db-submit" class="btn btn-success">
+                    <i class="fa-solid fa-plus me-1"></i>Crea database
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ── Selezione server ── #}
+<div class="card mb-3">
+    <div class="card-header d-flex align-items-center justify-content-between gap-2">
+        <span><i class="fa-solid fa-server text-primary me-1"></i>Seleziona server</span>
+        <div class="d-flex gap-2">
+            <a id="btn-open-engine-status" href="#" class="btn btn-sm btn-outline-info disabled">
+                <i class="fa-solid fa-gauge-high me-1"></i>Engine Status
+            </a>
+            <a id="btn-open-process-list" href="#" class="btn btn-sm btn-outline-secondary disabled">
+                <i class="fa-solid fa-list me-1"></i>Process List
+            </a>
+            <a id="btn-open-users" href="#" class="btn btn-sm btn-outline-secondary disabled">
+                <i class="fa-solid fa-users me-1"></i>Utenti MySQL
+            </a>
+            <button id="btn-open-create-db" class="btn btn-sm btn-success" disabled
+                    data-bs-toggle="modal" data-bs-target="#modal-create-db">
+                <i class="fa-solid fa-plus me-1"></i>Crea database
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label for="select-sql-client" class="form-label fw-semibold">Server SQL</label>
+                <select id="select-sql-client" class="form-select">
+                    <option value="">— Seleziona un server —</option>
+                    {% for client in sql_clients %}
+                        <option value="{{ client.name }}"{% if client.name == selected_name %} selected{% endif %}>{{ client.name }} — {{ client.host }}:{{ client.port }}</option>
+                    {% else %}
+                        <option disabled>Nessun server configurato</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card" id="card-databases" style="display:none;">
+    <div class="card-header d-flex align-items-center justify-content-between gap-2">
+        <span>
+            <i class="fa-solid fa-database text-primary me-1"></i>
+            Elenco database
+            <span id="badge-db-version" class="badge bg-secondary ms-1" style="display:none;"></span>
+        </span>
+        <a id="btn-open-users" href="#" class="btn btn-sm btn-outline-secondary disabled">
+            <i class="fa-solid fa-users me-1"></i>Utenti MySQL
+        </a>
+    </div>
+    <div class="card-body">
+        <table id="table-databases" class="table table-hover align-middle w-100">
+            <thead class="table-light">
+                <tr>
+                    <th>Nome database</th>
+                    <th style="width:110px">Tabelle</th>
+                    <th style="width:120px">Dimensione</th>
+                    <th class="text-end" style="width:240px">Azioni</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts_extra %}
+{{ parent() }}
+<script>
+
+const URL_GET_DATABASES    = '{{ path('app_show_databases_get_data') }}';
+const URL_TABLES_PAGE      = '{{ path('app_schema_tables') }}';
+const URL_USERS_PAGE       = '{{ path('app_schema_db_users') }}';
+const URL_ENGINE_STATUS    = '{{ path('app_schema_engine_status') }}';
+const URL_PROCESS_LIST     = '{{ path('app_schema_process_list') }}';
+const URL_CREATE_DATABASE  = '{{ path('app_schema_create_database') }}';
+const URL_DROP_DATABASE    = '{{ path('app_schema_drop_database') }}';
+const URL_TABLE_BACKUP     = '{{ path('app_schema_table_backup') }}';
+
+let dt = null;
+let currentName = '';
+
+function _renderDbName(data, type, row) {
+    return `<i class="fa-solid fa-database text-secondary me-2"></i>${data}`;
+}
+
+function _renderTableCount(data) {
+    return `<span class="badge bg-light text-dark border">${data}</span>`;
+}
+
+function _renderSize(bytes) {
+    if (bytes === 0) return '<span class="text-muted">—</span>';
+    const kb = bytes / 1024;
+    if (kb >= 1024 * 1024) return `${(kb / 1024 / 1024).toFixed(2)} GB`;
+    if (kb >= 1024)        return `${(kb / 1024).toFixed(2)} MB`;
+    return `${kb.toFixed(1)} KB`;
+}
+
+function _renderActions(data, type, row) {
+    const dbName    = row.db_name;
+    const tablesUrl = `${URL_TABLES_PAGE}?name=${encodeURIComponent(currentName)}&db_name=${encodeURIComponent(dbName)}`;
+    return `
+        <div class="d-flex gap-2 justify-content-end">
+            <a href="${tablesUrl}" class="btn btn-sm btn-outline-primary" title="Mostra info e tabelle">
+                <i class="fa-solid fa-table me-1"></i>Dettagli
+            </a>
+            <button class="btn btn-sm btn-outline-secondary btn-backup-db"
+                    data-db="${dbName}" title="Backup completo database">
+                <i class="fa-solid fa-cloud-arrow-down me-1"></i>Backup
+            </button>
+            <button class="btn btn-sm btn-outline-danger btn-drop-db"
+                    data-db="${dbName}" title="Elimina database">
+                <i class="fa-solid fa-trash me-1"></i>Elimina
+            </button>
+        </div>`;
+}
+
+function initDatatables() {
+    dt = $('#table-databases').DataTable({
+        processing: true,
+        serverSide: false,
+        paging: true,
+        pageLength: 25,
+        lengthMenu: [[25, 50, 100, -1], [25, 50, 100, 'Tutti']],
+        ajax: {
+            url: URL_GET_DATABASES,
+            type: 'GET',
+            dataSrc: function (json) {
+                const badge = document.getElementById('badge-db-version');
+                if (json.version) {
+                    badge.innerHTML = '<i class="fa-solid fa-code-branch me-1"></i>MySQL ' + json.version;
+                    badge.style.display = '';
+                } else {
+                    badge.style.display = 'none';
+                }
+                return json.data;
+            },
+            data: function (o) {
+                o.name = currentName;
+                return o;
+            }
+        },
+        columns: [
+            { data: 'db_name',     render: _renderDbName },
+            { data: 'table_count', render: _renderTableCount },
+            { data: 'size_bytes',  render: _renderSize },
+            { data: null, orderable: false, className: 'text-end', render: _renderActions },
+        ],
+        language: {
+            url: 'https://cdn.datatables.net/plug-ins/2.3.7/i18n/it-IT.json'
+        }
+    });
+}
+
+$('#select-sql-client').on('change', function () {
+    const name = $(this).val();
+    currentName = name;
+
+    if (!name) {
+        $('#card-databases').hide();
+        document.getElementById('badge-db-version').style.display = 'none';
+        document.getElementById('btn-open-create-db').disabled = true;
+        const btnUsers = document.getElementById('btn-open-users');
+        btnUsers.href = '#';
+        btnUsers.classList.add('disabled');
+        document.getElementById('btn-open-engine-status').href = '#';
+        document.getElementById('btn-open-engine-status').classList.add('disabled');
+        document.getElementById('btn-open-process-list').href = '#';
+        document.getElementById('btn-open-process-list').classList.add('disabled');
+        return;
+    }
+
+    document.getElementById('btn-open-create-db').disabled = false;
+
+    const btnUsers = document.getElementById('btn-open-users');
+    btnUsers.href = `${URL_USERS_PAGE}?name=${encodeURIComponent(name)}`;
+    btnUsers.classList.remove('disabled');
+
+    const btnEngine = document.getElementById('btn-open-engine-status');
+    btnEngine.href = `${URL_ENGINE_STATUS}?name=${encodeURIComponent(name)}`;
+    btnEngine.classList.remove('disabled');
+
+    const btnProc = document.getElementById('btn-open-process-list');
+    btnProc.href = `${URL_PROCESS_LIST}?name=${encodeURIComponent(name)}`;
+    btnProc.classList.remove('disabled');
+    $('#card-databases').show();
+
+    if (dt === null) {
+        initDatatables();
+    } else {
+        dt.ajax.reload();
+    }
+});
+
+// Auto-load se il server è pre-selezionato via GET ?name=
+$('#select-sql-client').trigger('change');
+
+/* ── Drop database ── */
+document.getElementById('table-databases').addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-drop-db');
+    if (!btn) return;
+    const dbName = btn.dataset.db;
+
+    const result = await Swal.fire({
+        title: 'Elimina database',
+        html: `Il database <strong>${dbName}</strong> e tutti i suoi dati verranno eliminati definitivamente.<br>L'operazione è irreversibile.`,
+        icon: 'error',
+        showCancelButton: true,
+        confirmButtonText: 'Elimina',
+        cancelButtonText: 'Annulla',
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        input: 'text',
+        inputPlaceholder: `Digita "${dbName}" per confermare`,
+        preConfirm: (val) => {
+            if (val !== dbName) {
+                Swal.showValidationMessage('Il nome inserito non corrisponde.');
+            }
+        },
+    });
+    if (!result.isConfirmed) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+    try {
+        const formData = new FormData();
+        formData.append('name',    currentName);
+        formData.append('db_name', dbName);
+
+        const res  = await fetch(URL_DROP_DATABASE, { method: 'POST', body: formData });
+        const json = await res.json();
+
+        if (json.is_valid && dt) dt.ajax.reload();
+
+        Swal.fire({
+            title: json.is_valid ? 'Fatto!' : 'Errore',
+            text:  json.message,
+            icon:  json.is_valid ? 'success' : 'error',
+        });
+    } catch (e) {
+        Swal.fire({ title: 'Errore', text: 'Errore di rete.', icon: 'error' });
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-trash me-1"></i>Elimina';
+    }
+});
+
+/* ── Backup database ── */
+document.getElementById('table-databases').addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-backup-db');
+    if (!btn) return;
+    const dbName = btn.dataset.db;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Backup…';
+
+    try {
+        const fd = new FormData();
+        fd.append('name',    currentName);
+        fd.append('db_name', dbName);
+        const res  = await fetch(URL_TABLE_BACKUP, { method: 'POST', body: fd });
+        const json = await res.json();
+        Swal.fire({
+            title: json.is_valid ? 'Backup completato' : 'Errore',
+            html:  json.is_valid
+                ? `Backup di <strong>${dbName}</strong> completato.<br><span class="font-monospace small text-muted">${json.backup_filename}</span>`
+                : json.message,
+            icon: json.is_valid ? 'success' : 'error',
+        });
+    } catch {
+        Swal.fire({ title: 'Errore', text: 'Errore di rete.', icon: 'error' });
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-down me-1"></i>Backup';
+    }
+});
+
+/* ── Toggle password ── */
+document.getElementById('btn-toggle-pw').addEventListener('click', () => {
+    const inp = document.getElementById('create-db-password');
+    const icon = document.querySelector('#btn-toggle-pw i');
+    if (inp.type === 'password') {
+        inp.type = 'text';
+        icon.className = 'fa-solid fa-eye-slash';
+    } else {
+        inp.type = 'password';
+        icon.className = 'fa-solid fa-eye';
+    }
+});
+
+/* ── Host personalizzato ── */
+document.querySelectorAll('input[name="user-host"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        const custom = document.getElementById('create-db-user-host-custom');
+        custom.style.display = radio.value === '__custom__' ? '' : 'none';
+    });
+});
+
+/* ── ALL PRIVILEGES toggle ── */
+document.getElementById('priv-all').addEventListener('change', function () {
+    document.querySelectorAll('.priv-single').forEach(cb => {
+        cb.disabled = this.checked;
+        cb.checked  = false;
+    });
+});
+
+/* ── Submit ── */
+document.getElementById('btn-create-db-submit').addEventListener('click', async () => {
+    const dbName = document.getElementById('create-db-name').value.trim();
+    if (!dbName || !/^\w+$/.test(dbName)) {
+        Swal.fire({ title: 'Errore', text: 'Il nome del database non è valido.', icon: 'error' });
+        return;
+    }
+
+    const charset   = document.getElementById('create-db-charset').value;
+    const collation = document.getElementById('create-db-collation').value;
+    const username  = document.getElementById('create-db-username').value.trim();
+    const password  = document.getElementById('create-db-password').value;
+
+    const selectedHostRadio = document.querySelector('input[name="user-host"]:checked');
+    let userHost = selectedHostRadio.value;
+    if (userHost === '__custom__') {
+        userHost = document.getElementById('create-db-user-host-custom').value.trim();
+        if (!userHost) {
+            Swal.fire({ title: 'Errore', text: 'Inserisci l\'host personalizzato.', icon: 'error' });
+            return;
+        }
+    }
+
+    const allPriv = document.getElementById('priv-all').checked;
+    let privileges = 'ALL PRIVILEGES';
+    if (!allPriv) {
+        const checked = [...document.querySelectorAll('.priv-single:checked')].map(cb => cb.value);
+        if (username && checked.length === 0) {
+            Swal.fire({ title: 'Errore', text: 'Seleziona almeno un privilegio o usa ALL PRIVILEGES.', icon: 'error' });
+            return;
+        }
+        privileges = checked.join(',');
+    }
+
+    const btn = document.getElementById('btn-create-db-submit');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Creazione…';
+
+    try {
+        const formData = new FormData();
+        formData.append('name',       currentName);
+        formData.append('db_name',    dbName);
+        formData.append('charset',    charset);
+        formData.append('collation',  collation);
+        formData.append('username',   username);
+        formData.append('password',   password);
+        formData.append('user_host',  userHost);
+        formData.append('privileges', privileges);
+
+        const res  = await fetch(URL_CREATE_DATABASE, { method: 'POST', body: formData });
+        const json = await res.json();
+
+        if (json.is_valid) {
+            bootstrap.Modal.getInstance(document.getElementById('modal-create-db')).hide();
+            if (dt) dt.ajax.reload();
+        }
+
+        Swal.fire({
+            title: json.is_valid ? 'Fatto!' : 'Errore',
+            text:  json.message,
+            icon:  json.is_valid ? 'success' : 'error',
+        });
+    } catch (e) {
+        Swal.fire({ title: 'Errore', text: 'Errore di rete.', icon: 'error' });
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-plus me-1"></i>Crea database';
+    }
+});
+
+/* ── Reset modal alla chiusura ── */
+document.getElementById('modal-create-db').addEventListener('hidden.bs.modal', () => {
+    document.getElementById('create-db-name').value = '';
+    document.getElementById('create-db-username').value = '';
+    document.getElementById('create-db-password').value = '';
+    document.getElementById('create-db-user-host-custom').style.display = 'none';
+    document.getElementById('host-any').checked = true;
+    document.getElementById('priv-all').checked = false;
+    document.querySelectorAll('.priv-single').forEach(cb => { cb.checked = false; cb.disabled = false; });
+    document.getElementById('create-db-charset').value = 'utf8mb4';
+    document.getElementById('create-db-collation').value = 'utf8mb4_0900_ai_ci';
+});
+
+</script>
+{% endblock %}

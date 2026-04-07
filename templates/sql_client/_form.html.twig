@@ -1,0 +1,43 @@
+{{ form_start(form, {'attr': {'novalidate': 'novalidate'}}) }}
+
+    <div class="mb-3">
+        {{ form_label(form.name, 'Nome', {'label_attr': {'class': 'form-label fw-semibold'}}) }}
+        {{ form_widget(form.name, {'attr': {'class': 'form-control', 'placeholder': 'Es. Produzione, Staging…'}}) }}
+        {{ form_errors(form.name) }}
+    </div>
+
+    <div class="mb-3">
+        {{ form_label(form.host, 'Hostname', {'label_attr': {'class': 'form-label fw-semibold'}}) }}
+        {{ form_widget(form.host, {'attr': {'class': 'form-control'}}) }}
+        {{ form_errors(form.host) }}
+    </div>
+
+    <div class="mb-3">
+        {{ form_label(form.username, 'Username', {'label_attr': {'class': 'form-label fw-semibold'}}) }}
+        {{ form_widget(form.username, {'attr': {'class': 'form-control'}}) }}
+        {{ form_errors(form.username) }}
+    </div>
+
+    <div class="mb-3">
+        {{ form_label(form.password, 'Password', {'label_attr': {'class': 'form-label fw-semibold'}}) }}
+        {{ form_widget(form.password, {'attr': {'class': 'form-control'}}) }}
+        {{ form_errors(form.password) }}
+    </div>
+
+    <div class="mb-3">
+        {{ form_label(form.port, 'Porta', {'label_attr': {'class': 'form-label fw-semibold'}}) }}
+        {{ form_widget(form.port, {'attr': {'class': 'form-control'}}) }}
+        {{ form_errors(form.port) }}
+    </div>
+
+    <div class="mb-3">
+        {{ form_label(form.owner, 'Proprietari', {'label_attr': {'class': 'form-label fw-semibold'}}) }}
+        {{ form_widget(form.owner, {'attr': {'class': 'form-select'}}) }}
+        {{ form_errors(form.owner) }}
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+        <i class="fa-solid fa-floppy-disk me-1"></i>{{ button_label|default('Salva') }}
+    </button>
+
+{{ form_end(form) }}

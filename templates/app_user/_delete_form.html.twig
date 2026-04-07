@@ -1,0 +1,7 @@
+<form method="post" action="{{ path('app_user_delete', {'id': app_user.id}) }}"
+      data-confirm="Eliminare definitivamente l'utente {{ app_user.username }}?">
+    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ app_user.id) }}">
+    <button type="submit" class="btn btn-danger btn-sm">
+        <i class="fa-solid fa-trash me-1"></i>Elimina
+    </button>
+</form>

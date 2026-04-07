@@ -1,0 +1,34 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Modifica server — {{ sql_client.host }}{% endblock %}
+{% block page_title %}Modifica server SQL{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{{ path('app_sql_client_index') }}">Server SQL</a></li>
+    <li class="breadcrumb-item"><a href="{{ path('app_sql_client_show', {'id': sql_client.id}) }}">{{ sql_client.host }}</a></li>
+    <li class="breadcrumb-item active">Modifica</li>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="fa-solid fa-pen-to-square text-primary"></i>
+                Modifica: {{ sql_client.host }}
+            </div>
+            <div class="card-body">
+                {{ include('sql_client/_form.html.twig', {'button_label': 'Salva modifiche'}) }}
+            </div>
+            <div class="card-footer d-flex gap-2">
+                <a href="{{ path('app_sql_client_show', {'id': sql_client.id}) }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fa-solid fa-arrow-left me-1"></i>Annulla
+                </a>
+                <div class="ms-auto">
+                    {{ include('sql_client/_delete_form.html.twig') }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

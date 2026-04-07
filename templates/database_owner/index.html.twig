@@ -1,0 +1,95 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Assegnazioni database{% endblock %}
+{% block page_title %}Assegnazioni database{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item active">Assegnazioni database</li>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between gap-2">
+        <span>
+            <i class="fa-solid fa-database text-primary me-1"></i>
+            Elenco assegnazioni
+        </span>
+        <a href="{{ path('app_database_owner_new') }}" class="btn btn-sm btn-primary">
+            <i class="fa-solid fa-plus me-1"></i>Nuova assegnazione
+        </a>
+    </div>
+    <div class="card-body">
+        <table id="table-db-owners" class="table table-hover align-middle w-100">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>Server</th>
+                    <th>Nome database</th>
+                    <th>Proprietario</th>
+                    <th class="text-end">Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for item in database_owners %}
+                <tr>
+                    <td class="text-muted small">{{ item.id }}</td>
+                    <td><i class="fa-solid fa-server text-secondary me-2 opacity-75"></i>{{ item.sqlClient.name }}</td>
+                    <td><i class="fa-solid fa-database text-secondary me-2 opacity-75"></i><span class="font-monospace">{{ item.dbName }}</span></td>
+                    <td><i class="fa-solid fa-user text-secondary me-2 opacity-75"></i>{{ item.owner.username }}</td>
+                    <td class="text-end">
+                        <a href="{{ path('app_database_owner_edit', {'id': item.id}) }}"
+                           class="btn btn-sm btn-outline-primary" title="Modifica">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </a>
+                        <button type="button" class="btn btn-sm btn-outline-danger btn-delete"
+                                data-id="{{ item.id }}"
+                                data-db="{{ item.dbName }}"
+                                data-token="{{ csrf_token('delete' ~ item.id) }}"
+                                title="Elimina">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+{{ parent() }}
+<script>
+$('#table-db-owners').DataTable({
+    paging: true,
+    pageLength: 25,
+    language: { url: 'https://cdn.datatables.net/plug-ins/2.3.7/i18n/it-IT.json' }
+});
+
+document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-delete');
+    if (!btn) return;
+
+    const result = await Swal.fire({
+        title: 'Elimina assegnazione',
+        html: `Rimuovere l'assegnazione del database <strong>${btn.dataset.db}</strong>?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Elimina',
+        cancelButtonText: 'Annulla',
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+    });
+    if (!result.isConfirmed) return;
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/admin/database-owner/${btn.dataset.id}`;
+    const token = document.createElement('input');
+    token.type = 'hidden'; token.name = '_token'; token.value = btn.dataset.token;
+    form.appendChild(token);
+    document.body.appendChild(form);
+    form.submit();
+});
+</script>
+{% endblock %}

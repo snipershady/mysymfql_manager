@@ -1,0 +1,13 @@
+framework:
+    mailer:
+        dsn: '%env(MAILER_DSN)%'
+
+when@prod:
+    framework:
+        mailer:
+            dsn: '%env(MAILER_DSN_PROD)%'
+
+when@dev:
+    framework:
+        mailer:
+            dsn: '%env(MAILER_DSN_DEV)%'

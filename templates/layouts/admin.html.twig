@@ -1,0 +1,171 @@
+{% extends 'base.html.twig' %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="/asset/css/admin.css">
+{% endblock %}
+
+{% block body %}
+{# ── Sidebar ── #}
+<nav id="sidebar">
+    <a href="{{ path('app_default') }}" class="sidebar-brand">
+        <i class="fa-solid fa-database"></i>
+        <span>MySQL Manager</span>
+    </a>
+
+    <div class="flex-grow-1 overflow-y-auto">
+        <div class="nav-section-label">Generale</div>
+        <a href="{{ path('app_default') }}"
+           class="nav-link {% if app.request.attributes.get('_route') == 'app_default' %}active{% endif %}">
+            <i class="fa-solid fa-gauge"></i>
+            <span>Dashboard</span>
+        </a>
+            
+            
+        <div class="nav-section-label">Server</div>
+        <a href="{{ path('app_sql_client_index') }}" class="nav-link">
+            <i class="fa-solid fa-server"></i>
+            <span>I miei server</span>
+        </a>
+
+        <div class="nav-section-label">Database</div>
+        <a href="{{ path('app_schema_databases') }}"
+           class="nav-link {% if app.request.attributes.get('_route') starts with 'app_schema' and app.request.attributes.get('_route') not in ['app_schema_backup_list', 'app_schema_backup_view', 'app_schema_backup_delete'] %}active{% endif %}">
+            <i class="fa-solid fa-database"></i>
+            <span>I miei database</span>
+        </a>
+
+        <div class="nav-section-label">Operazioni</div>
+        <a href="{{ path('app_schema_backup_list') }}"
+           class="nav-link {% if app.request.attributes.get('_route') == 'app_schema_backup_list' %}active{% endif %}">
+            <i class="fa-solid fa-cloud-arrow-down"></i>
+            <span>Backup</span>
+        </a>
+            
+        {#    
+        <a href="#" class="nav-link">
+            <i class="fa-solid fa-table"></i>
+            <span>Tabelle</span>
+        </a>
+
+        <div class="nav-section-label">Operazioni</div>
+        <a href="#" class="nav-link">
+            <i class="fa-solid fa-cloud-arrow-down"></i>
+            <span>Backup</span>
+        </a>
+        <a href="#" class="nav-link">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <span>Ripristino</span>
+        </a>
+
+        <div class="nav-section-label">Sistema</div>
+        <a href="#" class="nav-link">
+            <i class="fa-solid fa-list-check"></i>
+            <span>Process List</span>
+        </a>
+        <a href="#" class="nav-link">
+            <i class="fa-solid fa-clipboard-list"></i>
+            <span>Audit Log</span>
+        </a>
+        <a href="#" class="nav-link">
+            <i class="fa-solid fa-users"></i>
+            <span>Utenti MySQL</span>
+        </a>#}
+
+        {% if is_granted("ROLE_ADMIN") %}
+        <div class="nav-section-label">Amministrazione</div>
+        <a href="{{ path('app_user_index') }}"
+           class="nav-link {% if app.request.attributes.get('_route') starts with 'app_user' %}active{% endif %}">
+            <i class="fa-solid fa-users-gear"></i>
+            <span>Utenti applicazione</span>
+        </a>
+        <a href="{{ path('app_database_owner_index') }}"
+           class="nav-link {% if app.request.attributes.get('_route') starts with 'app_database_owner' %}active{% endif %}">
+            <i class="fa-solid fa-database"></i>
+            <span>Assegnazioni database</span>
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="sidebar-footer">
+        <a href="{{ path('app_logout') }}" class="nav-link text-danger">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span>Logout</span>
+        </a>
+    </div>
+</nav>
+
+{# ── Top navbar ── #}
+<header id="topbar">
+    <button class="topbar-toggle" id="sidebarToggle" title="Espandi/Comprimi sidebar">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+    <span class="topbar-title">{% block page_title %}Dashboard{% endblock %}</span>
+
+    <div class="topbar-right">
+        {% if app.user %}
+            <span class="text-muted small d-none d-md-inline">
+                <i class="fa-solid fa-circle-user me-1"></i>{{ app.user.userIdentifier }}
+            </span>
+            <div class="vr mx-1 d-none d-md-block"></div>
+            <a href="{{ path('app_change_password') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fa-solid fa-key me-1"></i><span class="d-none d-md-inline">Cambia password</span>
+            </a>
+            <a href="{{ path('app_logout') }}" class="btn btn-sm btn-outline-danger">
+                <i class="fa-solid fa-right-from-bracket me-1"></i><span class="d-none d-md-inline">Logout</span>
+            </a>
+        {% else %}
+            <a href="{{ path('app_login') }}" class="btn btn-sm btn-primary">
+                <i class="fa-solid fa-right-to-bracket me-1"></i>Login
+            </a>
+        {% endif %}
+    </div>
+</header>
+
+{# ── Page wrapper ── #}
+<div id="page-wrapper">
+    <main id="page-content">
+        {# Breadcrumb #}
+        {% set breadcrumb = block('breadcrumb') %}
+        {% if breadcrumb is not empty %}
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ path('app_default') }}">Home</a></li>
+                {{ breadcrumb|raw }}
+            </ol>
+        </nav>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="text-center text-muted py-3 border-top bg-white" style="font-size:.8rem;">
+        MySQL Manager &mdash; &copy; {{ "now"|date("Y") }}
+    </footer>
+</div>
+
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="/asset/js/admin.js"></script>
+<script>
+document.addEventListener('submit', async function (e) {
+    const form = e.target;
+    const msg = form.dataset.confirm;
+    if (!msg) return;
+    e.preventDefault();
+    const result = await Swal.fire({
+        title: 'Conferma',
+        text: msg,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sì, procedi',
+        cancelButtonText: 'Annulla',
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+    });
+    if (result.isConfirmed) form.submit();
+});
+</script>
+{% endblock %}
+
+{% block breadcrumb %}{% endblock %}

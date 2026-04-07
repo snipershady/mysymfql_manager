@@ -1,0 +1,61 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Dettaglio utente — {{ app_user.username }}{% endblock %}
+{% block page_title %}Dettaglio utente{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{{ path('app_user_index') }}">Utenti applicazione</a></li>
+    <li class="breadcrumb-item active">{{ app_user.username }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="fa-solid fa-circle-user text-primary"></i>
+                {{ app_user.username }}
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-bordered mb-0">
+                    <tbody>
+                        <tr>
+                            <th class="table-light" style="width:35%">ID</th>
+                            <td>{{ app_user.id }}</td>
+                        </tr>
+                        <tr>
+                            <th class="table-light">Username</th>
+                            <td>{{ app_user.username }}</td>
+                        </tr>
+                        <tr>
+                            <th class="table-light">Email</th>
+                            <td>{{ app_user.email }}</td>
+                        </tr>
+                        <tr>
+                            <th class="table-light">Ruoli</th>
+                            <td>
+                                {% for role in app_user.roles %}
+                                    <span class="badge bg-secondary">{{ role }}</span>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endfor %}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer d-flex gap-2">
+                <a href="{{ path('app_user_index') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fa-solid fa-arrow-left me-1"></i>Torna all'elenco
+                </a>
+                <a href="{{ path('app_user_edit', {'id': app_user.id}) }}" class="btn btn-primary btn-sm">
+                    <i class="fa-solid fa-pen-to-square me-1"></i>Modifica
+                </a>
+                <div class="ms-auto">
+                    {{ include('app_user/_delete_form.html.twig') }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

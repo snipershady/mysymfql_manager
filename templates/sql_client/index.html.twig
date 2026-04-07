@@ -1,0 +1,76 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Server SQL{% endblock %}
+{% block page_title %}Server SQL{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item active">Server SQL</li>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between gap-2">
+        <span>
+            <i class="fa-solid fa-server text-primary me-1"></i>
+            Elenco server SQL
+        </span>
+        <a href="{{ path('app_sql_client_new') }}" class="btn btn-sm btn-primary">
+            <i class="fa-solid fa-plus me-1"></i>Nuovo server
+        </a>
+    </div>
+    <div class="card-body">
+        <table id="table-sql-client" class="table table-hover align-middle w-100">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>Nome</th>
+                    <th>Hostname</th>
+                    <th>Username</th>
+                    <th>Porta</th>
+                    <th>Proprietari</th>
+                    <th class="text-end">Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for sql_client in all_sql_client %}
+                <tr>
+                    <td>{{ sql_client.id }}</td>
+                    <td>{{ sql_client.name }}</td>
+                    <td>{{ sql_client.host }}</td>
+                    <td>{{ sql_client.username }}</td>
+                    <td>{{ sql_client.port }}</td>
+                    <td>
+                        {% for owner in sql_client.owner %}
+                            <span class="badge bg-secondary">{{ owner.username }}</span>
+                        {% else %}
+                            <span class="text-muted small">—</span>
+                        {% endfor %}
+                    </td>
+                    <td class="text-end">
+                        <a href="{{ path('app_sql_client_show', {'id': sql_client.id}) }}"
+                           class="btn btn-sm btn-outline-secondary" title="Dettaglio">
+                            <i class="fa-solid fa-eye"></i>
+                        </a>
+                        <a href="{{ path('app_sql_client_edit', {'id': sql_client.id}) }}"
+                           class="btn btn-sm btn-outline-primary" title="Modifica">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </a>
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        <i class="fa-solid fa-circle-info me-2"></i>Nessun server trovato
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+{{ parent() }}
+
+{% endblock %}

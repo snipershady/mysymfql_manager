@@ -1,0 +1,73 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Dettaglio server — {{ sql_client.host }}{% endblock %}
+{% block page_title %}Dettaglio server SQL{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{{ path('app_sql_client_index') }}">Server SQL</a></li>
+    <li class="breadcrumb-item active">{{ sql_client.host }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="fa-solid fa-server text-primary"></i>
+                {{ sql_client.host }}
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-bordered mb-0">
+                    <tbody>
+                        <tr>
+                            <th class="table-light" style="width:35%">ID</th>
+                            <td>{{ sql_client.id }}</td>
+                        </tr>
+                        <tr>
+                            <th class="table-light">Nome</th>
+                            <td>{{ sql_client.name }}</td>
+                        </tr>
+                        <tr>
+                            <th class="table-light">Hostname</th>
+                            <td>{{ sql_client.host }}</td>
+                        </tr>
+                        <tr>
+                            <th class="table-light">Username</th>
+                            <td>{{ sql_client.username }}</td>
+                        </tr>
+                        <tr>
+                            <th class="table-light">Password</th>
+                            <td><span class="text-muted fst-italic">••••••••</span></td>
+                        </tr>
+                        <tr>
+                            <th class="table-light">Porta</th>
+                            <td>{{ sql_client.port }}</td>
+                        </tr>
+                        <tr>
+                            <th class="table-light">Proprietari</th>
+                            <td>
+                                {% for owner in sql_client.owner %}
+                                    <span class="badge bg-secondary">{{ owner.username }}</span>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endfor %}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer d-flex gap-2">
+                <a href="{{ path('app_sql_client_index') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fa-solid fa-arrow-left me-1"></i>Torna all'elenco
+                </a>
+                <a href="{{ path('app_sql_client_edit', {'id': sql_client.id}) }}" class="btn btn-primary btn-sm">
+                    <i class="fa-solid fa-pen-to-square me-1"></i>Modifica
+                </a>
+                <div class="ms-auto">
+                    {{ include('sql_client/_delete_form.html.twig') }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

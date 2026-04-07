@@ -1,0 +1,100 @@
+{% extends 'layouts/auth.html.twig' %}
+
+{% block title %}Accedi{% endblock %}
+
+{% block card_title %}Accedi al tuo account{% endblock %}
+
+{% block content %}
+    {% if error %}
+        <div class="alert alert-danger">
+            <i class="fa-solid fa-circle-exclamation me-2"></i>
+            {{ error.messageKey|trans(error.messageData, 'security') }}
+        </div>
+    {% endif %}
+
+    {% if app.user %}
+        <div class="alert alert-info">
+            <i class="fa-solid fa-circle-info me-2"></i>
+            Sei già autenticato come <strong>{{ app.user.userIdentifier }}</strong>.
+            <a href="{{ path('app_default') }}">Vai alla dashboard</a> oppure
+            <a href="{{ logout_path() }}">esci</a>.
+        </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+        <div class="mb-3">
+            <label for="username" class="form-label fw-semibold">
+                <i class="fa-solid fa-user me-1 text-muted"></i> Username
+            </label>
+            <input type="text"
+                   value="{{ last_username }}"
+                   name="_username"
+                   id="username"
+                   class="form-control"
+                   autocomplete="username"
+                   required
+                   autofocus
+                   placeholder="Inserisci il tuo username">
+        </div>
+
+        <div class="mb-4">
+            <label for="password" class="form-label fw-semibold">
+                <i class="fa-solid fa-lock me-1 text-muted"></i> Password
+            </label>
+            <input type="password"
+                   name="_password"
+                   id="password"
+                   class="form-control"
+                   autocomplete="current-password"
+                   required
+                   placeholder="Inserisci la tua password">
+        </div>
+
+        <div class="mb-4 p-3 bg-light rounded">
+            <div class="d-flex align-items-center justify-content-center">
+                <altcha-widget
+                    challengeurl="{{ path("app_altcha_challenge") }}"
+                    required
+                    strings='{"error":"Errore di verifica.","expired":"Verifica scaduta. Ricarica la pagina.","footer":"Protetto da <a href=\"https://altcha.org/\" target=\"_blank\" rel=\"noopener noreferrer\">ALTCHA</a>","label":"Sono un essere umano","verified":"Verificato","verifying":"Verifica in corso...","waitAlert":"Verifica in corso. Attendi..."}'>
+                </altcha-widget>
+            </div>
+        </div>
+
+        <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('authenticate') }}">
+
+        <div class="d-grid">
+            <button class="btn btn-primary btn-lg" type="submit">
+                <i class="fa-solid fa-right-to-bracket me-2"></i>Accedi
+            </button>
+        </div>
+
+        <div class="text-center mt-3">
+            <a href="{{ path('app_reset_password') }}" class="text-muted small">
+                <i class="fa-solid fa-key me-1"></i>Password dimenticata?
+            </a>
+        </div>
+    </form>
+{% endblock %}
+
+{% block auth_footer %}
+    <div class="auth-footer">
+        Non hai un account? <a href="{{ path('app_register') }}">Registrati</a>
+    </div>
+{% endblock %}
+
+{% block scripts_extra %}
+    {{ parent() }}
+    {% if app.request.query.get('disabled') %}
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                Swal.fire({
+                    title: 'Accesso non consentito',
+                    text: 'Attendi che un amministratore ti abiliti il profilo.',
+                    icon: 'warning',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#6c757d',
+                });
+            });
+        </script>
+    {% endif %}
+{% endblock %}

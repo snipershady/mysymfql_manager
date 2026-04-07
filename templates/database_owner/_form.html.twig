@@ -1,0 +1,107 @@
+{% set current_server_name = form.sqlClient.vars.data ? form.sqlClient.vars.data.name : '' %}
+{% set current_db_name = form.dbName.vars.value ?? '' %}
+
+{{ form_start(form) }}
+
+{# ── Server ── #}
+<div class="mb-3">
+    {{ form_label(form.sqlClient, null, {label_attr: {class: 'form-label fw-semibold'}}) }}
+    {{ form_widget(form.sqlClient, {attr: {class: 'form-select'}}) }}
+    {{ form_errors(form.sqlClient) }}
+</div>
+
+{# ── Database (select visibile UI-only + hidden widget Symfony per il binding) ── #}
+<div class="mb-3" id="db-name-group"{% if not current_server_name %} style="display:none;"{% endif %}>
+    <label for="select-db-name" class="form-label fw-semibold">
+        Nome database <span class="text-danger">*</span>
+    </label>
+    {# Select visibile — nessun name, aggiorna il campo hidden sotto #}
+    <select id="select-db-name" class="form-select">
+        {% if current_db_name %}
+            <option value="{{ current_db_name }}" selected>{{ current_db_name }}</option>
+        {% else %}
+            <option value="">— Seleziona prima un server —</option>
+        {% endif %}
+    </select>
+    {{ form_errors(form.dbName) }}
+    {# Widget Symfony nascosto — riceve il valore dal select via JS #}
+    {{ form_widget(form.dbName, {attr: {style: 'display:none;', tabindex: '-1'}}) }}
+</div>
+
+{# ── Proprietario ── #}
+<div class="mb-3">
+    {{ form_label(form.owner, null, {label_attr: {class: 'form-label fw-semibold'}}) }}
+    {{ form_widget(form.owner) }}
+    {{ form_errors(form.owner) }}
+</div>
+
+<div class="d-flex gap-2">
+    <button type="submit" class="btn btn-primary">
+        <i class="fa-solid fa-floppy-disk me-1"></i>{{ button_label|default('Salva') }}
+    </button>
+    <a href="{{ path('app_database_owner_index') }}" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Annulla
+    </a>
+</div>
+
+{{ form_end(form) }}
+
+<script>
+const URL_GET_DATABASES = '{{ path('app_show_databases_get_data') }}';
+const SYSTEM_DBS        = new Set(['information_schema', 'mysql', 'performance_schema', 'sys']);
+const PRESELECTED_DB    = '{{ current_db_name|e('js') }}';
+
+const selectServer = document.getElementById('{{ form.sqlClient.vars.id }}');
+const selectDb     = document.getElementById('select-db-name');
+const hiddenDb     = document.getElementById('{{ form.dbName.vars.id }}');
+const groupDb      = document.getElementById('db-name-group');
+
+function syncHidden() {
+    hiddenDb.value = selectDb.value;
+}
+
+async function loadDatabases(serverName) {
+    selectDb.innerHTML = '<option value="">Caricamento…</option>';
+    selectDb.disabled  = true;
+    syncHidden();
+
+    try {
+        const res  = await fetch(`${URL_GET_DATABASES}?name=${encodeURIComponent(serverName)}`);
+        const json = await res.json();
+        const dbs  = (json.data ?? []).filter(d => !SYSTEM_DBS.has(d.db_name));
+
+        if (dbs.length === 0) {
+            selectDb.innerHTML = '<option value="">Nessun database trovato</option>';
+        } else {
+            selectDb.innerHTML = '<option value="">— Seleziona un database —</option>'
+                + dbs.map(d =>
+                    `<option value="${d.db_name}"${d.db_name === PRESELECTED_DB ? ' selected' : ''}>${d.db_name}</option>`
+                ).join('');
+        }
+    } catch {
+        selectDb.innerHTML = '<option value="">Errore nel caricamento</option>';
+    } finally {
+        selectDb.disabled = false;
+        syncHidden();
+    }
+}
+
+selectServer.addEventListener('change', () => {
+    const name = selectServer.options[selectServer.selectedIndex]?.dataset.name ?? '';
+    if (!name) {
+        groupDb.style.display = 'none';
+        selectDb.innerHTML    = '<option value="">— Seleziona prima un server —</option>';
+        syncHidden();
+        return;
+    }
+    groupDb.style.display = '';
+    loadDatabases(name);
+});
+
+selectDb.addEventListener('change', syncHidden);
+
+{% if current_server_name %}
+// Edit mode: pre-carica i database del server corrente
+loadDatabases('{{ current_server_name|e('js') }}');
+{% endif %}
+</script>

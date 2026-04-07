@@ -1,0 +1,91 @@
+
+DirectoryIndex index.php
+
+# ============================================
+# Security Headers
+# ============================================
+<IfModule mod_headers.c>
+    # Cross-Origin-Opener-Policy
+    # "same-origin" isola il browsing context, abilitando SharedArrayBuffer
+    Header set Cross-Origin-Opener-Policy "same-origin"
+
+    # Cross-Origin-Embedder-Policy
+    # "credentialless": le risorse cross-origin vengono caricate senza credenziali
+    # compatibile con tutte le CDN usate (cdnjs, jsdelivr, datatables.net)
+    Header set Cross-Origin-Embedder-Policy "credentialless"
+
+    # Cross-Origin-Resource-Policy
+    Header set Cross-Origin-Resource-Policy "cross-origin"
+
+    # X-Content-Type-Options — previene MIME sniffing
+    Header set X-Content-Type-Options "nosniff"
+
+    # X-Frame-Options — anti-clickjacking (legacy browser, affiancato a frame-ancestors in CSP)
+    Header set X-Frame-Options "SAMEORIGIN"
+
+    # Content-Security-Policy
+    # CDN autorizzate:
+    #   cdnjs.cloudflare.com  — Bootstrap 5.3.8, Font-Awesome 7.0.1, jQuery 3.7.1, pdfmake 0.2.7
+    #   cdn.datatables.net    — DataTables 2.3.7 + estensioni (Buttons, JSZip, Date)
+    #   cdn.jsdelivr.net      — SweetAlert2
+    #
+    # 'unsafe-inline' (script/style): necessario per snippet inline in Twig e per SweetAlert2/Bootstrap
+    # 'unsafe-eval' (script): richiesto da pdfmake (generazione PDF lato client via Function constructor)
+    # data: (script)          : pdfmake carica vfs_fonts come script data:application/javascript
+    # worker-src blob:        : richiesto da JSZip/DataTables Buttons per i download XLSX
+    # font-src data:          : Font-Awesome inietta font via URI data: (woff2 inline)
+    # img-src data:           : DataTables e Bootstrap usano data URI per icone e spinners
+    # connect-src 'self'      : tutte le chiamate fetch()/XHR sono verso il backend locale
+    # connect-src cdn.datatables.net: richiesto per il caricamento della traduzione i18n it-IT via fetch()
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' data: https://cdnjs.cloudflare.com https://cdn.datatables.net https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.datatables.net; font-src 'self' data: https://cdnjs.cloudflare.com; img-src 'self' data: https://cdnjs.cloudflare.com; connect-src 'self' https://cdn.datatables.net; frame-src 'none'; frame-ancestors 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'"
+
+    # Permissions-Policy — disabilita API browser non necessarie per un pannello admin
+    Header set Permissions-Policy "accelerometer=(), ambient-light-sensor=(), autoplay=(), battery=(), camera=(), display-capture=(), document-domain=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), usb=(), web-share=(), xr-spatial-tracking=()"
+
+    # Referrer-Policy
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+<IfModule mod_negotiation.c>
+    Options -MultiViews
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # ============================================
+    # Force HTTPS — decommenta se il server non è
+    # già dietro un proxy/load balancer HTTPS
+    # ============================================
+    # RewriteCond %{HTTPS} !=on
+    # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+    # Rimuovi www
+    RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+    RewriteRule ^ https://%1%{REQUEST_URI} [R=301,L]
+
+    # Calcola BASE path per installazioni in sottocartella
+    RewriteCond %{REQUEST_URI}::$1 ^(/.+)/(.*)::\2$
+    RewriteRule ^(.*) - [E=BASE:%1]
+
+    # Passa Authorization header a PHP (necessario per JWT / Basic Auth)
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule ^ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Evita redirect loop su index.php diretto
+    RewriteCond %{ENV:REDIRECT_STATUS} ^$
+    RewriteRule ^index\.php(?:/(.*)|$) %{ENV:BASE}/$1 [R=301,L]
+
+    # Serve file statici direttamente (CSS, JS, immagini, ecc.)
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Tutte le altre richieste → front controller Symfony
+    RewriteRule ^ %{ENV:BASE}/index.php [L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    <IfModule mod_alias.c>
+        RedirectMatch 307 ^/$ /index.php/
+    </IfModule>
+</IfModule>

@@ -1,0 +1,178 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Ripristino — {% if table %}{{ table }} — {% endif %}{{ db_name }}{% endblock %}
+{% block page_title %}Ripristino {% if table %}tabella{% else %}database{% endif %}{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{{ path('app_schema_databases') }}">Database</a></li>
+    <li class="breadcrumb-item">
+        <a href="{{ path('app_schema_tables', {name: name, db_name: db_name}) }}">{{ db_name }}</a>
+    </li>
+    <li class="breadcrumb-item active">Ripristino {% if table %}{{ table }}{% else %}da backup{% endif %}</li>
+{% endblock %}
+
+{% block content %}
+
+<div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index:1100"></div>
+
+<div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between gap-2">
+        <span>
+            <i class="fa-solid fa-cloud-arrow-up text-warning me-1"></i>
+            {% if table %}
+                Ripristino tabella <strong>{{ table }}</strong> &rarr;
+            {% else %}
+                Ripristino su
+            {% endif %}
+            database <strong>{{ db_name }}</strong>
+            <span class="text-muted small ms-2">{{ name }}</span>
+        </span>
+        <a href="{{ path('app_schema_tables', {name: name, db_name: db_name}) }}" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i>Torna alle tabelle
+        </a>
+    </div>
+    <div class="card-body">
+
+        {% if backups is empty %}
+            <div class="alert alert-info mb-0">
+                <i class="fa-solid fa-circle-info me-2"></i>
+                Nessun backup disponibile. Esegui prima un backup dalla pagina delle tabelle.
+            </div>
+        {% else %}
+            <p class="text-muted small mb-3">
+                Seleziona un backup da ripristinare nel database <strong>{{ db_name }}</strong>.
+                {% if table %}
+                    L'operazione sovrascriverà i dati esistenti nella tabella di destinazione.
+                {% else %}
+                    Un backup di singola tabella aggiungerà o sovrascriverà quella tabella nel database.
+                    Un dump completo ripristinerà tutte le tabelle contenute nel backup.
+                {% endif %}
+            </p>
+            <table id="table-backups" class="table table-hover align-middle w-100">
+                <thead class="table-light">
+                    <tr>
+                        <th>File backup</th>
+                        <th style="width:110px">Dimensione</th>
+                        <th style="width:160px">Data creazione</th>
+                        <th class="text-end" style="width:130px">Azione</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for backup in backups %}
+                    <tr>
+                        <td>
+                            <i class="fa-solid fa-file-code text-secondary me-2"></i>
+                            <span class="font-monospace small">{{ backup.filename }}</span>
+                        </td>
+                        <td class="text-muted small">
+                            {% if backup.size >= 1048576 %}
+                                {{ (backup.size / 1048576)|number_format(1) }} MB
+                            {% elseif backup.size >= 1024 %}
+                                {{ (backup.size / 1024)|number_format(1) }} KB
+                            {% else %}
+                                {{ backup.size }} B
+                            {% endif %}
+                        </td>
+                        <td class="text-muted small">{{ backup.mtime|date('d/m/Y H:i:s') }}</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-warning btn-restore"
+                                    data-filename="{{ backup.filename }}"
+                                    title="Ripristina questo backup">
+                                <i class="fa-solid fa-cloud-arrow-up me-1"></i>Ripristina
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts_extra %}
+{{ parent() }}
+<script>
+
+const URL_RESTORE_EXEC = '{{ path('app_schema_table_restore_exec') }}';
+const CURRENT_NAME     = '{{ name|e('js') }}';
+const CURRENT_DB       = '{{ db_name|e('js') }}';
+const CURRENT_TABLE    = '{{ table|e('js') }}';
+
+{% if backups is not empty %}
+$('#table-backups').DataTable({
+    paging: true,
+    pageLength: 25,
+    order: [],
+    language: {
+        url: 'https://cdn.datatables.net/plug-ins/2.3.7/i18n/it-IT.json'
+    }
+});
+{% endif %}
+
+function showToast(message, success) {
+    const id = `toast-${Date.now()}`;
+    const bg = success ? 'text-bg-success' : 'text-bg-danger';
+    const icon = success ? 'fa-circle-check' : 'fa-circle-xmark';
+    const html = `
+        <div id="${id}" class="toast align-items-center ${bg} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fa-solid ${icon} me-2"></i>${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>`;
+    document.getElementById('toast-container').insertAdjacentHTML('beforeend', html);
+    const toastEl = document.getElementById(id);
+    const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
+    toast.show();
+    toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+}
+
+async function doRestore(backupFilename, btn) {
+    const target = CURRENT_TABLE
+        ? `nella tabella <strong>${CURRENT_TABLE}</strong> del database <strong>${CURRENT_DB}</strong>`
+        : `nel database <strong>${CURRENT_DB}</strong>`;
+    const result = await Swal.fire({
+        title: 'Conferma ripristino',
+        html: `Ripristino del backup:<br><code class="text-break">${backupFilename}</code><br><br>${target}.<br><br>I dati esistenti verranno sovrascritti.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ripristina',
+        cancelButtonText: 'Annulla',
+        confirmButtonColor: '#ffc107',
+        cancelButtonColor: '#6c757d',
+    });
+    if (!result.isConfirmed) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Ripristino…';
+
+    try {
+        const formData = new FormData();
+        formData.append('name', CURRENT_NAME);
+        formData.append('db_name', CURRENT_DB);
+        formData.append('backup_filename', backupFilename);
+
+        const res = await fetch(URL_RESTORE_EXEC, { method: 'POST', body: formData });
+        const json = await res.json();
+        showToast(json.message, json.is_valid);
+    } catch (e) {
+        showToast('Errore di rete durante il ripristino.', false);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up me-1"></i>Ripristina';
+    }
+}
+
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-restore');
+    if (!btn) return;
+    doRestore(btn.dataset.filename, btn);
+});
+
+</script>
+{% endblock %}

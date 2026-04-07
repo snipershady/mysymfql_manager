@@ -1,0 +1,20 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Nuova assegnazione{% endblock %}
+{% block page_title %}Assegnazioni database{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{{ path('app_database_owner_index') }}">Assegnazioni database</a></li>
+    <li class="breadcrumb-item active">Nuova</li>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:540px;">
+    <div class="card-header">
+        <i class="fa-solid fa-plus text-success me-1"></i>Nuova assegnazione
+    </div>
+    <div class="card-body">
+        {{ include('database_owner/_form.html.twig', {button_label: 'Crea assegnazione'}) }}
+    </div>
+</div>
+{% endblock %}

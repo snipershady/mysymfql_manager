@@ -1,0 +1,694 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Utenti MySQL{% if db_name %} — {{ db_name }}{% endif %}{% endblock %}
+{% block page_title %}Utenti MySQL{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{{ path('app_schema_databases') }}">Database</a></li>
+    <li class="breadcrumb-item active">Utenti{% if db_name %} — {{ db_name }}{% endif %}</li>
+{% endblock %}
+
+{% block content %}
+
+{# ── Modal crea utente ── #}
+<div class="modal fade" id="modal-create-user" tabindex="-1" aria-labelledby="modal-create-user-label" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-create-user-label">
+                    <i class="fa-solid fa-user-plus text-success me-2"></i>Crea nuovo utente
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label for="cu-username" class="form-label">Nome utente <span class="text-danger">*</span></label>
+                        <input type="text" id="cu-username" class="form-control font-monospace"
+                               placeholder="db_user" autocomplete="off" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="cu-password" class="form-label">Password <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="password" id="cu-password" class="form-control font-monospace"
+                                   placeholder="••••••••" autocomplete="new-password">
+                            <button class="btn btn-outline-secondary" type="button" id="btn-cu-toggle-pw" title="Mostra/Nascondi">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label d-block">Host utente</label>
+                        <div class="d-flex flex-wrap gap-3 pt-1">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="cu-host" id="cu-host-any" value="%" checked>
+                                <label class="form-check-label" for="cu-host-any">% <span class="text-muted small">(qualsiasi)</span></label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="cu-host" id="cu-host-localhost" value="localhost">
+                                <label class="form-check-label" for="cu-host-localhost">localhost</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="cu-host" id="cu-host-custom" value="__custom__">
+                                <label class="form-check-label" for="cu-host-custom">Personalizzato</label>
+                            </div>
+                        </div>
+                        <input type="text" id="cu-host-custom-val" class="form-control form-control-sm font-monospace mt-2"
+                               placeholder="192.168.1.%" style="display:none;">
+                    </div>
+                </div>
+
+                <hr>
+
+                <label class="form-label fw-semibold">
+                    Privilegi{% if db_name %} su <strong>{{ db_name }}</strong>{% endif %}
+                </label>
+                <div class="mb-2">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="cu-priv-all" value="ALL PRIVILEGES">
+                        <label class="form-check-label fw-semibold text-danger" for="cu-priv-all">ALL PRIVILEGES</label>
+                    </div>
+                </div>
+                <div id="cu-priv-individual" class="row g-1">
+                    {% set privs = ['SELECT','INSERT','UPDATE','DELETE','CREATE','DROP','INDEX','ALTER','REFERENCES','CREATE VIEW','SHOW VIEW','CREATE ROUTINE','ALTER ROUTINE','EXECUTE','TRIGGER','EVENT'] %}
+                    {% for p in privs %}
+                    <div class="col-6 col-md-3">
+                        <div class="form-check">
+                            <input class="form-check-input cu-priv-single" type="checkbox"
+                                   id="cu-priv-{{ p|lower|replace({' ': '-'}) }}" value="{{ p }}">
+                            <label class="form-check-label small" for="cu-priv-{{ p|lower|replace({' ': '-'}) }}">{{ p }}</label>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" id="btn-cu-submit" class="btn btn-success">
+                    <i class="fa-solid fa-user-plus me-1"></i>Crea utente
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ── Modal cambio password ── #}
+<div class="modal fade" id="modal-change-pw" tabindex="-1" aria-labelledby="modal-change-pw-label" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-change-pw-label">
+                    <i class="fa-solid fa-key text-warning me-2"></i>Cambia password
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">
+                    Utente: <span id="cpw-user-label" class="font-monospace fw-semibold"></span>
+                </p>
+                <input type="hidden" id="cpw-username">
+                <input type="hidden" id="cpw-user-host">
+                <div class="mb-3">
+                    <label for="cpw-password" class="form-label">Nuova password <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <input type="password" id="cpw-password" class="form-control font-monospace"
+                               placeholder="••••••••" autocomplete="new-password">
+                        <button class="btn btn-outline-secondary" type="button" id="btn-cpw-toggle-pw" title="Mostra/Nascondi">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-1">
+                    <label for="cpw-password-confirm" class="form-label">Conferma password <span class="text-danger">*</span></label>
+                    <input type="password" id="cpw-password-confirm" class="form-control font-monospace"
+                           placeholder="••••••••" autocomplete="new-password">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" id="btn-cpw-submit" class="btn btn-warning">
+                    <i class="fa-solid fa-key me-1"></i>Aggiorna password
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ── Modal grant ── #}
+<div class="modal fade" id="modal-grant" tabindex="-1" aria-labelledby="modal-grant-label" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-grant-label">
+                    <i class="fa-solid fa-shield-halved text-primary me-2"></i>Gestione Grant
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+
+                <input type="hidden" id="grant-username">
+                <input type="hidden" id="grant-user-host">
+
+                <p class="text-muted small mb-3">
+                    Utente: <span id="grant-user-label" class="font-monospace fw-semibold"></span>
+                </p>
+
+                <div id="grant-loading" class="text-center py-4">
+                    <i class="fa-solid fa-spinner fa-spin fa-2x text-primary"></i>
+                    <p class="text-muted mt-2 small">Caricamento in corso…</p>
+                </div>
+
+                <div id="grant-body" style="display:none;">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Database disponibili</label>
+                        <p class="text-muted small mb-2">
+                            Seleziona i database su cui assegnare i privilegi.
+                            I database non selezionati perderanno i grant esistenti per questo utente.
+                        </p>
+                        <div id="grant-db-list"
+                             class="border rounded p-2"
+                             style="max-height:220px; overflow-y:auto;">
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <label class="form-label fw-semibold">Privilegi da assegnare ai database selezionati</label>
+                    <div class="mb-2">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="grant-priv-all" value="ALL PRIVILEGES">
+                            <label class="form-check-label fw-semibold text-danger" for="grant-priv-all">ALL PRIVILEGES</label>
+                        </div>
+                    </div>
+                    <div id="grant-priv-individual" class="row g-1">
+                        {% set privs = ['SELECT','INSERT','UPDATE','DELETE','CREATE','DROP','INDEX','ALTER','REFERENCES','CREATE VIEW','SHOW VIEW','CREATE ROUTINE','ALTER ROUTINE','EXECUTE','TRIGGER','EVENT'] %}
+                        {% for p in privs %}
+                        <div class="col-6 col-md-3">
+                            <div class="form-check">
+                                <input class="form-check-input grant-priv-single" type="checkbox"
+                                       id="grant-priv-{{ p|lower|replace({' ': '-'}) }}" value="{{ p }}">
+                                <label class="form-check-label small" for="grant-priv-{{ p|lower|replace({' ': '-'}) }}">{{ p }}</label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="alert alert-warning d-flex align-items-start gap-2 mt-3 mb-0 py-2 small">
+                        <i class="fa-solid fa-triangle-exclamation mt-1"></i>
+                        <span>
+                            Il salvataggio <strong>sostituisce</strong> i grant esistenti sui database selezionati
+                            e <strong>revoca</strong> tutti i permessi sui database deselezionati.
+                        </span>
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" id="btn-grant-submit" class="btn btn-primary" style="display:none;">
+                    <i class="fa-solid fa-shield-halved me-1"></i>Salva grant
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ── Card utenti ── #}
+<div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between gap-2">
+        <span>
+            <i class="fa-solid fa-users text-primary me-1"></i>
+            Utenti MySQL
+            {% if db_name %}&mdash; database <strong>{{ db_name }}</strong>{% endif %}
+            <span class="text-muted small ms-2">{{ name }}</span>
+        </span>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-success"
+                    data-bs-toggle="modal" data-bs-target="#modal-create-user">
+                <i class="fa-solid fa-user-plus me-1"></i>Crea utente
+            </button>
+            <a href="{{ path('app_schema_databases') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fa-solid fa-arrow-left me-1"></i>Torna ai database
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <table id="table-users" class="table table-hover align-middle w-100">
+            <thead class="table-light">
+                <tr>
+                    <th>Utente</th>
+                    <th>Host</th>
+                    {% if db_name %}<th style="width:130px">Grant su DB</th>{% endif %}
+                    <th style="width:120px">Account</th>
+                    <th class="text-end" style="width:110px">Azioni</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts_extra %}
+{{ parent() }}
+<script>
+
+const URL_USERS_GET_DATA  = '{{ path('app_schema_db_users_get_data') }}';
+const URL_USER_DROP       = '{{ path('app_schema_db_user_drop') }}';
+const URL_USER_CREATE     = '{{ path('app_schema_db_user_create') }}';
+const URL_USER_CHANGE_PWD = '{{ path('app_schema_db_user_change_password') }}';
+const URL_GRANTS_DATA     = '{{ path('app_schema_db_user_grants_data') }}';
+const URL_GRANT_SAVE      = '{{ path('app_schema_db_user_grant_save') }}';
+const CURRENT_NAME       = '{{ name|e('js') }}';
+const CURRENT_DB         = '{{ db_name|e('js') }}';
+const HAS_DB_CONTEXT     = {{ db_name is not empty ? 'true' : 'false' }};
+
+function _renderUser(data) {
+    return `<i class="fa-solid fa-user text-secondary me-2"></i><span class="font-monospace">${data}</span>`;
+}
+
+function _renderHost(data) {
+    return `<span class="font-monospace text-muted">${data}</span>`;
+}
+
+function _renderGrant(data, type, row) {
+    return row.has_db_grant
+        ? `<span class="badge text-bg-success"><i class="fa-solid fa-check me-1"></i>Sì</span>`
+        : `<span class="badge text-bg-light text-muted">No</span>`;
+}
+
+function _renderLocked(data, type, row) {
+    return row.account_locked
+        ? `<span class="badge text-bg-warning"><i class="fa-solid fa-lock me-1"></i>Bloccato</span>`
+        : `<span class="badge text-bg-success"><i class="fa-solid fa-lock-open me-1"></i>Attivo</span>`;
+}
+
+function _renderActions(data, type, row) {
+    return `
+        <div class="d-flex gap-1 justify-content-end">
+            <button class="btn btn-sm btn-outline-primary btn-grant"
+                    data-user="${row.user}" data-uhost="${row.host}" title="Gestione Grant">
+                <i class="fa-solid fa-shield-halved"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-warning btn-change-pw"
+                    data-user="${row.user}" data-uhost="${row.host}" title="Cambia password">
+                <i class="fa-solid fa-key"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger btn-drop-user"
+                    data-user="${row.user}" data-uhost="${row.host}" title="Elimina utente">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+        </div>`;
+}
+
+let dt;
+
+function initDatatables() {
+    dt = $('#table-users').DataTable({
+        processing: true,
+        serverSide: false,
+        paging: true,
+        pageLength: 25,
+        lengthMenu: [[25, 50, 100, -1], [25, 50, 100, 'Tutti']],
+        ajax: {
+            url: URL_USERS_GET_DATA,
+            type: 'GET',
+            dataSrc: 'data',
+            data: (o) => { o.name = CURRENT_NAME; o.db_name = CURRENT_DB; return o; },
+        },
+        columns: [
+            { data: 'user',           render: (d) => _renderUser(d) },
+            { data: 'host',           render: (d) => _renderHost(d) },
+            ...(HAS_DB_CONTEXT ? [{ data: 'has_db_grant',  render: _renderGrant,  orderable: false }] : []),
+            { data: 'account_locked', render: _renderLocked, orderable: false },
+            { data: null,             render: _renderActions, orderable: false, className: 'text-end' },
+        ],
+        language: { url: 'https://cdn.datatables.net/plug-ins/2.3.7/i18n/it-IT.json' },
+    });
+}
+
+initDatatables();
+
+/* ── Drop utente ── */
+document.getElementById('table-users').addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-drop-user');
+    if (!btn) return;
+
+    const username  = btn.dataset.user;
+    const userHost  = btn.dataset.uhost;
+
+    const result = await Swal.fire({
+        title: 'Elimina utente',
+        html: `L'utente <strong>${username}@${userHost}</strong> verrà eliminato definitivamente. Digitare <b>${username}</b> per procedere alla cancellazione`,
+        icon: 'error',
+        showCancelButton: true,
+        confirmButtonText: 'Elimina',
+        cancelButtonText: 'Annulla',
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        input: 'text',
+        inputPlaceholder: `Digita "${username}" per confermare`,
+        preConfirm: (val) => {
+            if (val !== username) {
+                Swal.showValidationMessage('Il nome inserito non corrisponde.');
+            }
+        },
+    });
+    if (!result.isConfirmed) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+    try {
+        const fd = new FormData();
+        fd.append('name',      CURRENT_NAME);
+        fd.append('username',  username);
+        fd.append('user_host', userHost);
+
+        const res  = await fetch(URL_USER_DROP, { method: 'POST', body: fd });
+        const json = await res.json();
+        if (json.is_valid) dt.ajax.reload();
+        Swal.fire({ title: json.is_valid ? 'Fatto!' : 'Errore', text: json.message, icon: json.is_valid ? 'success' : 'error' });
+    } catch {
+        Swal.fire({ title: 'Errore', text: 'Errore di rete.', icon: 'error' });
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-trash me-1"></i>Elimina';
+    }
+});
+
+/* ── Apri modal cambio password ── */
+document.getElementById('table-users').addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-change-pw');
+    if (!btn) return;
+    document.getElementById('cpw-username').value   = btn.dataset.user;
+    document.getElementById('cpw-user-host').value  = btn.dataset.uhost;
+    document.getElementById('cpw-user-label').textContent = `${btn.dataset.user}@${btn.dataset.uhost}`;
+    document.getElementById('cpw-password').value         = '';
+    document.getElementById('cpw-password-confirm').value = '';
+    const modalEl = document.getElementById('modal-change-pw');
+    (bootstrap.Modal.getInstance(modalEl) ?? new bootstrap.Modal(modalEl)).show();
+});
+
+/* ── Submit cambio password ── */
+document.getElementById('btn-cpw-submit').addEventListener('click', async () => {
+    const password        = document.getElementById('cpw-password').value;
+    const passwordConfirm = document.getElementById('cpw-password-confirm').value;
+
+    if (!password) {
+        Swal.fire({ title: 'Errore', text: 'Inserisci la nuova password.', icon: 'error' });
+        return;
+    }
+    if (password !== passwordConfirm) {
+        Swal.fire({ title: 'Errore', text: 'Le password non coincidono.', icon: 'error' });
+        return;
+    }
+
+    const btn = document.getElementById('btn-cpw-submit');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Aggiornamento…';
+
+    try {
+        const fd = new FormData();
+        fd.append('name',      CURRENT_NAME);
+        fd.append('username',  document.getElementById('cpw-username').value);
+        fd.append('user_host', document.getElementById('cpw-user-host').value);
+        fd.append('password',  password);
+
+        const res  = await fetch(URL_USER_CHANGE_PWD, { method: 'POST', body: fd });
+        const json = await res.json();
+
+        if (json.is_valid) {
+            bootstrap.Modal.getInstance(document.getElementById('modal-change-pw')).hide();
+        }
+        Swal.fire({ title: json.is_valid ? 'Fatto!' : 'Errore', text: json.message, icon: json.is_valid ? 'success' : 'error' });
+    } catch {
+        Swal.fire({ title: 'Errore', text: 'Errore di rete.', icon: 'error' });
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-key me-1"></i>Aggiorna password';
+    }
+});
+
+/* ── Toggle password modal cambio ── */
+document.getElementById('btn-cpw-toggle-pw').addEventListener('click', () => {
+    const inp  = document.getElementById('cpw-password');
+    const icon = document.querySelector('#btn-cpw-toggle-pw i');
+    inp.type   = inp.type === 'password' ? 'text' : 'password';
+    icon.className = inp.type === 'password' ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+});
+
+/* ── Toggle password modal ── */
+document.getElementById('btn-cu-toggle-pw').addEventListener('click', () => {
+    const inp  = document.getElementById('cu-password');
+    const icon = document.querySelector('#btn-cu-toggle-pw i');
+    inp.type   = inp.type === 'password' ? 'text' : 'password';
+    icon.className = inp.type === 'password' ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+});
+
+/* ── Host personalizzato ── */
+document.querySelectorAll('input[name="cu-host"]').forEach(r => {
+    r.addEventListener('change', () => {
+        document.getElementById('cu-host-custom-val').style.display =
+            r.value === '__custom__' ? '' : 'none';
+    });
+});
+
+/* ── ALL PRIVILEGES toggle ── */
+document.getElementById('cu-priv-all').addEventListener('change', function () {
+    document.querySelectorAll('.cu-priv-single').forEach(cb => {
+        cb.disabled = this.checked;
+        cb.checked  = false;
+    });
+});
+
+/* ── Crea utente ── */
+document.getElementById('btn-cu-submit').addEventListener('click', async () => {
+    const username = document.getElementById('cu-username').value.trim();
+    const password = document.getElementById('cu-password').value;
+
+    if (!username) {
+        Swal.fire({ title: 'Errore', text: 'Il nome utente è obbligatorio.', icon: 'error' });
+        return;
+    }
+    if (!password) {
+        Swal.fire({ title: 'Errore', text: 'La password è obbligatoria.', icon: 'error' });
+        return;
+    }
+
+    const hostRadio = document.querySelector('input[name="cu-host"]:checked');
+    let userHost = hostRadio.value;
+    if (userHost === '__custom__') {
+        userHost = document.getElementById('cu-host-custom-val').value.trim();
+        if (!userHost) {
+            Swal.fire({ title: 'Errore', text: 'Inserisci l\'host personalizzato.', icon: 'error' });
+            return;
+        }
+    }
+
+    const allPriv = document.getElementById('cu-priv-all').checked;
+    let privileges = 'ALL PRIVILEGES';
+    if (!allPriv) {
+        const checked = [...document.querySelectorAll('.cu-priv-single:checked')].map(cb => cb.value);
+        if (checked.length === 0) {
+            Swal.fire({ title: 'Errore', text: 'Seleziona almeno un privilegio o usa ALL PRIVILEGES.', icon: 'error' });
+            return;
+        }
+        privileges = checked.join(',');
+    }
+
+    const btn = document.getElementById('btn-cu-submit');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Creazione…';
+
+    try {
+        const fd = new FormData();
+        fd.append('name',       CURRENT_NAME);
+        fd.append('db_name',    CURRENT_DB);
+        fd.append('username',   username);
+        fd.append('password',   password);
+        fd.append('user_host',  userHost);
+        fd.append('privileges', privileges);
+
+        const res  = await fetch(URL_USER_CREATE, { method: 'POST', body: fd });
+        const json = await res.json();
+
+        if (json.is_valid) {
+            bootstrap.Modal.getInstance(document.getElementById('modal-create-user')).hide();
+            dt.ajax.reload();
+        }
+        Swal.fire({ title: json.is_valid ? 'Fatto!' : 'Errore', text: json.message, icon: json.is_valid ? 'success' : 'error' });
+    } catch {
+        Swal.fire({ title: 'Errore', text: 'Errore di rete.', icon: 'error' });
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-user-plus me-1"></i>Crea utente';
+    }
+});
+
+/* ── Apri modal grant ── */
+document.getElementById('table-users').addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-grant');
+    if (!btn) return;
+
+    const username = btn.dataset.user;
+    const userHost = btn.dataset.uhost;
+
+    document.getElementById('grant-username').value       = username;
+    document.getElementById('grant-user-host').value      = userHost;
+    document.getElementById('grant-user-label').textContent = `${username}@${userHost}`;
+
+    // reset UI
+    document.getElementById('grant-loading').style.display = '';
+    document.getElementById('grant-body').style.display    = 'none';
+    document.getElementById('btn-grant-submit').style.display = 'none';
+    document.getElementById('grant-db-list').innerHTML    = '';
+    document.getElementById('grant-priv-all').checked     = false;
+    document.querySelectorAll('.grant-priv-single').forEach(cb => { cb.checked = false; cb.disabled = false; });
+
+    const modalEl = document.getElementById('modal-grant');
+    (bootstrap.Modal.getInstance(modalEl) ?? new bootstrap.Modal(modalEl)).show();
+
+    // fetch data
+    const url = `${URL_GRANTS_DATA}?name=${encodeURIComponent(CURRENT_NAME)}&username=${encodeURIComponent(username)}&user_host=${encodeURIComponent(userHost)}`;
+    fetch(url)
+        .then(r => r.json())
+        .then(json => {
+            const grantedDbs = new Map(json.grants.map(g => [g.db, g]));
+
+            // populate DB list
+            const listEl = document.getElementById('grant-db-list');
+            listEl.innerHTML = '';
+
+            if (json.databases.length === 0) {
+                listEl.innerHTML = '<p class="text-muted small mb-0 p-1">Nessun database trovato sul server.</p>';
+            } else {
+                json.databases.forEach(db => {
+                    const hasGrant = grantedDbs.has(db.db_name);
+                    const grantInfo = grantedDbs.get(db.db_name);
+
+                    let badgeHtml = '';
+                    if (hasGrant) {
+                        const label = grantInfo.all_privileges
+                            ? '<span class="badge text-bg-danger ms-2">ALL PRIVILEGES</span>'
+                            : `<span class="badge text-bg-secondary ms-2">${grantInfo.privileges.join(', ')}</span>`;
+                        badgeHtml = label;
+                    }
+
+                    const row = document.createElement('div');
+                    row.className = 'form-check d-flex align-items-center py-1 border-bottom';
+                    row.innerHTML = `
+                        <input class="form-check-input grant-db-check flex-shrink-0" type="checkbox"
+                               id="grant-db-${db.db_name}" value="${db.db_name}"
+                               data-previously-granted="${hasGrant ? '1' : '0'}"
+                               ${hasGrant ? 'checked' : ''}>
+                        <label class="form-check-label font-monospace ms-2 flex-grow-1" for="grant-db-${db.db_name}">
+                            ${db.db_name}
+                        </label>
+                        ${badgeHtml}`;
+                    listEl.appendChild(row);
+                });
+            }
+
+            // pre-populate privileges from first granted DB
+            const firstGrant = json.grants[0] ?? null;
+            if (firstGrant) {
+                if (firstGrant.all_privileges) {
+                    document.getElementById('grant-priv-all').checked = true;
+                    document.querySelectorAll('.grant-priv-single').forEach(cb => { cb.disabled = true; });
+                } else {
+                    firstGrant.privileges.forEach(p => {
+                        const cb = document.querySelector(`.grant-priv-single[value="${p}"]`);
+                        if (cb) cb.checked = true;
+                    });
+                }
+            }
+
+            document.getElementById('grant-loading').style.display    = 'none';
+            document.getElementById('grant-body').style.display        = '';
+            document.getElementById('btn-grant-submit').style.display  = '';
+        })
+        .catch(() => {
+            document.getElementById('grant-loading').innerHTML =
+                '<p class="text-danger"><i class="fa-solid fa-circle-exclamation me-1"></i>Errore nel caricamento dei dati.</p>';
+        });
+});
+
+/* ── ALL PRIVILEGES toggle (grant modal) ── */
+document.getElementById('grant-priv-all').addEventListener('change', function () {
+    document.querySelectorAll('.grant-priv-single').forEach(cb => {
+        cb.disabled = this.checked;
+        cb.checked  = false;
+    });
+});
+
+/* ── Submit grant ── */
+document.getElementById('btn-grant-submit').addEventListener('click', async () => {
+    const username = document.getElementById('grant-username').value;
+    const userHost = document.getElementById('grant-user-host').value;
+
+    const allPriv = document.getElementById('grant-priv-all').checked;
+    let privileges = 'ALL PRIVILEGES';
+    if (!allPriv) {
+        const checked = [...document.querySelectorAll('.grant-priv-single:checked')].map(cb => cb.value);
+        if (checked.length === 0) {
+            Swal.fire({ title: 'Errore', text: 'Seleziona almeno un privilegio o usa ALL PRIVILEGES.', icon: 'error' });
+            return;
+        }
+        privileges = checked.join(',');
+    }
+
+    const grants     = [];
+    const revokedDbs = [];
+
+    document.querySelectorAll('.grant-db-check').forEach(cb => {
+        if (cb.checked) {
+            grants.push({ db: cb.value, privileges });
+        } else if (cb.dataset.previouslyGranted === '1') {
+            revokedDbs.push(cb.value);
+        }
+    });
+
+    const btn = document.getElementById('btn-grant-submit');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Salvataggio…';
+
+    try {
+        const fd = new FormData();
+        fd.append('name',        CURRENT_NAME);
+        fd.append('username',    username);
+        fd.append('user_host',   userHost);
+        fd.append('grants',      JSON.stringify(grants));
+        fd.append('revoked_dbs', JSON.stringify(revokedDbs));
+
+        const res  = await fetch(URL_GRANT_SAVE, { method: 'POST', body: fd });
+        const json = await res.json();
+
+        if (json.is_valid) {
+            bootstrap.Modal.getInstance(document.getElementById('modal-grant')).hide();
+            dt.ajax.reload();
+        }
+        Swal.fire({ title: json.is_valid ? 'Fatto!' : 'Errore', text: json.message, icon: json.is_valid ? 'success' : 'error' });
+    } catch {
+        Swal.fire({ title: 'Errore', text: 'Errore di rete.', icon: 'error' });
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-shield-halved me-1"></i>Salva grant';
+    }
+});
+
+/* ── Reset modal alla chiusura ── */
+document.getElementById('modal-create-user').addEventListener('hidden.bs.modal', () => {
+    document.getElementById('cu-username').value = '';
+    document.getElementById('cu-password').value = '';
+    document.getElementById('cu-host-custom-val').style.display = 'none';
+    document.getElementById('cu-host-any').checked = true;
+    document.getElementById('cu-priv-all').checked = false;
+    document.querySelectorAll('.cu-priv-single').forEach(cb => { cb.checked = false; cb.disabled = false; });
+});
+
+</script>
+{% endblock %}

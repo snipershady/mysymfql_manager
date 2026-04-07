@@ -1,0 +1,372 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Tabelle — {{ db_name }}{% endblock %}
+{% block page_title %}Tabelle database{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{{ path('app_schema_databases') }}">Database</a></li>
+    <li class="breadcrumb-item active">{{ db_name }}</li>
+{% endblock %}
+
+{% block content %}
+
+<div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index:1100"></div>
+
+<div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between gap-2">
+        <span>
+            <i class="fa-solid fa-table text-primary me-1"></i>
+            Tabelle di <strong>{{ db_name }}</strong>
+            <span class="text-muted small ms-2">{{ name }}</span>
+            {% if db_version %}
+                <span class="badge bg-secondary ms-2">
+                    <i class="fa-solid fa-code-branch me-1"></i>MySQL {{ db_version }}
+                </span>
+            {% endif %}
+        </span>
+        <div class="d-flex gap-2">
+            <a href="{{ path('app_schema_table_restore', {name: name, db_name: db_name}) }}"
+               class="btn btn-sm btn-outline-warning">
+                <i class="fa-solid fa-cloud-arrow-up me-1"></i>Ripristina da backup
+            </a>
+            <a href="{{ path('app_schema_databases') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fa-solid fa-arrow-left me-1"></i>Torna ai database
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <table id="table-tables" class="table table-hover align-middle w-100">
+            <thead class="table-light">
+                <tr>
+                    <th>Nome tabella</th>
+                    <th>Engine</th>
+                    <th>Collation</th>
+                    <th class="text-end">Record</th>
+                    <th class="text-end">Dim. (MB)</th>
+                    <th class="text-end">Libero (MB)</th>
+                    <th class="text-end">Auto Inc.</th>
+                    <th>Ultima modifica</th>
+                    <th>Commento</th>
+                    <th class="text-end" style="width:230px">Azioni</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+{# Modale Show Create Table #}
+<div class="modal fade" id="modalShowCreate" tabindex="-1" aria-labelledby="modalShowCreateLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalShowCreateLabel">
+                    <i class="fa-solid fa-code me-2 text-primary"></i>Show Create Table — <span id="modalShowCreateTableName"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modalShowCreateSpinner" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Caricamento…</span>
+                    </div>
+                </div>
+                <pre id="modalShowCreateContent" class="d-none bg-light border rounded p-3" style="white-space: pre-wrap; word-break: break-word; font-size: .85rem;"></pre>
+                <div id="modalShowCreateError" class="d-none alert alert-danger">
+                    <i class="fa-solid fa-circle-xmark me-2"></i>Errore nel caricamento della struttura.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="btnCopyDdl" class="btn btn-outline-secondary btn-sm">
+                    <i class="fa-solid fa-copy me-1"></i>Copia DDL
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts_extra %}
+{{ parent() }}
+<script>
+
+const URL_GET_TABLES     = '{{ path('app_show_tables_get_data') }}';
+const URL_TABLE_BACKUP   = '{{ path('app_schema_table_backup') }}';
+const URL_TABLE_RESTORE  = '{{ path('app_schema_table_restore') }}';
+const URL_TABLE_EMPTY    = '{{ path('app_schema_table_empty') }}';
+const URL_TABLE_DROP     = '{{ path('app_schema_table_drop') }}';
+const URL_TABLE_OPTIMIZE     = '{{ path('app_table_optimize') }}';
+const URL_TABLE_SHOW_CREATE  = '{{ path('app_table_show_create') }}';
+const CURRENT_NAME      = '{{ name|e('js') }}';
+const CURRENT_DB        = '{{ db_name|e('js') }}';
+
+function _renderTableName(data, type, row) {
+    return `<i class="fa-solid fa-table text-secondary me-2"></i>${row.nome_tabella}`;
+}
+
+function _renderEngine(data, type, row) {
+    const color = row.engine === 'InnoDB' ? 'primary' : (row.engine === 'MyISAM' ? 'warning' : 'secondary');
+    return `<span class="badge bg-${color}">${row.engine ?? '—'}</span>`;
+}
+
+function _renderCollation(data, type, row) {
+    return `<span class="text-muted small">${row.collation ?? '—'}</span>`;
+}
+
+function _renderNumber(data, type, row) {
+    if (type === 'sort' || type === 'type') return data ?? 0;
+    return data != null ? Number(data).toLocaleString('it-IT') : '—';
+}
+
+function _renderSize(data, type, row) {
+    if (type === 'sort' || type === 'type') return data ?? 0;
+    return data != null ? `<span class="text-end d-block">${Number(data).toLocaleString('it-IT', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>` : '—';
+}
+
+function _renderComment(data, type, row) {
+    if (!row.commento) return '<span class="text-muted">—</span>';
+    return `<span title="${row.commento}" class="small">${row.commento.length > 40 ? row.commento.substring(0, 40) + '…' : row.commento}</span>`;
+}
+
+function _renderActions(data, type, row) {
+    const tableName = row.nome_tabella;
+    const restoreUrl = `${URL_TABLE_RESTORE}?name=${encodeURIComponent(CURRENT_NAME)}&db_name=${encodeURIComponent(CURRENT_DB)}&table=${encodeURIComponent(tableName)}`;
+    return `
+        <div class="d-flex gap-1 justify-content-end flex-wrap">
+            <button class="btn btn-sm btn-outline-primary btn-backup"
+                    data-table="${tableName}" title="Backup tabella">
+                <i class="fa-solid fa-cloud-arrow-down me-1"></i>Backup
+            </button>
+            <a href="${restoreUrl}" class="btn btn-sm btn-outline-warning" title="Ripristina tabella">
+                <i class="fa-solid fa-cloud-arrow-up me-1"></i>Ripristina
+            </a>
+            <button class="btn btn-sm btn-outline-secondary btn-empty"
+                    data-table="${tableName}" title="Svuota tabella">
+                <i class="fa-solid fa-eraser me-1"></i>Svuota
+            </button>
+            <button class="btn btn-sm btn-outline-info btn-show-create"
+                    data-table="${tableName}" title="Show Create Table">
+                <i class="fa-solid fa-code me-1"></i>Show Create
+            </button>
+            <button class="btn btn-sm btn-outline-success btn-optimize"
+                    data-table="${tableName}" title="Ottimizza tabella">
+                <i class="fa-solid fa-bolt me-1"></i>Optimize
+            </button>
+            <button class="btn btn-sm btn-outline-danger btn-drop"
+                    data-table="${tableName}" title="Elimina tabella">
+                <i class="fa-solid fa-trash me-1"></i>Elimina
+            </button>
+        </div>`;
+}
+
+function showToast(message, success) {
+    const id = `toast-${Date.now()}`;
+    const bg = success ? 'text-bg-success' : 'text-bg-danger';
+    const icon = success ? 'fa-circle-check' : 'fa-circle-xmark';
+    const html = `
+        <div id="${id}" class="toast align-items-center ${bg} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fa-solid ${icon} me-2"></i>${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>`;
+    document.getElementById('toast-container').insertAdjacentHTML('beforeend', html);
+    const toastEl = document.getElementById(id);
+    const toast = new bootstrap.Toast(toastEl, { delay: 4000 });
+    toast.show();
+    toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+}
+
+async function postTableAction(url, tableName, btn, loadingLabel) {
+    btn.disabled = true;
+    const original = btn.innerHTML;
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i>${loadingLabel}`;
+
+    try {
+        const formData = new FormData();
+        formData.append('name', CURRENT_NAME);
+        formData.append('db_name', CURRENT_DB);
+        formData.append('table', tableName);
+
+        const res = await fetch(url, { method: 'POST', body: formData });
+        const json = await res.json();
+        showToast(json.message, json.is_valid);
+        return json.is_valid;
+    } catch (e) {
+        showToast('Errore di rete.', false);
+        return false;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = original;
+    }
+}
+
+async function doBackup(tableName, btn) {
+    await postTableAction(URL_TABLE_BACKUP, tableName, btn, 'Backup…');
+}
+
+async function doShowCreate(tableName) {
+    const spinner = document.getElementById('modalShowCreateSpinner');
+    const content = document.getElementById('modalShowCreateContent');
+    const error   = document.getElementById('modalShowCreateError');
+    const title   = document.getElementById('modalShowCreateTableName');
+    const copyBtn = document.getElementById('btnCopyDdl');
+
+    title.textContent = tableName;
+    spinner.classList.remove('d-none');
+    content.classList.add('d-none');
+    error.classList.add('d-none');
+    copyBtn.onclick = null;
+
+    const modal = new bootstrap.Modal(document.getElementById('modalShowCreate'));
+    modal.show();
+
+    try {
+        const url = `${URL_TABLE_SHOW_CREATE}?name=${encodeURIComponent(CURRENT_NAME)}&db_name=${encodeURIComponent(CURRENT_DB)}&table=${encodeURIComponent(tableName)}`;
+        const res  = await fetch(url);
+        const json = await res.json();
+
+        if (!json.is_valid || !json.data?.length) {
+            error.classList.remove('d-none');
+            return;
+        }
+
+        const ddl = json.data[0]['Create Table'] ?? '';
+        content.textContent = ddl;
+        content.classList.remove('d-none');
+
+        copyBtn.onclick = () => {
+            navigator.clipboard.writeText(ddl).then(() => {
+                copyBtn.innerHTML = '<i class="fa-solid fa-check me-1"></i>Copiato!';
+                setTimeout(() => { copyBtn.innerHTML = '<i class="fa-solid fa-copy me-1"></i>Copia DDL'; }, 2000);
+            });
+        };
+    } catch (e) {
+        error.classList.remove('d-none');
+    } finally {
+        spinner.classList.add('d-none');
+    }
+}
+
+async function doOptimize(tableName, btn) {
+    btn.disabled = true;
+    const original = btn.innerHTML;
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i>Ottimizzando…`;
+    try {
+        const url = `${URL_TABLE_OPTIMIZE}?name=${encodeURIComponent(CURRENT_NAME)}&db_name=${encodeURIComponent(CURRENT_DB)}&table=${encodeURIComponent(tableName)}`;
+        const res  = await fetch(url, { method: 'GET' });
+        const json = await res.json();
+        showToast(json.is_valid ? `Tabella "${tableName}" ottimizzata.` : `Errore durante l'ottimizzazione.`, json.is_valid);
+        if (json.is_valid) {
+            $('#table-tables').DataTable().ajax.reload(null, false);
+        }
+    } catch (e) {
+        showToast('Errore di rete.', false);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = original;
+    }
+}
+
+async function doEmpty(tableName, btn) {
+    const result = await Swal.fire({
+        title: 'Svuota tabella',
+        html: `Tutti i record di <strong>${tableName}</strong> verranno eliminati e l'auto-increment verrà azzerato.<br>L'operazione è irreversibile.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Svuota',
+        cancelButtonText: 'Annulla',
+        confirmButtonColor: '#6c757d',
+        cancelButtonColor: '#6c757d',
+        input: 'text',
+        inputPlaceholder: `Digita "${tableName}" per confermare`,
+        preConfirm: (val) => {
+            if (val !== tableName) {
+                Swal.showValidationMessage('Il nome inserito non corrisponde.');
+            }
+        },
+    });
+    if (!result.isConfirmed) return;
+    await postTableAction(URL_TABLE_EMPTY, tableName, btn, 'Svuoto…');
+}
+
+async function doDrop(tableName, btn) {
+    const result = await Swal.fire({
+        title: 'Elimina tabella',
+        html: `La tabella <strong>${tableName}</strong> verrà eliminata definitivamente.<br>L'operazione è irreversibile.`,
+        icon: 'error',
+        showCancelButton: true,
+        confirmButtonText: 'Elimina',
+        cancelButtonText: 'Annulla',
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        input: 'text',
+        inputPlaceholder: `Digita "${tableName}" per confermare`,
+        preConfirm: (val) => {
+            if (val !== tableName) {
+                Swal.showValidationMessage('Il nome inserito non corrisponde.');
+            }
+        },
+    });
+    if (!result.isConfirmed) return;
+    const ok = await postTableAction(URL_TABLE_DROP, tableName, btn, 'Elimino…');
+    if (ok) {
+        const dt = $('#table-tables').DataTable();
+        dt.ajax.reload();
+    }
+}
+
+function initDatatables() {
+    const dt = $('#table-tables').DataTable({
+        processing: true,
+        serverSide: false,
+        paging: true,
+        pageLength: 25,
+        lengthMenu: [[25, 50, 100, -1], [25, 50, 100, 'Tutti']],
+        ajax: {
+            url: URL_GET_TABLES,
+            type: 'GET',
+            dataSrc: 'data',
+            data: function (o) {
+                o.name    = CURRENT_NAME;
+                o.db_name = CURRENT_DB;
+                return o;
+            }
+        },
+        columns: [
+            { data: 'nome_tabella', render: _renderTableName },
+            { data: 'engine',       render: _renderEngine },
+            { data: 'collation',    render: _renderCollation },
+            { data: 'record',       render: _renderNumber,  className: 'text-end' },
+            { data: 'dimensione',   render: _renderSize,    className: 'text-end' },
+            { data: 'empty_space',  render: _renderSize,    className: 'text-end' },
+            { data: 'auto_increment', render: _renderNumber, className: 'text-end' },
+            { data: 'update_time',  defaultContent: '<span class="text-muted">—</span>' },
+            { data: 'commento',     render: _renderComment, orderable: false },
+            { data: null,           render: _renderActions, orderable: false, searchable: false }
+        ],
+        language: {
+            url: 'https://cdn.datatables.net/plug-ins/2.3.7/i18n/it-IT.json'
+        }
+    });
+
+    document.getElementById('table-tables').addEventListener('click', (e) => {
+        const btn = e.target.closest('[class*="btn-backup"],[class*="btn-show-create"],[class*="btn-optimize"],[class*="btn-empty"],[class*="btn-drop"]');
+        if (!btn) return;
+        const table = btn.dataset.table;
+        if (btn.classList.contains('btn-backup'))          doBackup(table, btn);
+        else if (btn.classList.contains('btn-show-create')) doShowCreate(table);
+        else if (btn.classList.contains('btn-optimize'))   doOptimize(table, btn);
+        else if (btn.classList.contains('btn-empty'))      doEmpty(table, btn);
+        else if (btn.classList.contains('btn-drop'))       doDrop(table, btn);
+    });
+}
+
+initDatatables();
+
+</script>
+{% endblock %}

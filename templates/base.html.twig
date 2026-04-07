@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="it">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{% block title %}DB Manager{% endblock %} — MySQL Manager</title>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>🗄️</text></svg>">
+
+        {# Bootstrap 5.3.8 CSS #}
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/css/bootstrap.min.css" integrity="sha512-2bBQCjcnw658Lho4nlXJcc6WkV/UxpE/sAokbXPxQNGqmNdQrWqtw26Ns9kFF/yG792pKR1Sx8/Y1Lf1XN4GKA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+        {# Font Awesome 7.0.1 CSS #}
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css" integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+        {# DataTables 2.3.7 CSS (Bootstrap 5) #}
+        <link href="https://cdn.datatables.net/v/bs5/jszip-3.10.1/dt-2.3.7/b-3.2.6/b-html5-3.2.6/b-print-3.2.6/date-1.6.3/datatables.min.css" rel="stylesheet" integrity="sha384-jcpzz7iGy2rMtOqJYU0p/DWvuHgKci3J0eklqA3XvR80yoYDduwwfiVfdXyqXNrS" crossorigin="anonymous">
+
+        {% block head_extra %}{% endblock %}
+
+        {{ importmap('app') }}
+
+    </head>
+    <body>
+        {% block body %}{% endblock %}
+
+        {# jQuery 3.7.1 #}
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+        {# Bootstrap 5.3.8 JS #}
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/js/bootstrap.min.js" integrity="sha512-nKXmKvJyiGQy343jatQlzDprflyB5c+tKCzGP3Uq67v+lmzfnZUi/ZT+fc6ITZfSC5HhaBKUIvr/nTLCV+7F+Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+        {# DataTables JS — pdfmake + vfs_fonts + datatables #}
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js" integrity="sha384-VFQrHzqBh5qiJIU0uGU5CIW3+OWpdGGJM9LBnGbuIH2mkICcFZ7lPd/AAtI7SNf7" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js" integrity="sha384-/RlQG9uf0M2vcTw3CX7fbqgbj/h8wKxw7C3zu9/GxcBPRKOEcESxaxufwRXqzq6n" crossorigin="anonymous"></script>
+        <script src="https://cdn.datatables.net/v/bs5/jszip-3.10.1/dt-2.3.7/b-3.2.6/b-html5-3.2.6/b-print-3.2.6/date-1.6.3/datatables.min.js" integrity="sha384-XoQCVVIYV2853g5L/gmdyvIXhpYiaZFoJVT2oyHuyLWas0ZPhqRD0vIT5N3/8rEc" crossorigin="anonymous"></script>
+
+        <!-- Altcha Widget -->
+        <script async defer src="https://cdn.jsdelivr.net/npm/altcha@latest/dist/altcha.min.js" type="module"></script>
+        
+        {# SweetAlert2 #}
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+        {% block scripts_extra %}{% endblock %}
+    </body>
+</html>

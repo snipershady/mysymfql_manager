@@ -1,0 +1,165 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Elenco Backup{% endblock %}
+{% block page_title %}Backup{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{{ path('app_schema_databases') }}">Database</a></li>
+    <li class="breadcrumb-item active">Elenco Backup</li>
+{% endblock %}
+
+{% block content %}
+
+<div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index:1100"></div>
+
+<div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between gap-2">
+        <span>
+            <i class="fa-solid fa-cloud-arrow-down text-primary me-1"></i>
+            Backup disponibili
+            <span class="badge bg-secondary ms-1">{{ backups|length }}</span>
+        </span>
+        <a href="{{ path('app_schema_databases') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i>Torna ai database
+        </a>
+    </div>
+    <div class="card-body">
+        {% if backups is empty %}
+            <div class="text-center text-muted py-5">
+                <i class="fa-solid fa-box-open fa-3x mb-3"></i>
+                <p class="mb-0">Nessun file di backup presente.</p>
+            </div>
+        {% else %}
+            <table id="table-backups" class="table table-hover align-middle w-100" style="font-size:.875rem">
+                <thead class="table-light">
+                    <tr>
+                        <th>File</th>
+                        <th style="width:140px">Dimensione</th>
+                        <th style="width:190px">Data</th>
+                        <th class="text-end" style="width:100px">Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for backup in backups %}
+                    <tr class="backup-row" style="cursor:pointer"
+                        data-filename="{{ backup.filename }}"
+                        data-view-url="{{ path('app_schema_backup_view') }}?filename={{ backup.filename|url_encode }}">
+                        <td>
+                            <i class="fa-solid fa-file-code text-muted me-2"></i>
+                            <span class="font-monospace">{{ backup.filename }}</span>
+                        </td>
+                        <td class="text-muted">
+                            {% set kb = (backup.size / 1024)|round(1) %}
+                            {% if kb >= 1024 %}
+                                {{ (kb / 1024)|round(2) }} MB
+                            {% else %}
+                                {{ kb }} KB
+                            {% endif %}
+                        </td>
+                        <td class="text-muted">{{ backup.mtime|date('d/m/Y H:i:s') }}</td>
+                        <td class="text-end">
+                            <a href="{{ path('app_schema_backup_download') }}?filename={{ backup.filename|url_encode }}"
+                               class="btn btn-sm btn-outline-primary btn-download me-1"
+                               title="Scarica backup">
+                                <i class="fa-solid fa-download"></i>
+                            </a>
+                            <button class="btn btn-sm btn-outline-danger btn-delete"
+                                    data-filename="{{ backup.filename }}"
+                                    title="Elimina backup">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts_extra %}
+{{ parent() }}
+<script>
+
+const URL_DELETE = '{{ path('app_schema_backup_delete') }}';
+
+function showToast(message, success) {
+    const id  = `toast-${Date.now()}`;
+    const bg  = success ? 'text-bg-success' : 'text-bg-danger';
+    const ico = success ? 'fa-circle-check' : 'fa-circle-xmark';
+    document.getElementById('toast-container').insertAdjacentHTML('beforeend', `
+        <div id="${id}" class="toast align-items-center ${bg} border-0" role="alert" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body"><i class="fa-solid ${ico} me-2"></i>${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>`);
+    const el = document.getElementById(id);
+    const t  = new bootstrap.Toast(el, { delay: 4000 });
+    t.show();
+    el.addEventListener('hidden.bs.toast', () => el.remove());
+}
+
+/* ── DataTables ── */
+const dt = $('#table-backups').DataTable({
+    order: [[2, 'desc']],
+    pageLength: 25,
+    language: { url: 'https://cdn.datatables.net/plug-ins/2.3.7/i18n/it-IT.json' },
+    columnDefs: [{ orderable: false, targets: 3 }],
+});
+
+/* ── Apri file in nuova scheda cliccando sulla riga ── */
+$('#table-backups').on('click', 'tr.backup-row', (e) => {
+    if (e.target.closest('.btn-delete, .btn-download')) return;
+    const row = e.currentTarget;
+    window.open(row.dataset.viewUrl, '_blank', 'noopener');
+});
+
+/* ── Elimina backup ── */
+$('#table-backups').on('click', '.btn-delete', async (e) => {
+    e.stopPropagation();
+    const btn = e.currentTarget;
+    const filename = btn.dataset.filename;
+
+    const result = await Swal.fire({
+        title: 'Elimina backup',
+        text: `Vuoi eliminare definitivamente il file "${filename}"?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Elimina',
+        cancelButtonText: 'Annulla',
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+    });
+
+    if (!result.isConfirmed) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+    try {
+        const fd = new FormData();
+        fd.append('filename', filename);
+        const res  = await fetch(URL_DELETE, { method: 'POST', body: fd });
+        const json = await res.json();
+        showToast(json.message, json.is_valid);
+        if (json.is_valid) {
+            dt.row(btn.closest('tr')).remove().draw();
+        }
+    } catch {
+        showToast('Errore di rete.', false);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+    }
+});
+
+/* ── Blocca propagazione sul pulsante download ── */
+$('#table-backups').on('click', '.btn-download', (e) => {
+    e.stopPropagation();
+});
+
+</script>
+{% endblock %}
