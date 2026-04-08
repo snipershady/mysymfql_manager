@@ -404,6 +404,63 @@ To run a nightly backup of a specific database at 03:00:
 
 ---
 
+### `app:process-backup-queue` — Process one pending entry from the backup queue
+
+Picks the most recently queued backup request that has not yet been executed (via the web UI "Enqueue Backup" button or the automatic fallback triggered on timeout/502), runs `mysqldump`, and marks the entry as completed.
+
+The command is designed to be called once per invocation — schedule it frequently via cron so the queue drains promptly.
+
+**Usage**
+
+```bash
+php bin/console app:process-backup-queue
+```
+
+**No arguments or options.**
+
+**What it does**
+
+1. Calls `BackupQueueRepository::findLastOneDequeable()` to fetch the newest pending entry.
+2. If the queue is empty, prints a message and exits with `SUCCESS`.
+3. Runs `mysqldump` via `MysqldumpManager::createBackup()` using the server, database, and optional table stored in the entry.
+4. On success: sets `isDequeued = true` and `completedDate = now()` on the entry and flushes to the database.
+5. On failure: exits with `FAILURE` without updating the entry, leaving it available for a subsequent run.
+
+**Output format**
+
+```
+Backup mydb on server_locale ... OK (bkp_2026-04-08_10-00-00_mydb_full.sql)
+```
+
+```
+No pending backup in queue.
+```
+
+**Exit codes**
+
+| Code | Meaning |
+|---|---|
+| `0` | Backup completed successfully, or queue was empty |
+| `1` | `mysqldump` failed |
+
+**Scheduling with cron**
+
+Run every minute so queued backups are processed as soon as possible:
+
+```cron
+* * * * * /usr/bin/php /path/to/mysymfql_manager/bin/console app:process-backup-queue >> /var/log/mysymfql_queue.log 2>&1
+```
+
+Or every 5 minutes if a slight delay is acceptable:
+
+```cron
+*/5 * * * * /usr/bin/php /path/to/mysymfql_manager/bin/console app:process-backup-queue >> /var/log/mysymfql_queue.log 2>&1
+```
+
+> The command processes **one entry per run**. If multiple backups are queued they will be handled in successive cron ticks. This avoids overlapping long-running `mysqldump` processes.
+
+---
+
 ### `app:setup-sqlclient` — Register a MySQL server (SqlClient)
 
 Creates and persists a new SqlClient entry in the application database. The password is automatically encrypted at rest using XSalsa20-Poly1305 (via the `SQLCLIENT_ENCRYPTION_KEY` configured in `.env.local`).

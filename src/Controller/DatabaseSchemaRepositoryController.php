@@ -25,14 +25,12 @@ use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
 #[Route('/schema')]
 final class DatabaseSchemaRepositoryController extends AbstractController
 {
-
     #[Route('/dashboard-stats', name: 'app_schema_dashboard_stats', methods: ['GET'])]
     public function dashboardStats(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository,
-            DatabaseOwnerRepository $databaseOwnerRepository,
-    ): JsonResponse
-    {
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository,
+        DatabaseOwnerRepository $databaseOwnerRepository,
+    ): JsonResponse {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
             return $this->json(['error' => 'Unauthorized'], 401);
@@ -41,7 +39,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
 
         $ownedClients = $sqlClientRepository->findAllOwned($user);
-        $sqlClient = \array_find($ownedClients, fn($ownedClient): bool => $ownedClient->getName() === $name);
+        $sqlClient = \array_find($ownedClients, fn ($ownedClient): bool => $ownedClient->getName() === $name);
 
         if (null === $sqlClient) {
             return $this->json(['error' => 'Server not found or access denied'], Response::HTTP_NOT_FOUND);
@@ -51,18 +49,18 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $databases = $this->showDatabaseWithStatsByOwner($user, $sqlClient, $databaseOwnerRepository, $name);
 
         return $this->json([
-                    'db_count' => count($databases),
-                    'active_connections' => $repo->getActiveConnections(),
-                    'running_processes' => $repo->getRunningProcesses(),
-                    'blocked_processes' => $repo->getBlockedProcesses(),
-                    'databases' => $databases,
+            'db_count' => count($databases),
+            'active_connections' => $repo->getActiveConnections(),
+            'running_processes' => $repo->getRunningProcesses(),
+            'blocked_processes' => $repo->getBlockedProcesses(),
+            'databases' => $databases,
         ]);
     }
 
     #[Route('/databases', name: 'app_schema_databases', methods: ['GET'])]
     public function databases(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository): Response
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository): Response
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
@@ -72,18 +70,18 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $selectedName = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
 
         return $this->render('schema/databases.html.twig', [
-                    'sql_clients' => $sqlClientRepository->findAllOwned($user),
-                    'charsets' => CharsetEnum::cases(),
-                    'collations' => CollationEnum::cases(),
-                    'selected_name' => $selectedName,
+            'sql_clients' => $sqlClientRepository->findAllOwned($user),
+            'charsets' => CharsetEnum::cases(),
+            'collations' => CollationEnum::cases(),
+            'selected_name' => $selectedName,
         ]);
     }
 
     #[Route('/create-database', name: 'app_schema_create_database', methods: ['POST'])]
     public function createDatabase(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository,
-            EntityManagerInterface $entityManagerInterface): JsonResponse
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository,
+        EntityManagerInterface $entityManagerInterface): JsonResponse
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
@@ -139,7 +137,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
             $repo->grantPrivileges($dbName, $username, $privileges, $userHost);
             $repo->flushPrivileges();
         } catch (\Exception $exception) {
-            return $this->json(['is_valid' => false, 'message' => 'Exception: ' . $exception->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return $this->json(['is_valid' => false, 'message' => 'Exception: '.$exception->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
         // Assign the newly created database to the user as "owner"
@@ -152,8 +150,8 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
     #[Route('/tables', name: 'app_schema_tables', methods: ['GET'])]
     public function tables(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository): Response
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository): Response
     {
         $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $dbName = $epti->getTypedValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
@@ -161,9 +159,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (!$sqlClient instanceof SqlClient) {
             return $this->render('schema/tables.html.twig', [
-                        'name' => '',
-                        'db_name' => '',
-                        'db_version' => '',
+                'name' => '',
+                'db_name' => '',
+                'db_version' => '',
             ]);
         }
 
@@ -172,19 +170,18 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $dbVersion = $versionRow['@@version'] ?? null;
 
         return $this->render('schema/tables.html.twig', [
-                    'name' => $name,
-                    'db_name' => $dbName,
-                    'db_version' => $dbVersion,
+            'name' => $name,
+            'db_name' => $dbName,
+            'db_version' => $dbVersion,
         ]);
     }
 
     #[Route('/show-databases-get-data', name: 'app_show_databases_get_data', methods: ['GET'])]
     public function showDatabasesGetData(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository,
-            DatabaseOwnerRepository $databaseOwnerRepository,
-    ): JsonResponse
-    {
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository,
+        DatabaseOwnerRepository $databaseOwnerRepository,
+    ): JsonResponse {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
             return $this->json(['is_valid' => false, 'message' => 'Unauthorized.'], Response::HTTP_UNAUTHORIZED);
@@ -197,15 +194,15 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $versionRow = $databaseRepositoryPdo->getVersion();
 
         return $this->json([
-                    'data' => $this->showDatabaseWithStatsByOwner($user, $sqlClient, $databaseOwnerRepository, $name),
-                    'version' => $versionRow['@@version'] ?? null,
+            'data' => $this->showDatabaseWithStatsByOwner($user, $sqlClient, $databaseOwnerRepository, $name),
+            'version' => $versionRow['@@version'] ?? null,
         ]);
     }
 
     #[Route('/show-tables-get-data', name: 'app_show_tables_get_data', methods: ['GET'])]
     public function showTablesGetData(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository): JsonResponse
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository): JsonResponse
     {
         $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $dbName = $epti->getTypedValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
@@ -219,8 +216,8 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
     #[Route('/show-engine-status-get-data', name: 'app_show_engine_status_get_data', methods: ['GET'])]
     public function showEngineInnodbStatusGetData(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository): JsonResponse
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository): JsonResponse
     {
         $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $sqlClient = $sqlClientRepository->findOneByName($name);
@@ -232,8 +229,8 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
     #[Route('/show-processlist-get-data', name: 'app_show_processlist_get_data', methods: ['GET'])]
     public function showProcessListGetData(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository): JsonResponse
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository): JsonResponse
     {
         $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
 
@@ -246,16 +243,16 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
     #[Route('/engine-status', name: 'app_schema_engine_status', methods: ['GET'])]
     public function engineStatus(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository): Response
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository): Response
     {
         $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $sqlClient = $sqlClientRepository->findOneByName($name);
         $repo = new DatabaseSchemaRepository($sqlClient);
 
         return $this->render('schema/engine_status.html.twig', [
-                    'name' => $name,
-                    'status' => $repo->showEngineInnodbStatus(),
+            'name' => $name,
+            'status' => $repo->showEngineInnodbStatus(),
         ]);
     }
 
@@ -265,14 +262,14 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
 
         return $this->render('schema/process_list.html.twig', [
-                    'name' => $name,
+            'name' => $name,
         ]);
     }
 
     #[Route('/kill-process', name: 'app_schema_kill_process', methods: ['POST'])]
     public function killProcess(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository): JsonResponse
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository): JsonResponse
     {
         $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $pid = (int) $epti->getTypedValueFromPost(needle: 'pid', trim: true, forceString: true, sanitizeHtml: true);
@@ -286,8 +283,8 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $ok = $repo->killProcessById($pid);
 
         return $this->json([
-                    'is_valid' => $ok,
-                    'message' => $ok ? sprintf('Process %d terminated.', $pid) : sprintf('Unable to terminate process %d.', $pid),
+            'is_valid' => $ok,
+            'message' => $ok ? sprintf('Process %d terminated.', $pid) : sprintf('Unable to terminate process %d.', $pid),
         ]);
     }
 
@@ -298,15 +295,15 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $dbName = $epti->getTypedValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
 
         return $this->render('schema/db_users.html.twig', [
-                    'name' => $name,
-                    'db_name' => $dbName,
+            'name' => $name,
+            'db_name' => $dbName,
         ]);
     }
 
     #[Route('/db-users-get-data', name: 'app_schema_db_users_get_data', methods: ['GET'])]
     public function dbUsersGetData(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository): JsonResponse
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository): JsonResponse
     {
         $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $dbName = $epti->getTypedValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
@@ -319,20 +316,20 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $repo = new DatabaseSchemaRepository($sqlClient);
         $users = $repo->listUsers($dbName);
 
-        $data = array_map(static fn(MysqlUser $u): array => [
+        $data = array_map(static fn (MysqlUser $u): array => [
             'user' => $u->user,
             'host' => $u->host,
             'account_locked' => $u->accountLocked,
             'has_db_grant' => $u->hasDbGrant,
-                ], $users);
+        ], $users);
 
         return $this->json(['data' => $data]);
     }
 
     #[Route('/db-user-drop', name: 'app_schema_db_user_drop', methods: ['POST'])]
     public function dbUserDrop(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository): JsonResponse
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository): JsonResponse
     {
         $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $username = $epti->getTypedValueFromPost(needle: 'username', trim: true, forceString: true, sanitizeHtml: false);
@@ -350,15 +347,15 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         }
 
         return $this->json([
-                    'is_valid' => $ok,
-                    'message' => $ok ? 'User deleted successfully.' : 'Error during deletion.',
+            'is_valid' => $ok,
+            'message' => $ok ? 'User deleted successfully.' : 'Error during deletion.',
         ]);
     }
 
     #[Route('/db-user-change-password', name: 'app_schema_db_user_change_password', methods: ['POST'])]
     public function dbUserChangePassword(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository): JsonResponse
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository): JsonResponse
     {
         $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $username = $epti->getTypedValueFromPost(needle: 'username', trim: true, forceString: true, sanitizeHtml: false);
@@ -374,15 +371,15 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $ok = $repo->changeUserPassword($username, $newPassword, $userHost);
 
         return $this->json([
-                    'is_valid' => $ok,
-                    'message' => $ok ? 'Password updated successfully.' : 'Error during password update.',
+            'is_valid' => $ok,
+            'message' => $ok ? 'Password updated successfully.' : 'Error during password update.',
         ]);
     }
 
     #[Route('/db-user-create', name: 'app_schema_db_user_create', methods: ['POST'])]
     public function dbUserCreate(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository): JsonResponse
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository): JsonResponse
     {
         $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $dbName = $epti->getTypedValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
@@ -406,11 +403,10 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
     #[Route('/db-user-grants-data', name: 'app_schema_db_user_grants_data', methods: ['GET'])]
     public function dbUserGrantsData(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository,
-            DatabaseOwnerRepository $databaseOwnerRepository,
-    ): JsonResponse
-    {
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository,
+        DatabaseOwnerRepository $databaseOwnerRepository,
+    ): JsonResponse {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
             return $this->json(['error' => 'Unauthorized'], 401);
@@ -429,15 +425,15 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $databases = $this->showDatabaseWithStatsByOwner($user, $sqlClient, $databaseOwnerRepository, $name);
 
         return $this->json([
-                    'databases' => $databases,
-                    'grants' => $repo->getUserGrantsByDb($username, $userHost),
+            'databases' => $databases,
+            'grants' => $repo->getUserGrantsByDb($username, $userHost),
         ]);
     }
 
     #[Route('/db-user-grant-save', name: 'app_schema_db_user_grant_save', methods: ['POST'])]
     public function dbUserGrantSave(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository): JsonResponse
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository): JsonResponse
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
@@ -468,10 +464,10 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         foreach ($grants as $grant) {
             $repo->grantPrivileges(
-                    dbName: ((string) $grant['db']),
-                    username: $username,
-                    privileges: ((string) $grant['privileges']),
-                    host: $userHost);
+                dbName: ((string) $grant['db']),
+                username: $username,
+                privileges: ((string) $grant['privileges']),
+                host: $userHost);
         }
 
         $repo->flushPrivileges();
@@ -481,8 +477,8 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
     #[Route('/drop-database', name: 'app_schema_drop_database', methods: ['POST'])]
     public function dropDatabase(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository): JsonResponse
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository): JsonResponse
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
@@ -501,15 +497,15 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $ok = $repo->dropDatabase($dbName);
 
         return $this->json([
-                    'is_valid' => $ok,
-                    'message' => $ok ? 'Database deleted successfully.' : 'Error during deletion.',
+            'is_valid' => $ok,
+            'message' => $ok ? 'Database deleted successfully.' : 'Error during deletion.',
         ]);
     }
 
     #[Route('/table-empty', name: 'app_schema_table_empty', methods: ['POST'])]
     public function tableEmpty(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository): JsonResponse
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository): JsonResponse
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
@@ -531,15 +527,15 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $ok = $databaseRepositoryPdo->emptyTable($table);
 
         return $this->json([
-                    'is_valid' => $ok,
-                    'message' => $ok ? 'Table emptied successfully.' : 'Error during table truncation.',
+            'is_valid' => $ok,
+            'message' => $ok ? 'Table emptied successfully.' : 'Error during table truncation.',
         ]);
     }
 
     #[Route('/table-drop', name: 'app_schema_table_drop', methods: ['POST'])]
     public function tableDrop(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository): JsonResponse
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository): JsonResponse
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
@@ -561,16 +557,16 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $ok = $databaseRepositoryPdo->dropTable($table);
 
         return $this->json([
-                    'is_valid' => $ok,
-                    'message' => $ok ? 'Table deleted successfully.' : 'Error during deletion.',
+            'is_valid' => $ok,
+            'message' => $ok ? 'Table deleted successfully.' : 'Error during deletion.',
         ]);
     }
 
     #[Route('/table-backup', name: 'app_schema_table_backup', methods: ['POST'])]
     public function tableBackup(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository,
-            MysqldumpManager $mysqldumpManager): JsonResponse
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository,
+        MysqldumpManager $mysqldumpManager): JsonResponse
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
@@ -579,7 +575,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $dbName = $epti->getTypedValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
-        $table = $epti->getTypedValueFromPost(needle: 'table', trim: true, forceString: true, sanitizeHtml: true);
+        $table = $epti->getTypedValueFromPost(needle: 'table', trim: true, forceString: true, sanitizeHtml: true) ?? null;
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (null === $sqlClient) {
@@ -589,19 +585,19 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $result = $mysqldumpManager->createBackup($sqlClient, $dbName, $table);
 
         return $this->json([
-                    'is_valid' => $result['is_valid'],
-                    'message' => $result['is_valid'] ? 'Backup completed successfully.' : 'Error during backup.',
-                    'backup_filename' => basename((string) $result['backup_filename']),
-                    'msg' => $result['msg'],
+            'is_valid' => $result['is_valid'],
+            'message' => $result['is_valid'] ? 'Backup completed successfully.' : 'Error during backup.',
+            'backup_filename' => basename((string) $result['backup_filename']),
+            'msg' => $result['msg'],
         ]);
     }
 
     #[Route('/enqueue-backup', name: 'app_schema_enqueue_backup', methods: ['POST'])]
     public function enqueueBackup(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository,
-            MysqldumpManager $mysqldumpManager,
-            EntityManagerInterface $entityManagerInterface): JsonResponse
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository,
+        MysqldumpManager $mysqldumpManager,
+        EntityManagerInterface $entityManagerInterface): JsonResponse
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
@@ -610,8 +606,8 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $dbName = $epti->getTypedValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
-        $table = $epti->getTypedValueFromPost(needle: 'table', trim: true, forceString: true, sanitizeHtml: true);
-        
+        $table = $epti->getTypedValueFromPost(needle: 'table', trim: true, forceString: true, sanitizeHtml: true) ?? null;
+
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (null === $sqlClient) {
             return $this->json(['is_valid' => false, 'message' => 'Server not found.'], Response::HTTP_NOT_FOUND);
@@ -623,24 +619,30 @@ final class DatabaseSchemaRepositoryController extends AbstractController
                 ->setOwner($user)
                 ->setSqlClient($sqlClient)
                 ->setTable($table);
-        
-        $entityManagerInterface->persist($databaseQueue);
-        $entityManagerInterface->flush();
+        try {
+            $entityManagerInterface->persist($databaseQueue);
+            $entityManagerInterface->flush();
+        } catch (\Exception $exception) {
+            return $this->json([
+                'is_valid' => false,
+                'message' => 'Eccezione:'.$exception->getMessage(),
+                'database' => $dbName,
+            ]);
+        }
 
         return $this->json([
-                    'is_valid' => true,
-                    'message' => 'Backup enqueued successfully',
-                    'database' => $dbName
+            'is_valid' => true,
+            'message' => 'Backup enqueued successfully',
+            'database' => $dbName,
         ]);
     }
 
     #[Route('/table-restore', name: 'app_schema_table_restore', methods: ['GET'])]
     public function tableRestorePage(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            MysqldumpManager $mysqldumpManager,
-            DatabaseOwnerRepository $databaseOwnerRepository,
-    ): Response
-    {
+        EffectivePrimitiveTypeIdentifierService $epti,
+        MysqldumpManager $mysqldumpManager,
+        DatabaseOwnerRepository $databaseOwnerRepository,
+    ): Response {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
             return $this->json(['is_valid' => false, 'message' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
@@ -654,19 +656,19 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $backups = $mysqldumpManager->listBackups($user, $allOwnedDatabased);
 
         return $this->render('schema/table_restore.html.twig', [
-                    'name' => $name,
-                    'db_name' => $dbName,
-                    'table' => $table,
-                    'backups' => $backups,
+            'name' => $name,
+            'db_name' => $dbName,
+            'table' => $table,
+            'backups' => $backups,
         ]);
     }
 
     #[Route('/table-restore-exec', name: 'app_schema_table_restore_exec', methods: ['POST'])]
     public function tableRestoreExec(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository,
-            MysqldumpManager $mysqldumpManager,
-            DatabaseOwnerRepository $databaseOwnerRepository): JsonResponse
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository,
+        MysqldumpManager $mysqldumpManager,
+        DatabaseOwnerRepository $databaseOwnerRepository): JsonResponse
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
@@ -683,7 +685,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         $allOwnedDatabased = $databaseOwnerRepository->findAllByOwner($user);
         $backups = $mysqldumpManager->listBackups($user, $allOwnedDatabased);
-        $selectedBackup = \array_find($backups, fn($backup): bool => $backup->filename === $backupFilename);
+        $selectedBackup = \array_find($backups, fn ($backup): bool => $backup->filename === $backupFilename);
 
         if (!$selectedBackup) {
             return $this->json(['is_valid' => false, 'message' => 'Backup file not found.'], Response::HTTP_NOT_FOUND);
@@ -692,15 +694,15 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $result = $mysqldumpManager->restoreBackup($sqlClient, $dbName, $selectedBackup->path);
 
         return $this->json([
-                    'is_valid' => $result['is_valid'],
-                    'message' => $result['is_valid'] ? 'Restore completed successfully.' : 'Error during restore.',
+            'is_valid' => $result['is_valid'],
+            'message' => $result['is_valid'] ? 'Restore completed successfully.' : 'Error during restore.',
         ]);
     }
 
     #[Route('/table-optimize', name: 'app_table_optimize', methods: ['GET'])]
     public function tableOptimize(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository): JsonResponse
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository): JsonResponse
     {
         $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $dbName = $epti->getTypedValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
@@ -719,8 +721,8 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
     #[Route('/table-show-create', name: 'app_table_show_create', methods: ['GET'])]
     public function tableShowCreate(
-            EffectivePrimitiveTypeIdentifierService $epti,
-            SqlClientRepository $sqlClientRepository): JsonResponse
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository): JsonResponse
     {
         $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $dbName = $epti->getTypedValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
@@ -745,7 +747,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $allOwnedDatabased = $databaseOwnerRepository->findAllByOwner($user);
 
         return $this->render('schema/backup_list.html.twig', [
-                    'backups' => $mysqldumpManager->listBackups($user, $allOwnedDatabased),
+            'backups' => $mysqldumpManager->listBackups($user, $allOwnedDatabased),
         ]);
     }
 
@@ -763,7 +765,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $allOwnedDatabased = $databaseOwnerRepository->findAllByOwner($user);
 
         $backups = $mysqldumpManager->listBackups($user, $allOwnedDatabased);
-        $backup = \array_find($backups, fn($b): bool => $b->filename === $filename);
+        $backup = \array_find($backups, fn ($b): bool => $b->filename === $filename);
 
         if (!$backup) {
             throw $this->createNotFoundException('Backup file not found.');
@@ -782,9 +784,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
     #[Route('/backup-download', name: 'app_schema_backup_download', methods: ['GET'])]
     public function backupDownload(
-            MysqldumpManager $mysqldumpManager,
-            DatabaseOwnerRepository $allOwnedDatabased,
-            DatabaseOwnerRepository $databaseOwnerRepository): BinaryFileResponse
+        MysqldumpManager $mysqldumpManager,
+        DatabaseOwnerRepository $allOwnedDatabased,
+        DatabaseOwnerRepository $databaseOwnerRepository): BinaryFileResponse
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
@@ -796,7 +798,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         $allOwnedDatabased = $databaseOwnerRepository->findAllByOwner($user);
         $backups = $mysqldumpManager->listBackups($user, $allOwnedDatabased);
-        $backup = \array_find($backups, fn($b): bool => $b->filename === $filename);
+        $backup = \array_find($backups, fn ($b): bool => $b->filename === $filename);
 
         if (!$backup) {
             throw $this->createNotFoundException('Backup file not found.');
@@ -820,7 +822,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         $allOwnedDatabased = $databaseOwnerRepository->findAllByOwner($user);
         $backups = $mysqldumpManager->listBackups($user, $allOwnedDatabased);
-        $backup = \array_find($backups, fn($b): bool => $b->filename === $filename);
+        $backup = \array_find($backups, fn ($b): bool => $b->filename === $filename);
 
         if (!$backup) {
             return $this->json(['is_valid' => false, 'message' => 'Backup file not found.'], Response::HTTP_NOT_FOUND);
@@ -834,10 +836,10 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     }
 
     private function showDatabaseWithStatsByOwner(
-            AppUser $user,
-            SqlClient $sqlClient,
-            DatabaseOwnerRepository $databaseOwnerRepository,
-            string $name): array
+        AppUser $user,
+        SqlClient $sqlClient,
+        DatabaseOwnerRepository $databaseOwnerRepository,
+        string $name): array
     {
         $repo = new DatabaseSchemaRepository($sqlClient);
         $databases = $repo->getDatabasesWithStats();
@@ -850,13 +852,13 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         // Remove from the full database list those not owned by the user
         $allowedDbNames = array_map(
-                fn(DatabaseOwner $o): string => $o->getDbName(),
-                array_filter($ownedDatabase, fn(DatabaseOwner $o): bool => $o->getSqlClient()?->getName() === $name)
+            fn (DatabaseOwner $o): string => $o->getDbName(),
+            array_filter($ownedDatabase, fn (DatabaseOwner $o): bool => $o->getSqlClient()?->getName() === $name)
         );
 
         // Return only the databases owned by the user
         return array_values(
-                array_filter($databases, fn(array $db): bool => in_array($db['db_name'], $allowedDbNames, true))
+            array_filter($databases, fn (array $db): bool => in_array($db['db_name'], $allowedDbNames, true))
         );
     }
 }

@@ -24,8 +24,8 @@ class BackupQueue
     #[ORM\Column(length: 63)]
     private ?string $dbName = null;
 
-    #[ORM\Column(length: 63, nullable: true)]
-    private ?string $table = null;
+    #[ORM\Column(name: 'table_name', length: 63, nullable: true)]
+    private ?string $tableName = null;
 
     #[ORM\Column]
     private bool $isDequeued = false;
@@ -35,7 +35,7 @@ class BackupQueue
 
     #[ORM\Column(nullable: true)]
     private ?\DateTime $completedDate = null;
-    
+
     public function __construct()
     {
         $this->requestDate = new \DateTime();
@@ -120,12 +120,13 @@ class BackupQueue
 
     public function getTable(): ?string
     {
-        return $this->table;
+        return $this->tableName;
     }
 
-    public function setTable(?string $table): static
+    public function setTable(?string $tableName): static
     {
-        $this->table = $table;
+        $this->tableName = $tableName;
+
         return $this;
     }
 }

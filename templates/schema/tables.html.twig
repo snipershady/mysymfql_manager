@@ -94,6 +94,7 @@
 
 const URL_GET_TABLES     = '{{ path('app_show_tables_get_data') }}';
 const URL_TABLE_BACKUP   = '{{ path('app_schema_table_backup') }}';
+const URL_ENQUEUE_BACKUP = '{{ path('app_schema_enqueue_backup') }}';
 const URL_TABLE_RESTORE  = '{{ path('app_schema_table_restore') }}';
 const URL_TABLE_EMPTY    = '{{ path('app_schema_table_empty') }}';
 const URL_TABLE_DROP     = '{{ path('app_schema_table_drop') }}';
@@ -138,6 +139,10 @@ function _renderActions(data, type, row) {
             <button class="btn btn-sm btn-outline-primary btn-backup"
                     data-table="${tableName}" title="Backup tabella">
                 <i class="fa-solid fa-cloud-arrow-down me-1"></i>Backup
+            </button>
+            <button class="btn btn-sm btn-outline-info btn-enqueue-backup"
+                    data-table="${tableName}" title="Accoda backup tabella">
+                <i class="fa-solid fa-list-check me-1"></i>Enqueue Backup
             </button>
             <a href="${restoreUrl}" class="btn btn-sm btn-outline-warning" title="Ripristina tabella">
                 <i class="fa-solid fa-cloud-arrow-up me-1"></i>Ripristina
@@ -206,7 +211,70 @@ async function postTableAction(url, tableName, btn, loadingLabel) {
 }
 
 async function doBackup(tableName, btn) {
-    await postTableAction(URL_TABLE_BACKUP, tableName, btn, 'Backup…');
+    btn.disabled = true;
+    const original = btn.innerHTML;
+    btn.innerHTML  = `<i class="fa-solid fa-spinner fa-spin me-1"></i>Backup…`;
+
+    const buildFd = () => {
+        const fd = new FormData();
+        fd.append('name',    CURRENT_NAME);
+        fd.append('db_name', CURRENT_DB);
+        fd.append('table',   tableName);
+        return fd;
+    };
+
+    const enqueue = async () => {
+        try {
+            const res  = await fetch(URL_ENQUEUE_BACKUP, { method: 'POST', body: buildFd() });
+            const json = await res.json();
+            showToast(json.is_valid ? 'Backup accodato.' : json.message, json.is_valid);
+        } catch {
+            showToast('Impossibile accodare il backup.', false);
+        }
+    };
+
+    try {
+        const controller = new AbortController();
+        const timeoutId  = setTimeout(() => controller.abort(), 300_000);
+        const res = await fetch(URL_TABLE_BACKUP, { method: 'POST', body: buildFd(), signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.status >= 500) {
+            await enqueue();
+        } else {
+            const json = await res.json();
+            showToast(json.message, json.is_valid);
+        }
+    } catch (e) {
+        if (e.name === 'AbortError') {
+            await enqueue();
+        } else {
+            showToast('Errore di rete.', false);
+        }
+    } finally {
+        btn.disabled  = false;
+        btn.innerHTML = original;
+    }
+}
+
+async function doEnqueueBackup(tableName, btn) {
+    btn.disabled = true;
+    const original = btn.innerHTML;
+    btn.innerHTML  = `<i class="fa-solid fa-spinner fa-spin me-1"></i>Accodando…`;
+
+    try {
+        const fd = new FormData();
+        fd.append('name',    CURRENT_NAME);
+        fd.append('db_name', CURRENT_DB);
+        fd.append('table',   tableName);
+        const res  = await fetch(URL_ENQUEUE_BACKUP, { method: 'POST', body: fd });
+        const json = await res.json();
+        showToast(json.is_valid ? 'Backup accodato.' : json.message, json.is_valid);
+    } catch {
+        showToast('Errore di rete.', false);
+    } finally {
+        btn.disabled  = false;
+        btn.innerHTML = original;
+    }
 }
 
 async function doShowCreate(tableName) {
@@ -358,7 +426,8 @@ function initDatatables() {
         const btn = e.target.closest('[class*="btn-backup"],[class*="btn-show-create"],[class*="btn-optimize"],[class*="btn-empty"],[class*="btn-drop"]');
         if (!btn) return;
         const table = btn.dataset.table;
-        if (btn.classList.contains('btn-backup'))          doBackup(table, btn);
+        if (btn.classList.contains('btn-enqueue-backup'))  doEnqueueBackup(table, btn);
+        else if (btn.classList.contains('btn-backup'))      doBackup(table, btn);
         else if (btn.classList.contains('btn-show-create')) doShowCreate(table);
         else if (btn.classList.contains('btn-optimize'))   doOptimize(table, btn);
         else if (btn.classList.contains('btn-empty'))      doEmpty(table, btn);

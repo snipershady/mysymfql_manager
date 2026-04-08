@@ -210,6 +210,7 @@ const URL_PROCESS_LIST     = '{{ path('app_schema_process_list') }}';
 const URL_CREATE_DATABASE  = '{{ path('app_schema_create_database') }}';
 const URL_DROP_DATABASE    = '{{ path('app_schema_drop_database') }}';
 const URL_TABLE_BACKUP     = '{{ path('app_schema_table_backup') }}';
+const URL_ENQUEUE_BACKUP   = '{{ path('app_schema_enqueue_backup') }}';
 
 let dt = null;
 let currentName = '';
@@ -241,6 +242,10 @@ function _renderActions(data, type, row) {
             <button class="btn btn-sm btn-outline-secondary btn-backup-db"
                     data-db="${dbName}" title="Backup completo database">
                 <i class="fa-solid fa-cloud-arrow-down me-1"></i>Backup
+            </button>
+            <button class="btn btn-sm btn-outline-info btn-enqueue-backup-db"
+                    data-db="${dbName}" title="Accoda backup database">
+                <i class="fa-solid fa-list-check me-1"></i>Enqueue Backup
             </button>
             <button class="btn btn-sm btn-outline-danger btn-drop-db"
                     data-db="${dbName}" title="Elimina database">
@@ -389,24 +394,85 @@ document.getElementById('table-databases').addEventListener('click', async (e) =
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Backup…';
 
+    const buildFd = () => {
+        const fd = new FormData();
+        fd.append('name',    currentName);
+        fd.append('db_name', dbName);
+        return fd;
+    };
+
+    const enqueue = async () => {
+        try {
+            const res  = await fetch(URL_ENQUEUE_BACKUP, { method: 'POST', body: buildFd() });
+            const json = await res.json();
+            Swal.fire({
+                title: json.is_valid ? 'Backup in coda' : 'Errore',
+                html:  json.is_valid
+                    ? `Il backup di <strong>${dbName}</strong> è stato accodato e verrà eseguito a breve.`
+                    : json.message,
+                icon: json.is_valid ? 'info' : 'error',
+            });
+        } catch {
+            Swal.fire({ title: 'Errore', text: 'Impossibile accodare il backup.', icon: 'error' });
+        }
+    };
+
+    try {
+        const controller = new AbortController();
+        const timeoutId  = setTimeout(() => controller.abort(), 300_000);
+        const res = await fetch(URL_TABLE_BACKUP, { method: 'POST', body: buildFd(), signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.status >= 500) {
+            await enqueue();
+        } else {
+            const json = await res.json();
+            Swal.fire({
+                title: json.is_valid ? 'Backup completato' : 'Errore',
+                html:  json.is_valid
+                    ? `Backup di <strong>${dbName}</strong> completato.<br><span class="font-monospace small text-muted">${json.backup_filename}</span>`
+                    : json.message,
+                icon: json.is_valid ? 'success' : 'error',
+            });
+        }
+    } catch (e) {
+        if (e.name === 'AbortError') {
+            await enqueue();
+        } else {
+            Swal.fire({ title: 'Errore', text: 'Errore di rete.', icon: 'error' });
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-down me-1"></i>Backup';
+    }
+});
+
+/* ── Enqueue backup database ── */
+document.getElementById('table-databases').addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-enqueue-backup-db');
+    if (!btn) return;
+    const dbName = btn.dataset.db;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Accodando…';
+
     try {
         const fd = new FormData();
         fd.append('name',    currentName);
         fd.append('db_name', dbName);
-        const res  = await fetch(URL_TABLE_BACKUP, { method: 'POST', body: fd });
+        const res  = await fetch(URL_ENQUEUE_BACKUP, { method: 'POST', body: fd });
         const json = await res.json();
         Swal.fire({
-            title: json.is_valid ? 'Backup completato' : 'Errore',
+            title: json.is_valid ? 'Backup in coda' : 'Errore',
             html:  json.is_valid
-                ? `Backup di <strong>${dbName}</strong> completato.<br><span class="font-monospace small text-muted">${json.backup_filename}</span>`
+                ? `Il backup di <strong>${dbName}</strong> è stato accodato e verrà eseguito a breve.`
                 : json.message,
-            icon: json.is_valid ? 'success' : 'error',
+            icon: json.is_valid ? 'info' : 'error',
         });
     } catch {
         Swal.fire({ title: 'Errore', text: 'Errore di rete.', icon: 'error' });
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-down me-1"></i>Backup';
+        btn.innerHTML = '<i class="fa-solid fa-list-check me-1"></i>Enqueue Backup';
     }
 });
 
