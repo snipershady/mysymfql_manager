@@ -24,6 +24,9 @@ class BackupQueue
     #[ORM\Column(length: 63)]
     private ?string $dbName = null;
 
+    #[ORM\Column(length: 63, nullable: true)]
+    private ?string $table = null;
+
     #[ORM\Column]
     private bool $isDequeued = false;
 
@@ -32,6 +35,11 @@ class BackupQueue
 
     #[ORM\Column(nullable: true)]
     private ?\DateTime $completedDate = null;
+    
+    public function __construct()
+    {
+        $this->requestDate = new \DateTime();
+    }
 
     public function getId(): ?int
     {
@@ -107,6 +115,17 @@ class BackupQueue
     {
         $this->completedDate = $completedDate;
 
+        return $this;
+    }
+
+    public function getTable(): ?string
+    {
+        return $this->table;
+    }
+
+    public function setTable(?string $table): static
+    {
+        $this->table = $table;
         return $this;
     }
 }
