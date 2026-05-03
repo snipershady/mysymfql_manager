@@ -811,7 +811,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     }
 
     #[Route('/backup-delete', name: 'app_schema_backup_delete', methods: ['POST'])]
-    public function backupDelete(MysqldumpManager $mysqldumpManager, DatabaseOwnerRepository $allOwnedDatabased): JsonResponse
+    public function backupDelete(MysqldumpManager $mysqldumpManager, DatabaseOwnerRepository $databaseOwnerRepository): JsonResponse
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
