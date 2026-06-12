@@ -32,5 +32,5 @@ class AppUserRepository extends ServiceEntityRepository implements PasswordUpgra
         $user->setPassword($newHashedPassword);
         $this->getEntityManager()->persist($user);
         $this->getEntityManager()->flush();
-    }  
+    }
 }

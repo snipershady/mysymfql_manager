@@ -46,12 +46,12 @@ class MyKernelTestCase extends KernelTestCase
 
         $this->dbNameTestingOne = $_ENV['TEST_DB_NAME_ONE'] ?? 'unit_testing_one';
         $this->dbNameTestingTwo = $_ENV['TEST_DB_NAME_TWO'] ?? 'unit_testing_two';
-        $this->dbNameUser       = $_ENV['TEST_DB_USER'] ?? 'root';
-        $this->dbNamePassword   = $_ENV['TEST_DB_PASSWORD'] ?? '';
-        $this->dummyTableOne    = $_ENV['TEST_DUMMY_TABLE_ONE'] ?? 'jujutsu_kaisen_cast';
-        $this->dummyTableTwo    = $_ENV['TEST_DUMMY_TABLE_TWO'] ?? 'jojo_cast';
-        $this->host             = $_ENV['TEST_DB_HOST'] ?? 'localhost';
-        $this->serverName       = $_ENV['TEST_SERVER_NAME'] ?? 'localhost';
+        $this->dbNameUser = $_ENV['TEST_DB_USER'] ?? 'root';
+        $this->dbNamePassword = $_ENV['TEST_DB_PASSWORD'] ?? '';
+        $this->dummyTableOne = $_ENV['TEST_DUMMY_TABLE_ONE'] ?? 'jujutsu_kaisen_cast';
+        $this->dummyTableTwo = $_ENV['TEST_DUMMY_TABLE_TWO'] ?? 'jojo_cast';
+        $this->host = $_ENV['TEST_DB_HOST'] ?? 'localhost';
+        $this->serverName = $_ENV['TEST_SERVER_NAME'] ?? 'localhost';
 
         $input = new ArgvInput();
         $output = new ConsoleOutput();
