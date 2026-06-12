@@ -24,14 +24,14 @@ class MyKernelTestCase extends KernelTestCase
     public ManagerRegistry $managerRegistry;
     protected SymfonyStyle $io;
     protected \Symfony\Component\DependencyInjection\ContainerInterface $containerInterface;
-    protected const string DB_NAME_TESTING_ONE = 'unit_testing_one';
-    protected const string DB_NAME_TESTING_TWO = 'unit_testing_two';
-    protected const string DB_NAME_USER = 'unit_testing_user';
-    protected const string DB_NAME_PASSWORD = 'unit_testing_password';
-    protected const string DUMMY_TABLE_ONE = 'jujutsu_kaisen_cast';
-    protected const string DUMMY_TABLE_TWO = 'jojo_cast';
-    protected const string HOST = 'localhost';
-    protected const string SERVER_NAME = 'server_locale';
+    protected string $dbNameTestingOne;
+    protected string $dbNameTestingTwo;
+    protected string $dbNameUser;
+    protected string $dbNamePassword;
+    protected string $dummyTableOne;
+    protected string $dummyTableTwo;
+    protected string $host;
+    protected string $serverName;
 
     #[\Override]
     public function setUp(): void
@@ -44,7 +44,14 @@ class MyKernelTestCase extends KernelTestCase
                 ->get('doctrine')
                 ->getManager();
 
-        // $container = static::getContainer();
+        $this->dbNameTestingOne = $_ENV['TEST_DB_NAME_ONE'] ?? 'unit_testing_one';
+        $this->dbNameTestingTwo = $_ENV['TEST_DB_NAME_TWO'] ?? 'unit_testing_two';
+        $this->dbNameUser       = $_ENV['TEST_DB_USER'] ?? 'root';
+        $this->dbNamePassword   = $_ENV['TEST_DB_PASSWORD'] ?? '';
+        $this->dummyTableOne    = $_ENV['TEST_DUMMY_TABLE_ONE'] ?? 'jujutsu_kaisen_cast';
+        $this->dummyTableTwo    = $_ENV['TEST_DUMMY_TABLE_TWO'] ?? 'jojo_cast';
+        $this->host             = $_ENV['TEST_DB_HOST'] ?? 'localhost';
+        $this->serverName       = $_ENV['TEST_SERVER_NAME'] ?? 'localhost';
 
         $input = new ArgvInput();
         $output = new ConsoleOutput();

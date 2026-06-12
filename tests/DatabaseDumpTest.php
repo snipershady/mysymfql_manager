@@ -18,29 +18,29 @@ class DatabaseDumpTest extends MyKernelTestCase
     {
         parent::setUp();
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
-        $sqlClient = $sqlClientRepository->findOneByName(self::SERVER_NAME);
+        $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
 
         // Dropp di tutti i possibili elementi esistenti per il testing
-        $databaseRepositoryPdo->dropUser(self::DB_NAME_USER);
-        $databaseRepositoryPdo->dropDatabase(self::DB_NAME_TESTING_ONE);
-        $databaseRepositoryPdo->dropDatabase(self::DB_NAME_TESTING_TWO);
+        $databaseRepositoryPdo->dropUser($this->dbNameUser);
+        $databaseRepositoryPdo->dropDatabase($this->dbNameTestingOne);
+        $databaseRepositoryPdo->dropDatabase($this->dbNameTestingTwo);
 
         // Creo e popolo DB1
-        $databaseRepositoryPdo->createDatabase(self::DB_NAME_TESTING_ONE);
-        $databaseRepositoryPdo->createUser(self::DB_NAME_USER, self::DB_NAME_PASSWORD);
-        $databaseRepositoryPdo->grantPrivileges(self::DB_NAME_TESTING_ONE, self::DB_NAME_USER);
+        $databaseRepositoryPdo->createDatabase($this->dbNameTestingOne);
+        $databaseRepositoryPdo->createUser($this->dbNameUser, $this->dbNamePassword);
+        $databaseRepositoryPdo->grantPrivileges($this->dbNameTestingOne, $this->dbNameUser);
         $databaseRepositoryPdo->flushPrivileges();
-        $databaseRepositoryPdo->useDbName(self::DB_NAME_TESTING_ONE);
+        $databaseRepositoryPdo->useDbName($this->dbNameTestingOne);
         $databaseRepositoryPdo->createDummyTable();
         $databaseRepositoryPdo->populateDummiTable();
         $databaseRepositoryPdo->createDummyTableTwo();
         $databaseRepositoryPdo->populateDummiTableTwo();
 
         // Creo e popolo DB2
-        $databaseRepositoryPdo->createDatabase(self::DB_NAME_TESTING_TWO);
-        $databaseRepositoryPdo->grantPrivileges(self::DB_NAME_TESTING_TWO, self::DB_NAME_USER);
+        $databaseRepositoryPdo->createDatabase($this->dbNameTestingTwo);
+        $databaseRepositoryPdo->grantPrivileges($this->dbNameTestingTwo, $this->dbNameUser);
         $databaseRepositoryPdo->flushPrivileges();
     }
 
@@ -49,22 +49,22 @@ class DatabaseDumpTest extends MyKernelTestCase
     {
         parent::setUp();
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
-        $sqlClient = $sqlClientRepository->findOneByName(self::SERVER_NAME);
+        $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
-        $databaseRepositoryPdo->dropUser(self::DB_NAME_USER);
-        $databaseRepositoryPdo->dropDatabase(self::DB_NAME_TESTING_ONE);
-        $databaseRepositoryPdo->dropDatabase(self::DB_NAME_TESTING_TWO);
+        $databaseRepositoryPdo->dropUser($this->dbNameUser);
+        $databaseRepositoryPdo->dropDatabase($this->dbNameTestingOne);
+        $databaseRepositoryPdo->dropDatabase($this->dbNameTestingTwo);
     }
 
     public function testDumpTable(): void
     {
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
-        $sqlClient = $sqlClientRepository->findOneByName(self::SERVER_NAME);
+        $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
 
         $msdm = new MysqldumpManager();
 
-        $dbName = self::DB_NAME_TESTING_ONE;
-        $table = self::DUMMY_TABLE_ONE;
+        $dbName = $this->dbNameTestingOne;
+        $table = $this->dummyTableOne;
         $check = $msdm->createBackup($sqlClient, $dbName, $table);
         dump($check);
         $this->assertTrue($check['is_valid']);
@@ -74,36 +74,36 @@ class DatabaseDumpTest extends MyKernelTestCase
     public function testDumpTableAndRestore(): void
     {
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
-        $sqlClient = $sqlClientRepository->findOneByName(self::SERVER_NAME);
+        $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
 
         $msdm = new MysqldumpManager();
 
-        $check = $msdm->createBackup($sqlClient, self::DB_NAME_TESTING_ONE, self::DUMMY_TABLE_ONE);
+        $check = $msdm->createBackup($sqlClient, $this->dbNameTestingOne, $this->dummyTableOne);
         dump($check);
         $this->assertTrue($check['is_valid']);
         $backupFilename = $check['backup_filename'];
 
-        $checkRestore = $msdm->restoreBackup($sqlClient, self::DB_NAME_TESTING_TWO, $backupFilename);
+        $checkRestore = $msdm->restoreBackup($sqlClient, $this->dbNameTestingTwo, $backupFilename);
         dump($checkRestore);
 
-        $databaseRepositoryPdo->useDbName(self::DB_NAME_TESTING_TWO);
+        $databaseRepositoryPdo->useDbName($this->dbNameTestingTwo);
         $arrayTables = $databaseRepositoryPdo->showTables();
         dump($arrayTables);
         $this->assertIsArray($arrayTables);
-        $this->assertSame(self::DUMMY_TABLE_ONE, $arrayTables[0]);
-        $rowCount = $databaseRepositoryPdo->countTableRow(self::DUMMY_TABLE_ONE);
+        $this->assertSame($this->dummyTableOne, $arrayTables[0]);
+        $rowCount = $databaseRepositoryPdo->countTableRow($this->dummyTableOne);
         $this->assertSame($rowCount, 4);
     }
 
     public function testDumpDatabase(): void
     {
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
-        $sqlClient = $sqlClientRepository->findOneByName(self::SERVER_NAME);
+        $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
 
         $msdm = new MysqldumpManager();
-        $check = $msdm->createBackup($sqlClient, self::DB_NAME_TESTING_ONE);
+        $check = $msdm->createBackup($sqlClient, $this->dbNameTestingOne);
         dump($check);
         $this->assertTrue($check['is_valid']);
     }
@@ -111,29 +111,29 @@ class DatabaseDumpTest extends MyKernelTestCase
     public function testDumpAndRestoreDatabase(): void
     {
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
-        $sqlClient = $sqlClientRepository->findOneByName(self::SERVER_NAME);
+        $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
 
         $msdm = new MysqldumpManager();
-        $check = $msdm->createBackup($sqlClient, self::DB_NAME_TESTING_ONE);
+        $check = $msdm->createBackup($sqlClient, $this->dbNameTestingOne);
         dump($check);
         $this->assertTrue($check['is_valid']);
 
         $backupFilename = $check['backup_filename'];
 
-        $msdm->restoreBackup($sqlClient, self::DB_NAME_TESTING_TWO, $backupFilename);
+        $msdm->restoreBackup($sqlClient, $this->dbNameTestingTwo, $backupFilename);
 
-        $databaseRepositoryPdo->useDbName(self::DB_NAME_TESTING_TWO);
+        $databaseRepositoryPdo->useDbName($this->dbNameTestingTwo);
         $arrayTables = $databaseRepositoryPdo->showTables();
         dump($arrayTables);
         $this->assertIsArray($arrayTables);
-        $this->assertSame(self::DUMMY_TABLE_ONE, $arrayTables[1]);
-        $this->assertSame(self::DUMMY_TABLE_TWO, $arrayTables[0]);
-        $rowCount = $databaseRepositoryPdo->countTableRow(self::DUMMY_TABLE_ONE);
+        $this->assertSame($this->dummyTableOne, $arrayTables[1]);
+        $this->assertSame($this->dummyTableTwo, $arrayTables[0]);
+        $rowCount = $databaseRepositoryPdo->countTableRow($this->dummyTableOne);
         $this->assertSame($rowCount, 4);
 
-        $rowCount = $databaseRepositoryPdo->countTableRow(self::DUMMY_TABLE_TWO);
+        $rowCount = $databaseRepositoryPdo->countTableRow($this->dummyTableTwo);
         $this->assertSame($rowCount, 6);
     }
 }

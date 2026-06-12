@@ -5,4 +5,12 @@ parameters:
         - config/
         - public/
         - src/
-        - tests/
+
+    bootstrapFiles:
+        - phpstan-bootstrap.php
+
+    symfony:
+        containerXmlPath: var/cache/dev/App_KernelDevDebugContainer.xml
+
+    doctrine:
+        objectManagerLoader: tests/object-manager.php

@@ -17,29 +17,29 @@ class DatabaseSchemaRepositoryTest extends MyKernelTestCase
     {
         parent::setUp();
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
-        $sqlClient = $sqlClientRepository->findOneByName(self::SERVER_NAME);
+        $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
 
         // Dropp di tutti i possibili elementi esistenti per il testing
-        $databaseRepositoryPdo->dropUser(self::DB_NAME_USER);
-        $databaseRepositoryPdo->dropDatabase(self::DB_NAME_TESTING_ONE);
-        $databaseRepositoryPdo->dropDatabase(self::DB_NAME_TESTING_TWO);
+        $databaseRepositoryPdo->dropUser($this->dbNameUser);
+        $databaseRepositoryPdo->dropDatabase($this->dbNameTestingOne);
+        $databaseRepositoryPdo->dropDatabase($this->dbNameTestingTwo);
 
         // Creo e popolo DB1
-        $databaseRepositoryPdo->createDatabase(self::DB_NAME_TESTING_ONE);
-        $databaseRepositoryPdo->createUser(self::DB_NAME_USER, self::DB_NAME_PASSWORD);
-        $databaseRepositoryPdo->grantPrivileges(self::DB_NAME_TESTING_ONE, self::DB_NAME_USER);
+        $databaseRepositoryPdo->createDatabase($this->dbNameTestingOne);
+        $databaseRepositoryPdo->createUser($this->dbNameUser, $this->dbNamePassword);
+        $databaseRepositoryPdo->grantPrivileges($this->dbNameTestingOne, $this->dbNameUser);
         $databaseRepositoryPdo->flushPrivileges();
-        $databaseRepositoryPdo->useDbName(self::DB_NAME_TESTING_ONE);
+        $databaseRepositoryPdo->useDbName($this->dbNameTestingOne);
         $databaseRepositoryPdo->createDummyTable();
         $databaseRepositoryPdo->populateDummiTable();
         $databaseRepositoryPdo->createDummyTableTwo();
         $databaseRepositoryPdo->populateDummiTableTwo();
 
         // Creo e popolo DB2
-        $databaseRepositoryPdo->createDatabase(self::DB_NAME_TESTING_TWO);
-        $databaseRepositoryPdo->grantPrivileges(self::DB_NAME_TESTING_TWO, self::DB_NAME_USER);
+        $databaseRepositoryPdo->createDatabase($this->dbNameTestingTwo);
+        $databaseRepositoryPdo->grantPrivileges($this->dbNameTestingTwo, $this->dbNameUser);
         $databaseRepositoryPdo->flushPrivileges();
     }
 
@@ -48,17 +48,17 @@ class DatabaseSchemaRepositoryTest extends MyKernelTestCase
     {
         parent::setUp();
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
-        $sqlClient = $sqlClientRepository->findOneByName(self::SERVER_NAME);
+        $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
-        $databaseRepositoryPdo->dropUser(self::DB_NAME_USER);
-        $databaseRepositoryPdo->dropDatabase(self::DB_NAME_TESTING_ONE);
-        $databaseRepositoryPdo->dropDatabase(self::DB_NAME_TESTING_TWO);
+        $databaseRepositoryPdo->dropUser($this->dbNameUser);
+        $databaseRepositoryPdo->dropDatabase($this->dbNameTestingOne);
+        $databaseRepositoryPdo->dropDatabase($this->dbNameTestingTwo);
     }
 
     public function testGetVersion(): void
     {
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
-        $sqlClient = $sqlClientRepository->findOneByName(self::SERVER_NAME);
+        $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
         $res = $databaseRepositoryPdo->getVersion();
@@ -69,7 +69,7 @@ class DatabaseSchemaRepositoryTest extends MyKernelTestCase
     public function testShowDatabases(): void
     {
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
-        $sqlClient = $sqlClientRepository->findOneByName(self::SERVER_NAME);
+        $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
         // dump($databaseRepositoryPdo->showDatabases());
@@ -79,11 +79,11 @@ class DatabaseSchemaRepositoryTest extends MyKernelTestCase
     public function testShowTables(): void
     {
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
-        $sqlClient = $sqlClientRepository->findOneByName(self::SERVER_NAME);
+        $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
         $allDatabase = $databaseRepositoryPdo->showDatabases();
-        if (in_array(self::DB_NAME_TESTING_ONE, $allDatabase)) {
-            $databaseRepositoryPdo->useDbName(self::DB_NAME_TESTING_ONE);
+        if (in_array($this->dbNameTestingOne, $allDatabase)) {
+            $databaseRepositoryPdo->useDbName($this->dbNameTestingOne);
         }
 
         // dump($databaseRepositoryPdo->showTables());
@@ -93,11 +93,11 @@ class DatabaseSchemaRepositoryTest extends MyKernelTestCase
     public function testCreateDbUserAndDrop(): void
     {
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
-        $sqlClient = $sqlClientRepository->findOneByName(self::SERVER_NAME);
+        $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
 
-        $dbName = self::DB_NAME_TESTING_ONE;
-        $username = self::DB_NAME_USER;
-        $password = self::DB_NAME_PASSWORD;
+        $dbName = $this->dbNameTestingOne;
+        $username = $this->dbNameUser;
+        $password = $this->dbNamePassword;
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
         $setupDropDatabase = $databaseRepositoryPdo->dropDatabase($dbName);
@@ -122,7 +122,7 @@ class DatabaseSchemaRepositoryTest extends MyKernelTestCase
     public function testDtoInnoDbStatus(): void
     {
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
-        $sqlClient = $sqlClientRepository->findOneByName(self::SERVER_NAME);
+        $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
         $res = $databaseRepositoryPdo->showEngineInnodbStatus();
@@ -133,7 +133,7 @@ class DatabaseSchemaRepositoryTest extends MyKernelTestCase
     public function testProcessList(): void
     {
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
-        $sqlClient = $sqlClientRepository->findOneByName(self::SERVER_NAME);
+        $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
         $processListArray = $databaseRepositoryPdo->showProcessList();
         // dump($processListArray);
