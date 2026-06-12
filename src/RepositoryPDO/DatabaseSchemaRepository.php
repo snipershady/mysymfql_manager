@@ -611,7 +611,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
         }
     }
 
-    public function getRunningProcesses(): int
+    public function getRunningProcesses(): ?int
     {
         $query = "SELECT COUNT(*) as cnt FROM performance_schema.processlist WHERE COMMAND != 'Sleep'";
         try {
@@ -620,11 +620,15 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return (int) ($stmt->fetch(\PDO::FETCH_ASSOC)['cnt'] ?? 0);
         } catch (\PDOException $pdoException) {
+            // MySQL error 1227: insufficient PROCESS privilege — degrade gracefully
+            if (isset($pdoException->errorInfo[1]) && 1227 === $pdoException->errorInfo[1]) {
+                return null;
+            }
             throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
         }
     }
 
-    public function getBlockedProcesses(): int
+    public function getBlockedProcesses(): ?int
     {
         $query = "SELECT COUNT(*) as cnt FROM information_schema.INNODB_TRX WHERE trx_state = 'LOCK WAIT'";
         try {
@@ -633,6 +637,10 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return (int) ($stmt->fetch(\PDO::FETCH_ASSOC)['cnt'] ?? 0);
         } catch (\PDOException $pdoException) {
+            // MySQL error 1227: insufficient PROCESS privilege — degrade gracefully
+            if (isset($pdoException->errorInfo[1]) && 1227 === $pdoException->errorInfo[1]) {
+                return null;
+            }
             throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
         }
     }

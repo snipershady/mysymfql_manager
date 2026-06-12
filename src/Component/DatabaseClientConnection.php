@@ -52,7 +52,7 @@ final class DatabaseClientConnection
      */
     public static function reset(): void
     {
-        self::$instances = null;
+        self::$instance = null;
     }
 
     private static function createConnection(SqlClient $sqlClient): \PDO
@@ -64,7 +64,7 @@ final class DatabaseClientConnection
             ?? throw new \InvalidArgumentException('SqlClient: username is required.');
 
         $pass = $sqlClient->getPassword() ?? '';
-        $port = $sqlClient->getPort() ?? 3306;
+        $port = $sqlClient->getPort();
 
         $dsn = sprintf(
             'mysql:host=%s;port=%d;charset=utf8mb4',

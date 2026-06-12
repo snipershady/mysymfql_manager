@@ -75,7 +75,7 @@ class RegistrationController extends AbstractController
         Request $request,
         UserPasswordHasherInterface $userPasswordHasher,
         EntityManagerInterface $entityManager,
-        #[CurrentUser] ?UserInterface $user,
+        #[CurrentUser] ?AppUser $user,
     ): Response {
         $form = $this->createForm(ChangePasswordType::class);
         $form->handleRequest($request);

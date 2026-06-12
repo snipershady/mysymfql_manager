@@ -61,7 +61,7 @@ final readonly class MysqldumpManager
                 'exec_result' => null,
                 'output' => null,
                 'result_code' => null,
-                'backup_filename' => $this->backupPath ?? '',
+                'backup_filename' => $this->backupPath,
                 'msg' => $msg,
             ];
         }
@@ -77,7 +77,7 @@ final readonly class MysqldumpManager
                 'exec_result' => null,
                 'output' => null,
                 'result_code' => null,
-                'backup_filename' => $this->backupPath ?? '',
+                'backup_filename' => $this->backupPath,
                 'msg' => $msg,
             ];
         }
@@ -115,7 +115,7 @@ final readonly class MysqldumpManager
             'exec_result' => $execResult,
             'output' => $output,
             'result_code' => $resultCode,
-            'backup_filename' => $backupFilename ?? '',
+            'backup_filename' => $backupFilename,
             'msg' => 'ok',
         ];
     }

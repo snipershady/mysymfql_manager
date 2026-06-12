@@ -2,6 +2,18 @@
 
 Self-hosted web interface to manage MySQL servers, built on the Symfony framework.
 
+## Preview
+
+| Database list | Table list |
+|---|---|
+| ![Database list](https://cdn.spinfo.it/uploads/mysymfql/db_list.png) | ![Table list](https://cdn.spinfo.it/uploads/mysymfql/table_list.png) |
+
+| Engine Status | User Permission |
+|---|---|
+| ![Engine Status](https://cdn.spinfo.it/uploads/mysymfql/engine_status.png) | ![User Permission](https://cdn.spinfo.it/uploads/mysymfql/grant.png) |
+
+---
+
 ## Description
 
 mysymfql_manager is a web application that allows you to manage one or more remote MySQL servers from a single centralized interface. Users are associated with specific MySQL servers and can perform administrative operations such as browsing databases, managing tables, handling MySQL users, running backups and restores, and monitoring server processes — all from the browser.
