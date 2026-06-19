@@ -1,0 +1,27 @@
+services:
+  app:
+    build:
+      context: .
+    image: mysymfql_manager:latest
+    restart: unless-stopped
+    ports:
+      - "29443:29443"
+    env_file:
+      - docker/app.env
+    depends_on:
+      - redis-server
+    volumes:
+      - app_var:/var/www/html/var
+      - app_backups:/var/backups/mysymfql
+
+  # Service name matches REDIS_SERVER's default in .env, so no override needed.
+  redis-server:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+volumes:
+  app_var:
+  app_backups:
+  redis_data:
