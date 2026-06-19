@@ -1,0 +1,51 @@
+services:
+  app:
+    build:
+      context: .
+    image: mysymfql_manager:latest
+    restart: unless-stopped
+    ports:
+      - "29443:29443"
+    env_file:
+      - docker/app.env
+    depends_on:
+      redis-server:
+        condition: service_started
+      db:
+        condition: service_healthy
+    volumes:
+      - app_var:/var/www/html/var
+      - app_backups:/var/backups/mysymfql
+      # Drop your own cert.pem/key.pem here to replace the auto-generated
+      # self-signed certificate (see DOCKER.md).
+      - app_ssl_certs:/etc/apache2/ssl
+
+  # Service name matches REDIS_SERVER's default in .env, so no override needed.
+  redis-server:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+  # Application database only (the MySQL servers managed via the web UI stay
+  # remote, see README.md). Remove this service and point APP_DB_HOSTNAME at
+  # your own remote server if you don't want a bundled database.
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    env_file:
+      - docker/app.env
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  app_var:
+  app_backups:
+  app_ssl_certs:
+  redis_data:
+  db_data:
