@@ -5,7 +5,7 @@ FROM php:8.4-apache-bookworm AS app
 
 # --- System dependencies --------------------------------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        wget gnupg lsb-release ca-certificates \
+        wget gnupg lsb-release ca-certificates openssl \
         libicu-dev libonig-dev unzip git \
     && rm -rf /var/lib/apt/lists/*
 
@@ -36,12 +36,15 @@ RUN install-php-extensions pdo_mysql intl bcmath redis sockets pcntl opcache
 COPY docker/php-prod.ini /usr/local/etc/php/conf.d/zz-app-prod.ini
 
 # --- Apache configuration --------------------------------------------------
-RUN a2enmod rewrite headers \
+# mod_ssl: Apache terminates TLS itself on 29443 (HTTP is not served at all),
+# required for Altcha/WebCrypto which only run in a secure context.
+RUN a2enmod rewrite headers ssl \
     && sed -ri 's/^Listen 80$/Listen 29443/' /etc/apache2/ports.conf
 COPY docker/vhost.conf /etc/apache2/sites-available/000-default.conf
 EXPOSE 29443
 
 ENV APP_ENV=prod
+ENV BACKUP_PATH=/var/backups/mysymfql
 WORKDIR /var/www/html
 
 # --- Dependencies (cached separately from the app source) -----------------
