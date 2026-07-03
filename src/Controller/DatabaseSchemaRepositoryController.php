@@ -9,6 +9,7 @@ use App\Entity\DatabaseOwner;
 use App\Entity\SqlClient;
 use App\Enum\CharsetEnum;
 use App\Enum\CollationEnum;
+use App\Exception\RepositoryException;
 use App\Repository\DatabaseOwnerRepository;
 use App\Repository\SqlClientRepository;
 use App\RepositoryPDO\DatabaseSchemaRepository;
@@ -173,6 +174,71 @@ final class DatabaseSchemaRepositoryController extends AbstractController
             'name' => $name,
             'db_name' => $dbName,
             'db_version' => $dbVersion,
+        ]);
+    }
+
+    #[Route('/query', name: 'app_schema_query', methods: ['GET'])]
+    public function query(
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository): Response
+    {
+        $user = $this->getUser();
+        if (!$user instanceof AppUser) {
+            throw $this->createAccessDeniedException();
+        }
+
+        $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getTypedValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+
+        $sqlClient = $sqlClientRepository->findOneByName($name);
+        if (!$sqlClient instanceof SqlClient) {
+            throw $this->createNotFoundException('Server not found.');
+        }
+
+        return $this->render('schema/query.html.twig', [
+            'name' => $name,
+            'db_name' => $dbName,
+        ]);
+    }
+
+    #[Route('/query-execute', name: 'app_schema_query_execute', methods: ['POST'])]
+    public function queryExecute(
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user instanceof AppUser) {
+            return $this->json(['is_valid' => false, 'message' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getTypedValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+        $sql = $epti->getTypedValueFromPost(needle: 'sql', trim: true, forceString: true, sanitizeHtml: false);
+
+        if ('' === $sql) {
+            return $this->json(['is_valid' => false, 'message' => 'La query non può essere vuota.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $sqlClient = $sqlClientRepository->findOneByName($name);
+        if (null === $sqlClient) {
+            return $this->json(['is_valid' => false, 'message' => 'Server not found.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $repo = new DatabaseSchemaRepository($sqlClient);
+        $repo->useDbName($dbName);
+
+        try {
+            $result = $repo->runQuery($sql);
+        } catch (RepositoryException $repositoryException) {
+            return $this->json(['is_valid' => false, 'message' => $repositoryException->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
+
+        return $this->json([
+            'is_valid' => true,
+            'columns' => $result['columns'],
+            'rows' => $result['rows'],
+            'affected_rows' => $result['affected_rows'],
+            'is_select' => $result['is_select'],
         ]);
     }
 

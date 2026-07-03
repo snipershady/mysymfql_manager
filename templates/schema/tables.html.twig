@@ -25,6 +25,10 @@
             {% endif %}
         </span>
         <div class="d-flex gap-2">
+            <a href="{{ path('app_schema_query', {name: name, db_name: db_name}) }}"
+               class="btn btn-sm btn-outline-primary">
+                <i class="fa-solid fa-terminal me-1"></i>Esegui Query
+            </a>
             <a href="{{ path('app_schema_table_restore', {name: name, db_name: db_name}) }}"
                class="btn btn-sm btn-outline-warning">
                 <i class="fa-solid fa-cloud-arrow-up me-1"></i>Ripristina da backup

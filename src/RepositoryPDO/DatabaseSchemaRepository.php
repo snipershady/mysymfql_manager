@@ -684,6 +684,40 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
     }
 
     /**
+     * Executes an arbitrary single SQL statement typed by the user in the query console.
+     * SELECT-like statements return their result set; other statements (INSERT/UPDATE/
+     * DELETE/DDL) return the number of affected rows.
+     *
+     * @return array{columns: list<string>, rows: list<array<string, mixed>>, affected_rows: int, is_select: bool}
+     */
+    public function runQuery(string $sql): array
+    {
+        try {
+            $stmt = $this->pdo->query($sql);
+
+            if (false === $stmt || 0 === $stmt->columnCount()) {
+                return [
+                    'columns' => [],
+                    'rows' => [],
+                    'affected_rows' => false === $stmt ? 0 : $stmt->rowCount(),
+                    'is_select' => false,
+                ];
+            }
+
+            $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+            return [
+                'columns' => [] === $rows ? [] : array_keys($rows[0]),
+                'rows' => $rows,
+                'affected_rows' => count($rows),
+                'is_select' => true,
+            ];
+        } catch (\PDOException $pdoException) {
+            throw new RepositoryException(__METHOD__ . ': ' . $pdoException->getMessage(), 0, $pdoException);
+        }
+    }
+
+    /**
      * Escapes a MySQL identifier (database name, table name, etc.) by wrapping
      * it in backticks and doubling any backtick present in the value.
      */
