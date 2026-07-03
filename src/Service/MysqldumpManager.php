@@ -86,8 +86,8 @@ final readonly class MysqldumpManager
         chmod($cnfFile, 0600);
 
         try {
-            $suffix = null !== $table ? '_'.$table : '_full';
-            $backupFilename = $this->backupPath.'/bkp_'.$dateString.'_'.$dbName.$suffix.'.sql';
+            $suffix = null !== $table ? '_' . $table : '_full';
+            $backupFilename = $this->backupPath . '/bkp_' . $dateString . '_' . $dbName . $suffix . '.sql';
             $dbLevelFlags = null === $table ? '--routines --events' : '';
             $command = sprintf(
                 'mysqldump --defaults-extra-file=%s -h %s -u %s --single-transaction --set-gtid-purged=OFF --triggers %s %s %s > %s',
@@ -131,7 +131,7 @@ final readonly class MysqldumpManager
             return [];
         }
 
-        $files = glob($this->backupPath.'/bkp_*.sql');
+        $files = glob($this->backupPath . '/bkp_*.sql');
 
         if (false === $files) {
             return [];
@@ -149,7 +149,7 @@ final readonly class MysqldumpManager
             // Remove the fixed prefix to isolate dbName_suffix.sql
             $rest = (string) preg_replace('/^bkp_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_/', '', basename($file));
 
-            return array_any($allowedDbNames, fn (string $dbName): bool => str_starts_with($rest, $dbName.'_'));
+            return array_any($allowedDbNames, fn (string $dbName): bool => str_starts_with($rest, $dbName . '_'));
         });
 
         $backups = array_map(fn (string $file): BackupDump => BackupDump::fromArray([
@@ -170,7 +170,7 @@ final readonly class MysqldumpManager
             return [];
         }
 
-        $files = glob($this->backupPath.'/bkp_*.sql');
+        $files = glob($this->backupPath . '/bkp_*.sql');
 
         if (false === $files) {
             return [];
@@ -202,7 +202,7 @@ final readonly class MysqldumpManager
         }
 
         $realPath = realpath($backupFilename);
-        if (false === $realPath || !str_starts_with($realPath, realpath($this->backupPath).DIRECTORY_SEPARATOR)) {
+        if (false === $realPath || !str_starts_with($realPath, realpath($this->backupPath) . DIRECTORY_SEPARATOR)) {
             throw new \InvalidArgumentException('The backup file must be located in the configured backup directory.');
         }
 

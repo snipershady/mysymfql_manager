@@ -71,10 +71,10 @@ class AppUser implements UserInterface, PasswordAuthenticatedUserInterface, \Str
     {
         return 'AppUser['
                 // . "id=" . $this->id
-                .', username='.$this->username
-                .', email='.$this->email
-                .', roles='.implode(',', $this->roles)
-                .']';
+                . ', username=' . $this->username
+                . ', email=' . $this->email
+                . ', roles=' . implode(',', $this->roles)
+                . ']';
     }
 
     /**
@@ -133,7 +133,7 @@ class AppUser implements UserInterface, PasswordAuthenticatedUserInterface, \Str
     public function __serialize(): array
     {
         $data = (array) $this;
-        $data["\0".self::class."\0password"] = hash('crc32c', (string) $this->password);
+        $data["\0" . self::class . "\0password"] = hash('crc32c', (string) $this->password);
 
         return $data;
     }

@@ -19,12 +19,12 @@ use Rector\ValueObject\PhpVersion;
 
 return RectorConfig::configure()
                 ->withPaths([
-                    __DIR__.'/src',
-                    __DIR__.'/config',
-                    __DIR__.'/templates',
+                    __DIR__ . '/src',
+                    __DIR__ . '/config',
+                    __DIR__ . '/templates',
                 ])
                 ->withSkip([
-                    __DIR__.'/src/Twig',
+                    __DIR__ . '/src/Twig',
                     // __DIR__.'/src/Command',
                     // InlineClassRoutePrefixRector::class,
                     // NewMethodCallWithoutParenthesesRector::class,

@@ -46,7 +46,7 @@ class SqlClient implements \Stringable
     #[\Override]
     public function __toString(): string
     {
-        return $this->name.'@'.$this->host;
+        return $this->name . '@' . $this->host;
     }
 
     public function getId(): ?int

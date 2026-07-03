@@ -43,8 +43,8 @@ final readonly class FieldEncryptor
 
         sodium_memzero($plaintext);
 
-        return self::PREFIX.sodium_bin2base64(
-            $nonce.$ciphertext,
+        return self::PREFIX . sodium_bin2base64(
+            $nonce . $ciphertext,
             SODIUM_BASE64_VARIANT_URLSAFE_NO_PADDING
         );
     }

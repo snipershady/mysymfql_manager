@@ -33,7 +33,7 @@ class SetupCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
         $projectDir = $this->getApplication()->getKernel()->getProjectDir();
-        $envLocalPath = $projectDir.'/.env.local';
+        $envLocalPath = $projectDir . '/.env.local';
 
         if ($this->needsEnvSetup($envLocalPath)) {
             $result = $this->setupEnv($io, $envLocalPath);
@@ -61,7 +61,7 @@ class SetupCommand extends Command
 
         $io->section('Creating data structure...');
 
-        $consolePath = $projectDir.'/bin/console';
+        $consolePath = $projectDir . '/bin/console';
         $php = \PHP_BINARY;
 
         $diff = new Process([$php, $consolePath, 'doctrine:migrations:diff', '--no-interaction']);
@@ -145,7 +145,7 @@ class SetupCommand extends Command
 
         $content = file_get_contents($envLocalPath);
 
-        return array_any(['APP_SECRET', 'SQLCLIENT_ENCRYPTION_KEY', 'ALTCHAKEY', 'APP_DB_NAME', 'APP_DB_HOSTNAME', 'APP_DB_USER', 'APP_DB_PASSWORD', 'BACKUP_PATH'], fn ($key): bool => !preg_match('/^'.$key.'=(?!CHANGE\s*$)\S/m', $content));
+        return array_any(['APP_SECRET', 'SQLCLIENT_ENCRYPTION_KEY', 'ALTCHAKEY', 'APP_DB_NAME', 'APP_DB_HOSTNAME', 'APP_DB_USER', 'APP_DB_PASSWORD', 'BACKUP_PATH'], fn ($key): bool => !preg_match('/^' . $key . '=(?!CHANGE\s*$)\S/m', $content));
     }
 
     private function setupEnv(SymfonyStyle $io, string $envLocalPath): int
@@ -158,9 +158,9 @@ class SetupCommand extends Command
         $altchaKey = bin2hex(random_bytes(32));
 
         $io->writeln('Automatically generated keys:');
-        $io->writeln(' * APP_SECRET              = '.$appSecret);
-        $io->writeln(' * SQLCLIENT_ENCRYPTION_KEY = '.$encryptionKey);
-        $io->writeln(' * ALTCHAKEY               = '.$altchaKey);
+        $io->writeln(' * APP_SECRET              = ' . $appSecret);
+        $io->writeln(' * SQLCLIENT_ENCRYPTION_KEY = ' . $encryptionKey);
+        $io->writeln(' * ALTCHAKEY               = ' . $altchaKey);
         $io->newLine();
 
         // Read existing .env.local to preserve any existing values
@@ -177,7 +177,7 @@ class SetupCommand extends Command
 
         $notEmpty = static function (?string $value, string $label): string {
             if (empty(trim((string) $value))) {
-                throw new \RuntimeException($label.' cannot be empty.');
+                throw new \RuntimeException($label . ' cannot be empty.');
             }
 
             return trim($value);
@@ -201,16 +201,16 @@ class SetupCommand extends Command
         $managedKeys = ['APP_SECRET', 'SQLCLIENT_ENCRYPTION_KEY', 'ALTCHAKEY', 'APP_DB_NAME', 'APP_DB_HOSTNAME', 'APP_DB_PORT', 'APP_DB_USER', 'APP_DB_PASSWORD', 'BACKUP_PATH', 'MAILER_DSN'];
 
         $lines = [
-            'APP_SECRET='.$appSecret,
-            'SQLCLIENT_ENCRYPTION_KEY='.$encryptionKey,
-            'ALTCHAKEY='.$altchaKey,
-            'APP_DB_NAME='.$dbName,
-            'APP_DB_HOSTNAME='.$dbHost,
-            'APP_DB_PORT='.$dbPort,
-            'APP_DB_USER='.$dbUser,
-            'APP_DB_PASSWORD='.$dbPass,
-            'BACKUP_PATH='.$backupPath,
-            'MAILER_DSN='.$mailerDsn,
+            'APP_SECRET=' . $appSecret,
+            'SQLCLIENT_ENCRYPTION_KEY=' . $encryptionKey,
+            'ALTCHAKEY=' . $altchaKey,
+            'APP_DB_NAME=' . $dbName,
+            'APP_DB_HOSTNAME=' . $dbHost,
+            'APP_DB_PORT=' . $dbPort,
+            'APP_DB_USER=' . $dbUser,
+            'APP_DB_PASSWORD=' . $dbPass,
+            'BACKUP_PATH=' . $backupPath,
+            'MAILER_DSN=' . $mailerDsn,
         ];
 
         // Preserve any other existing keys not managed here
@@ -220,7 +220,7 @@ class SetupCommand extends Command
             }
         }
 
-        file_put_contents($envLocalPath, implode("\n", $lines)."\n");
+        file_put_contents($envLocalPath, implode("\n", $lines) . "\n");
 
         $io->success('.env.local file configured successfully.');
 

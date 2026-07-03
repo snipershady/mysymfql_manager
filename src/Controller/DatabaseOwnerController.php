@@ -69,7 +69,7 @@ final class DatabaseOwnerController extends AbstractController
     #[Route('/{id}', name: 'app_database_owner_delete', methods: ['POST'])]
     public function delete(Request $request, DatabaseOwner $databaseOwner, EntityManagerInterface $entityManager): \Symfony\Component\HttpFoundation\RedirectResponse
     {
-        if ($this->isCsrfTokenValid('delete'.$databaseOwner->getId(), $request->getPayload()->getString('_token'))) {
+        if ($this->isCsrfTokenValid('delete' . $databaseOwner->getId(), $request->getPayload()->getString('_token'))) {
             $entityManager->remove($databaseOwner);
             $entityManager->flush();
 

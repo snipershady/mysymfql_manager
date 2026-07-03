@@ -87,7 +87,7 @@ final class AppUserController extends AbstractController
     #[Route('/{id}', name: 'app_user_delete', methods: ['POST'])]
     public function delete(Request $request, AppUser $appUser, EntityManagerInterface $entityManager): \Symfony\Component\HttpFoundation\RedirectResponse
     {
-        if ($this->isCsrfTokenValid('delete'.$appUser->getId(), $request->getPayload()->getString('_token'))) {
+        if ($this->isCsrfTokenValid('delete' . $appUser->getId(), $request->getPayload()->getString('_token'))) {
             $entityManager->remove($appUser);
             $entityManager->flush();
         }

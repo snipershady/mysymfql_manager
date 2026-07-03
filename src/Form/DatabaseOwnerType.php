@@ -19,7 +19,7 @@ class DatabaseOwnerType extends AbstractType
         $builder
             ->add('sqlClient', EntityType::class, [
                 'class' => SqlClient::class,
-                'choice_label' => fn (SqlClient $c): string => $c->getName().' — '.$c->getHost().':'.$c->getPort(),
+                'choice_label' => fn (SqlClient $c): string => $c->getName() . ' — ' . $c->getHost() . ':' . $c->getPort(),
                 'choice_attr' => fn (SqlClient $c): array => ['data-name' => $c->getName()],
                 'label' => 'Server MySQL',
                 'placeholder' => '— Select a server —',

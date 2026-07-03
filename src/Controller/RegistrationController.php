@@ -131,7 +131,7 @@ class RegistrationController extends AbstractController
                 $this->addFlash('success', 'A new password has been sent to the provided email address');
             } else {
                 // Hash and set the new password
-                $newPlainPassword = md5(microtime(true).$secret);
+                $newPlainPassword = md5(microtime(true) . $secret);
                 $hashedPassword = $userPasswordHasher->hashPassword($user, $newPlainPassword);
                 $user->setPassword($hashedPassword);
 
@@ -142,8 +142,8 @@ class RegistrationController extends AbstractController
                 // Send email to the user with the new password
                 $now = new DateTimeIt();
                 $nowString = $now->format('Y-m-d H:i:s');
-                $msg = '<p>'.$prefix.' - Your new password is '.$newPlainPassword.'</p><p>Date: '.$nowString.'</p>';
-                $subject = $prefix.' - Password reset request '.$nowString;
+                $msg = '<p>' . $prefix . ' - Your new password is ' . $newPlainPassword . '</p><p>Date: ' . $nowString . '</p>';
+                $subject = $prefix . ' - Password reset request ' . $nowString;
 
                 $addressTo = new Address($email, $user->getUserIdentifier());
                 $response = $emailHubService->emailResetPassword($addressTo, $msg, $subject);

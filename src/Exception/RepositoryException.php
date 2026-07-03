@@ -11,6 +11,6 @@ class RepositoryException extends \Exception
 {
     public function __construct(string $message = '', int $code = 0, ?\Throwable $throwable = null)
     {
-        parent::__construct($message.(null !== $throwable ? ', caller message = '.$throwable->getMessage() : ''), $code, $throwable);
+        parent::__construct($message . (null !== $throwable ? ', caller message = ' . $throwable->getMessage() : ''), $code, $throwable);
     }
 }

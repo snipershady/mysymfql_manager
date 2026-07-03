@@ -72,7 +72,7 @@ class BackupAllCommand extends Command
                 } else {
                     $io->writeln('<fg=red>FAILED</>');
                     if (!empty($result['output'])) {
-                        $io->writeln(array_map(fn (string $l): string => '    '.$l, $result['output']));
+                        $io->writeln(array_map(fn (string $l): string => '    ' . $l, $result['output']));
                     }
                     ++$failure;
                 }

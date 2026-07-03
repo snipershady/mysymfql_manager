@@ -29,7 +29,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->fetchAll(\PDO::FETCH_COLUMN);
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -43,7 +43,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->fetch(\PDO::FETCH_ASSOC);
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -55,7 +55,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->execute();
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -67,7 +67,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->execute();
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -79,7 +79,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->execute();
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -91,7 +91,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->execute();
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -108,7 +108,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->fetchAll(\PDO::FETCH_COLUMN);
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -122,7 +122,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -159,7 +159,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -173,7 +173,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->fetch(\PDO::FETCH_ASSOC)['table_row'] ?? 0;
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -192,7 +192,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->execute();
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -211,7 +211,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->execute();
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -227,7 +227,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->execute();
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -247,7 +247,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->execute();
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -265,7 +265,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->execute();
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -278,7 +278,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->execute();
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -295,7 +295,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->execute();
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -310,7 +310,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->execute();
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -331,7 +331,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->execute() && $stmtAlter->execute();
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -348,7 +348,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->fetchAll(\PDO::FETCH_COLUMN);
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -365,7 +365,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->execute();
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -383,7 +383,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->execute();
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -403,7 +403,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->execute();
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -449,7 +449,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
                 $stmt->fetchAll(\PDO::FETCH_ASSOC)
             );
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -505,7 +505,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $result;
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -522,7 +522,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->execute();
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -534,7 +534,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->execute();
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -546,7 +546,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->execute();
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -560,7 +560,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return InnodbStatus::fromArray($stmt->fetch(\PDO::FETCH_ASSOC));
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -593,7 +593,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $result;
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -607,7 +607,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return (int) ($row['Value'] ?? 0);
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -624,7 +624,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
             if (isset($pdoException->errorInfo[1]) && 1227 === $pdoException->errorInfo[1]) {
                 return null;
             }
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -641,7 +641,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
             if (isset($pdoException->errorInfo[1]) && 1227 === $pdoException->errorInfo[1]) {
                 return null;
             }
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -662,7 +662,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
                   FROM information_schema.SCHEMATA s
                   LEFT JOIN information_schema.TABLES t ON t.TABLE_SCHEMA = s.SCHEMA_NAME
                   WHERE s.SCHEMA_NAME NOT IN (:information_schema, :mysql, :performance_schema, :sys)
-                  '.$andWhere.'
+                  ' . $andWhere . '
                   GROUP BY s.SCHEMA_NAME
                   ORDER BY s.SCHEMA_NAME';
 
@@ -679,7 +679,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         } catch (\PDOException $pdoException) {
-            throw new RepositoryException(__METHOD__.$pdoException->getMessage(), 0, $pdoException);
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
@@ -689,6 +689,6 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
      */
     private function quoteIdentifier(string $identifier): string
     {
-        return '`'.str_replace('`', '``', $identifier).'`';
+        return '`' . str_replace('`', '``', $identifier) . '`';
     }
 }

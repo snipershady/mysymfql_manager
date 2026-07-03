@@ -137,7 +137,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
             $repo->grantPrivileges($dbName, $username, $privileges, $userHost);
             $repo->flushPrivileges();
         } catch (\Exception $exception) {
-            return $this->json(['is_valid' => false, 'message' => 'Exception: '.$exception->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return $this->json(['is_valid' => false, 'message' => 'Exception: ' . $exception->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
         // Assign the newly created database to the user as "owner"
@@ -625,7 +625,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         } catch (\Exception $exception) {
             return $this->json([
                 'is_valid' => false,
-                'message' => 'Eccezione:'.$exception->getMessage(),
+                'message' => 'Eccezione:' . $exception->getMessage(),
                 'database' => $dbName,
             ]);
         }
