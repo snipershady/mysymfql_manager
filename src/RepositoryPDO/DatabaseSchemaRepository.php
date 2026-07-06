@@ -684,6 +684,35 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
     }
 
     /**
+     * Returns, for every base table of the given database, the ordered list of its column names.
+     * Used to feed the SQL editor's autocomplete (CodeMirror sql-hint) with schema info.
+     *
+     * @return array<string, list<string>>
+     */
+    public function getColumnsBySchema(string $dbName): array
+    {
+        $query = 'SELECT TABLE_NAME, COLUMN_NAME
+                  FROM information_schema.COLUMNS
+                  WHERE TABLE_SCHEMA = :db_name
+                  ORDER BY TABLE_NAME, ORDINAL_POSITION';
+
+        try {
+            $stmt = $this->pdo->prepare($query);
+            $stmt->bindValue(':db_name', $dbName);
+            $stmt->execute();
+
+            $tables = [];
+            foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+                $tables[$row['TABLE_NAME']][] = $row['COLUMN_NAME'];
+            }
+
+            return $tables;
+        } catch (\PDOException $pdoException) {
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
+        }
+    }
+
+    /**
      * Executes an arbitrary single SQL statement typed by the user in the query console.
      * SELECT-like statements return their result set; other statements (INSERT/UPDATE/
      * DELETE/DDL) return the number of affected rows.

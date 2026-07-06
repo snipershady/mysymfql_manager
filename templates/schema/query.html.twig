@@ -13,6 +13,8 @@
     {{ parent() }}
     {# CodeMirror 6.65.7 — SQL syntax highlighting for the query editor #}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css" integrity="sha512-uf06llspW44/LZpHzHT6qBOIVODjWtv4MxCricRxkzvopAlSWnTf6hpZTFxuuZcuNE9CBQhqE0Seu1CoRk84nQ==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    {# CodeMirror 6.65.7 — show-hint addon, used for the SQL field/table autocomplete #}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/hint/show-hint.min.css" integrity="sha512-OmcLQEy8iGiD7PSm85s06dnR7G7C9C0VqahIPAj/KHk5RpOCmnC6R2ob1oK4/uwYhWa9BF1GC6tzxsC8TIx7Jg==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <style>
         .CodeMirror {
             border: 1px solid var(--bs-border-color, #dee2e6);
@@ -89,11 +91,20 @@
     {# CodeMirror 6.65.7 — core + SQL mode for MySQL syntax highlighting #}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js" integrity="sha512-8RnEqURPUc5aqFEN04aQEiPlSAdE0jlFS/9iGgUyNtwFnSKCXhmB6ZTNl7LnDtDWKabJIASzXrzD0K+LYexU9g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/sql/sql.min.js" integrity="sha512-JOURLWZEM9blfKvYn1pKWvUZJeFwrkn77cQLJOS6M/7MVIRdPacZGNm2ij5xtDV/fpuhorOswIiJF3x/woe5fw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    {# CodeMirror 6.65.7 — show-hint + sql-hint addons, power the field/table autocomplete #}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/hint/show-hint.min.js" integrity="sha512-yhmeAerubMLaGAsyS7sE8Oqub6GeTkBDQpkXo2JKHgg7JOCudQvcbDQc5rPxdl7MqcDusTJzSy+ODlyzAwETfQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/hint/sql-hint.min.js" integrity="sha512-O7YCIZwiyJYc9d/iPOSgEzhhlonTMGcmM1HmgYFffj5cGwVu2PLSzTaLvD9HSk8rSSf9rIpdhJPk8Yhu6wJBtA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>
 
         const URL_QUERY_EXECUTE = '{{ path('app_schema_query_execute') }}';
+        const URL_COLUMNS_GET_DATA = '{{ path('app_schema_columns_get_data', {name: name, db_name: db_name})|e('js') }}';
         const CURRENT_NAME = '{{ name|e('js') }}';
         const CURRENT_DB = '{{ db_name|e('js') }}';
+
+        // Mutated in place (never reassigned) once the schema loads: any hint popup opened
+        // before the fetch resolves keeps a reference to this same object, so it still picks
+        // up the real columns instead of being stuck with an empty table list.
+        const schemaTables = {};
 
         const cmEditor = CodeMirror.fromTextArea(document.getElementById('sql-editor'), {
             mode: 'text/x-mysql',
@@ -101,10 +112,35 @@
             lineWrapping: true,
             indentWithTabs: true,
             smartIndent: true,
+            hintOptions: {tables: schemaTables, completeSingle: false},
         });
         cmEditor.setOption('extraKeys', {
             'Ctrl-Enter': () => runQuery(),
             'Cmd-Enter': () => runQuery(),
+            'Ctrl-Space': 'autocomplete',
+        });
+
+        // Load table/column names for the current database and feed them to sql-hint,
+        // so `t1.` after `FROM tracking_user_auction_viewed t1` suggests that table's columns.
+        fetch(`${URL_COLUMNS_GET_DATA}`)
+            .then((res) => res.json())
+            .then((json) => {
+                Object.assign(schemaTables, json.tables || {});
+            })
+            .catch(() => {
+                // Autocomplete degrades to "no suggestions" if the schema can't be loaded; editing still works.
+            });
+
+        // Auto-trigger suggestions while typing identifiers or right after a dot (table alias access).
+        cmEditor.on('inputRead', (cm, change) => {
+            if (cm.state.completionActive || change.origin !== '+input') {
+                return;
+            }
+            const cur = cm.getCursor();
+            const token = cm.getTokenAt(cur);
+            if (/^[\w.`]+$/.test(token.string)) {
+                CodeMirror.commands.autocomplete(cm, null, {completeSingle: false});
+            }
         });
 
         function showToast(message, success) {

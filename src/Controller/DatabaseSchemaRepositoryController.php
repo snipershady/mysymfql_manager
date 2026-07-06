@@ -201,6 +201,33 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         ]);
     }
 
+    #[Route('/columns-get-data', name: 'app_schema_columns_get_data', methods: ['GET'])]
+    public function columnsGetData(
+        EffectivePrimitiveTypeIdentifierService $epti,
+        SqlClientRepository $sqlClientRepository): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user instanceof AppUser) {
+            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getTypedValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+
+        if ('' === (string) $name || '' === (string) $dbName) {
+            return $this->json(['error' => 'Missing name or db_name parameter'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $sqlClient = $sqlClientRepository->findOneByName($name);
+        if (!$sqlClient instanceof SqlClient) {
+            return $this->json(['error' => 'Server not found or access denied'], Response::HTTP_NOT_FOUND);
+        }
+
+        $repo = new DatabaseSchemaRepository($sqlClient);
+
+        return $this->json(['tables' => $repo->getColumnsBySchema($dbName)]);
+    }
+
     #[Route('/query-execute', name: 'app_schema_query_execute', methods: ['POST'])]
     public function queryExecute(
         EffectivePrimitiveTypeIdentifierService $epti,
