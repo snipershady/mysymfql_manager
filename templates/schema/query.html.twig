@@ -7,214 +7,279 @@
     <li class="breadcrumb-item"><a href="{{ path('app_schema_databases') }}">Database</a></li>
     <li class="breadcrumb-item"><a href="{{ path('app_schema_tables', {name: name, db_name: db_name}) }}">{{ db_name }}</a></li>
     <li class="breadcrumb-item active">Query SQL</li>
-{% endblock %}
+    {% endblock %}
 
 {% block head_extra %}
-{{ parent() }}
-{# CodeMirror 6.65.7 — SQL syntax highlighting for the query editor #}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css" integrity="sha512-uf06llspW44/LZpHzHT6qBOIVODjWtv4MxCricRxkzvopAlSWnTf6hpZTFxuuZcuNE9CBQhqE0Seu1CoRk84nQ==" crossorigin="anonymous" referrerpolicy="no-referrer">
-<style>
-    .CodeMirror { border: 1px solid var(--bs-border-color, #dee2e6); border-radius: .375rem; height: 260px; font-size: .9rem; }
-</style>
+    {{ parent() }}
+    {# CodeMirror 6.65.7 — SQL syntax highlighting for the query editor #}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css" integrity="sha512-uf06llspW44/LZpHzHT6qBOIVODjWtv4MxCricRxkzvopAlSWnTf6hpZTFxuuZcuNE9CBQhqE0Seu1CoRk84nQ==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <style>
+        .CodeMirror {
+            border: 1px solid var(--bs-border-color, #dee2e6);
+            border-radius: .375rem;
+            height: 260px;
+            font-size: .9rem;
+        }
+    </style>
 {% endblock %}
 
 {% block content %}
 
-<div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index:1100"></div>
+    <div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index:1100"></div>
 
-<div class="card mb-3">
-    <div class="card-header d-flex align-items-center justify-content-between gap-2">
-        <span>
-            <i class="fa-solid fa-terminal text-primary me-1"></i>
-            Query SQL su <strong>{{ db_name }}</strong>
-            <span class="text-muted small ms-2">{{ name }}</span>
-        </span>
-        <div class="d-flex gap-2">
-            <a href="{{ path('app_schema_tables', {name: name, db_name: db_name}) }}" class="btn btn-sm btn-outline-secondary">
-                <i class="fa-solid fa-table me-1"></i>Torna alle tabelle
-            </a>
-            <a href="{{ path('app_schema_databases') }}" class="btn btn-sm btn-outline-secondary">
-                <i class="fa-solid fa-arrow-left me-1"></i>Torna ai database
-            </a>
+    <div class="card mb-3">
+        <div class="card-header d-flex align-items-center justify-content-between gap-2">
+            <span>
+                <i class="fa-solid fa-terminal text-primary me-1"></i>
+                Query SQL su <strong>{{ db_name }}</strong>
+                <span class="text-muted small ms-2">{{ name }}</span>
+            </span>
+            <div class="d-flex gap-2">
+                <a href="{{ path('app_schema_tables', {name: name, db_name: db_name}) }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fa-solid fa-table me-1"></i>Torna alle tabelle
+                </a>
+                <a href="{{ path('app_schema_databases') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fa-solid fa-arrow-left me-1"></i>Torna ai database
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <textarea id="sql-editor" class="form-control" rows="10" spellcheck="false"
+                      style="font-family: 'Courier New', monospace; font-size: .9rem;"
+                      placeholder="SELECT * FROM ..."></textarea>
+            <div class="d-flex align-items-center justify-content-between mt-2">
+                <span class="text-muted small">Suggerimento: Ctrl+Invio (⌘+Invio su Mac) per eseguire.</span>
+                <div class="btn-group">
+                    <button type="button" id="btn-explain-query" class="btn btn-outline-secondary">
+                        <i class="fa-solid fa-diagram-project me-1"></i>Explain
+                    </button>
+                    <button type="button" id="btn-explain-analyze-query" class="btn btn-outline-secondary">
+                        <i class="fa-solid fa-magnifying-glass-chart me-1"></i>Explain Analyze
+                    </button>
+                    <button type="button" id="btn-run-query" class="btn btn-primary">
+                        <i class="fa-solid fa-play me-1"></i>Esegui
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
-    <div class="card-body">
-        <textarea id="sql-editor" class="form-control" rows="10" spellcheck="false"
-                  style="font-family: 'Courier New', monospace; font-size: .9rem;"
-                  placeholder="SELECT * FROM ..."></textarea>
-        <div class="d-flex align-items-center justify-content-between mt-2">
-            <span class="text-muted small">Suggerimento: Ctrl+Invio (⌘+Invio su Mac) per eseguire.</span>
-            <button type="button" id="btn-run-query" class="btn btn-primary">
-                <i class="fa-solid fa-play me-1"></i>Esegui
-            </button>
+
+    <div id="query-result-alert" class="alert d-none" role="alert"></div>
+
+    <div id="query-result-card" class="card d-none">
+        <div class="card-header d-flex align-items-center justify-content-between gap-2">
+            <span><i class="fa-solid fa-table-list text-primary me-1"></i>Risultati</span>
+            <span id="query-result-count" class="badge bg-secondary"></span>
+        </div>
+        <div class="card-body">
+            <div id="query-result-table-wrap" class="table-responsive">
+                <table id="query-result-table" class="table table-hover table-bordered align-middle w-100 mb-0">
+                    <thead class="table-light"><tr></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <pre id="query-result-pre" class="d-none bg-body-tertiary p-3 rounded mb-0" style="font-size: .85rem; white-space: pre-wrap;"></pre>
         </div>
     </div>
-</div>
-
-<div id="query-result-alert" class="alert d-none" role="alert"></div>
-
-<div id="query-result-card" class="card d-none">
-    <div class="card-header d-flex align-items-center justify-content-between gap-2">
-        <span><i class="fa-solid fa-table-list text-primary me-1"></i>Risultati</span>
-        <span id="query-result-count" class="badge bg-secondary"></span>
-    </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table id="query-result-table" class="table table-hover table-bordered align-middle w-100 mb-0">
-                <thead class="table-light"><tr></tr></thead>
-                <tbody></tbody>
-            </table>
-        </div>
-    </div>
-</div>
 
 {% endblock %}
 
 {% block scripts_extra %}
-{{ parent() }}
-{# CodeMirror 6.65.7 — core + SQL mode for MySQL syntax highlighting #}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js" integrity="sha512-8RnEqURPUc5aqFEN04aQEiPlSAdE0jlFS/9iGgUyNtwFnSKCXhmB6ZTNl7LnDtDWKabJIASzXrzD0K+LYexU9g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/sql/sql.min.js" integrity="sha512-JOURLWZEM9blfKvYn1pKWvUZJeFwrkn77cQLJOS6M/7MVIRdPacZGNm2ij5xtDV/fpuhorOswIiJF3x/woe5fw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script>
+    {{ parent() }}
+    {# CodeMirror 6.65.7 — core + SQL mode for MySQL syntax highlighting #}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js" integrity="sha512-8RnEqURPUc5aqFEN04aQEiPlSAdE0jlFS/9iGgUyNtwFnSKCXhmB6ZTNl7LnDtDWKabJIASzXrzD0K+LYexU9g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/sql/sql.min.js" integrity="sha512-JOURLWZEM9blfKvYn1pKWvUZJeFwrkn77cQLJOS6M/7MVIRdPacZGNm2ij5xtDV/fpuhorOswIiJF3x/woe5fw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
 
-const URL_QUERY_EXECUTE = '{{ path('app_schema_query_execute') }}';
-const CURRENT_NAME       = '{{ name|e('js') }}';
-const CURRENT_DB         = '{{ db_name|e('js') }}';
+        const URL_QUERY_EXECUTE = '{{ path('app_schema_query_execute') }}';
+        const CURRENT_NAME = '{{ name|e('js') }}';
+        const CURRENT_DB = '{{ db_name|e('js') }}';
 
-const cmEditor = CodeMirror.fromTextArea(document.getElementById('sql-editor'), {
-    mode: 'text/x-mysql',
-    lineNumbers: true,
-    lineWrapping: true,
-    indentWithTabs: true,
-    smartIndent: true,
-});
-cmEditor.setOption('extraKeys', {
-    'Ctrl-Enter': () => runQuery(),
-    'Cmd-Enter': () => runQuery(),
-});
-
-function showToast(message, success) {
-    const id = `toast-${Date.now()}`;
-    const bg = success ? 'text-bg-success' : 'text-bg-danger';
-    const icon = success ? 'fa-circle-check' : 'fa-circle-xmark';
-    const html = `
-        <div id="${id}" class="toast align-items-center ${bg} border-0" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="d-flex">
-                <div class="toast-body">
-                    <i class="fa-solid ${icon} me-2"></i>${message}
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-            </div>
-        </div>`;
-    document.getElementById('toast-container').insertAdjacentHTML('beforeend', html);
-    const toastEl = document.getElementById(id);
-    const toast = new bootstrap.Toast(toastEl, { delay: 4000 });
-    toast.show();
-    toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
-}
-
-function escapeHtml(value) {
-    if (value === null || value === undefined) return '<span class="text-muted">NULL</span>';
-    return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-}
-
-function showAlert(message, type) {
-    const alertBox = document.getElementById('query-result-alert');
-    alertBox.className = `alert alert-${type}`;
-    alertBox.innerHTML = message;
-    alertBox.classList.remove('d-none');
-}
-
-function hideAlert() {
-    document.getElementById('query-result-alert').classList.add('d-none');
-}
-
-function renderResultTable(columns, rows) {
-    const card = document.getElementById('query-result-card');
-    const table = document.getElementById('query-result-table');
-    const theadRow = table.querySelector('thead tr');
-    const tbody = table.querySelector('tbody');
-    const countBadge = document.getElementById('query-result-count');
-
-    theadRow.innerHTML = '';
-    tbody.innerHTML = '';
-
-    if (columns.length === 0) {
-        card.classList.add('d-none');
-        return;
-    }
-
-    columns.forEach((col) => {
-        const th = document.createElement('th');
-        th.textContent = col;
-        theadRow.appendChild(th);
-    });
-
-    rows.forEach((row) => {
-        const tr = document.createElement('tr');
-        columns.forEach((col) => {
-            const td = document.createElement('td');
-            td.innerHTML = escapeHtml(row[col]);
-            tr.appendChild(td);
+        const cmEditor = CodeMirror.fromTextArea(document.getElementById('sql-editor'), {
+            mode: 'text/x-mysql',
+            lineNumbers: true,
+            lineWrapping: true,
+            indentWithTabs: true,
+            smartIndent: true,
         });
-        tbody.appendChild(tr);
-    });
+        cmEditor.setOption('extraKeys', {
+            'Ctrl-Enter': () => runQuery(),
+            'Cmd-Enter': () => runQuery(),
+        });
 
-    countBadge.textContent = `${rows.length} righe`;
-    card.classList.remove('d-none');
-}
-
-async function runQuery() {
-    const btn = document.getElementById('btn-run-query');
-    const sql = cmEditor.getValue().trim();
-
-    if (!sql) {
-        showToast('Inserisci una query da eseguire.', false);
-        return;
-    }
-
-    btn.disabled = true;
-    const original = btn.innerHTML;
-    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i>Eseguo…`;
-    hideAlert();
-    document.getElementById('query-result-card').classList.add('d-none');
-
-    try {
-        const formData = new FormData();
-        formData.append('name', CURRENT_NAME);
-        formData.append('db_name', CURRENT_DB);
-        formData.append('sql', sql);
-
-        const res = await fetch(URL_QUERY_EXECUTE, { method: 'POST', body: formData });
-        const json = await res.json();
-
-        if (!json.is_valid) {
-            showAlert(`<i class="fa-solid fa-circle-xmark me-2"></i>${escapeHtml(json.message)}`, 'danger');
-            return;
+        function showToast(message, success) {
+            const id = `toast-${Date.now()}`;
+            const bg = success ? 'text-bg-success' : 'text-bg-danger';
+            const icon = success ? 'fa-circle-check' : 'fa-circle-xmark';
+            const html = `
+            <div id="${id}" class="toast align-items-center ${bg} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fa-solid ${icon} me-2"></i>${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            </div>`;
+            document.getElementById('toast-container').insertAdjacentHTML('beforeend', html);
+            const toastEl = document.getElementById(id);
+            const toast = new bootstrap.Toast(toastEl, {delay: 4000});
+            toast.show();
+            toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
         }
 
-        if (json.is_select) {
-            if (json.rows.length === 0) {
-                showAlert('<i class="fa-solid fa-circle-info me-2"></i>La query non ha restituito risultati.', 'info');
+        function escapeHtml(value) {
+            if (value === null || value === undefined)
+                return '<span class="text-muted">NULL</span>';
+            return String(value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+        }
+
+        function showAlert(message, type) {
+            const alertBox = document.getElementById('query-result-alert');
+            alertBox.className = `alert alert-${type}`;
+            alertBox.innerHTML = message;
+            alertBox.classList.remove('d-none');
+        }
+
+        function hideAlert() {
+            document.getElementById('query-result-alert').classList.add('d-none');
+        }
+
+        function renderResultTable(columns, rows) {
+            const card = document.getElementById('query-result-card');
+            const tableWrap = document.getElementById('query-result-table-wrap');
+            const pre = document.getElementById('query-result-pre');
+            const table = document.getElementById('query-result-table');
+            const theadRow = table.querySelector('thead tr');
+            const tbody = table.querySelector('tbody');
+            const countBadge = document.getElementById('query-result-count');
+
+            pre.classList.add('d-none');
+            tableWrap.classList.remove('d-none');
+            theadRow.innerHTML = '';
+            tbody.innerHTML = '';
+
+            if (columns.length === 0) {
+                card.classList.add('d-none');
+                return;
             }
-            renderResultTable(json.columns, json.rows);
-        } else {
-            showAlert(`<i class="fa-solid fa-circle-check me-2"></i>Query eseguita con successo. Righe interessate: ${json.affected_rows}.`, 'success');
+
+            columns.forEach((col) => {
+                const th = document.createElement('th');
+                th.textContent = col;
+                theadRow.appendChild(th);
+            });
+
+            rows.forEach((row) => {
+                const tr = document.createElement('tr');
+                columns.forEach((col) => {
+                    const td = document.createElement('td');
+                    td.innerHTML = escapeHtml(row[col]);
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+
+            countBadge.textContent = `${rows.length} righe`;
+            card.classList.remove('d-none');
         }
-    } catch (e) {
-        showAlert('<i class="fa-solid fa-circle-xmark me-2"></i>Errore di rete durante l\'esecuzione della query.', 'danger');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = original;
-    }
-}
 
-document.getElementById('btn-run-query').addEventListener('click', runQuery);
+        // EXPLAIN ANALYZE (and EXPLAIN FORMAT=TREE/JSON) returns a single text
+        // column holding a multi-line, indented tree — render it as preformatted
+        // text instead of a table so the structure stays readable.
+        function isTreeShapedResult(columns, rows) {
+            if (columns.length !== 1 || rows.length === 0) {
+                return false;
+            }
+            return rows.some((row) => {
+                const value = row[columns[0]];
+                return typeof value === 'string' && value.includes('\n');
+            });
+        }
 
-</script>
+        function renderExplainResult(columns, rows) {
+            if (isTreeShapedResult(columns, rows)) {
+                const card = document.getElementById('query-result-card');
+                const tableWrap = document.getElementById('query-result-table-wrap');
+                const pre = document.getElementById('query-result-pre');
+                const countBadge = document.getElementById('query-result-count');
+
+                tableWrap.classList.add('d-none');
+                pre.textContent = rows.map((row) => row[columns[0]]).join('\n\n');
+                pre.classList.remove('d-none');
+                countBadge.textContent = `${rows.length} righe`;
+                card.classList.remove('d-none');
+                return;
+            }
+
+            renderResultTable(columns, rows);
+        }
+
+        async function runQuery(prefix) {
+            const buttons = [
+                document.getElementById('btn-run-query'),
+                document.getElementById('btn-explain-query'),
+                document.getElementById('btn-explain-analyze-query'),
+            ];
+            const clickedBtn = prefix === 'EXPLAIN ANALYZE'
+                    ? buttons[2]
+                    : (prefix === 'EXPLAIN' ? buttons[1] : buttons[0]);
+            const rawSql = cmEditor.getValue().trim();
+
+            if (!rawSql) {
+                showToast('Inserisci una query da eseguire.', false);
+                return;
+            }
+
+            const sql = prefix ? `${prefix} ${rawSql}` : rawSql;
+
+            buttons.forEach((b) => b.disabled = true);
+            const original = clickedBtn.innerHTML;
+            clickedBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i>Eseguo…`;
+            hideAlert();
+            document.getElementById('query-result-card').classList.add('d-none');
+
+            try {
+                const formData = new FormData();
+                formData.append('name', CURRENT_NAME);
+                formData.append('db_name', CURRENT_DB);
+                formData.append('sql', sql);
+
+                const res = await fetch(URL_QUERY_EXECUTE, {method: 'POST', body: formData});
+                const json = await res.json();
+
+                if (!json.is_valid) {
+                    showAlert(`<i class="fa-solid fa-circle-xmark me-2"></i>${escapeHtml(json.message)}`, 'danger');
+                    return;
+                }
+
+                if (json.is_select) {
+                    if (json.rows.length === 0) {
+                        showAlert('<i class="fa-solid fa-circle-info me-2"></i>La query non ha restituito risultati.', 'info');
+                    }
+                    if (prefix) {
+                        renderExplainResult(json.columns, json.rows);
+                    } else {
+                        renderResultTable(json.columns, json.rows);
+                    }
+                } else {
+                    showAlert(`<i class="fa-solid fa-circle-check me-2"></i>Query eseguita con successo. Righe interessate: ${json.affected_rows}.`, 'success');
+                }
+            } catch (e) {
+                showAlert('<i class="fa-solid fa-circle-xmark me-2"></i>Errore di rete durante l\'esecuzione della query.', 'danger');
+            } finally {
+                buttons.forEach((b) => b.disabled = false);
+                clickedBtn.innerHTML = original;
+            }
+        }
+
+        document.getElementById('btn-run-query').addEventListener('click', () => runQuery());
+        document.getElementById('btn-explain-query').addEventListener('click', () => runQuery('EXPLAIN'));
+        document.getElementById('btn-explain-analyze-query').addEventListener('click', () => runQuery('EXPLAIN ANALYZE'));
+
+    </script>
 {% endblock %}
