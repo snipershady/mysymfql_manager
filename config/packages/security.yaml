@@ -46,6 +46,7 @@ security:
         - { path: ^/altcha_challenge, roles: PUBLIC_ACCESS }
         - { path: ^/logout,         roles: [ROLE_USER, ROLE_DISABLED] }
         - { path: ^/admin,          roles: ROLE_ADMIN }
+        - { path: ^/schema,         roles: [ROLE_USER, ROLE_ADMIN] }
         - { path: ^/,               roles: ROLE_USER }
 
 when@test:
