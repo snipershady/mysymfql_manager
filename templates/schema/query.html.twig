@@ -160,13 +160,33 @@
             }
 
             list.innerHTML = names.map((tableName) => `
-                <button type="button" class="list-group-item list-group-item-action py-1 px-2 small" data-table="${escapeHtml(tableName)}">
-                    <i class="fa-solid fa-table text-secondary me-1"></i>${escapeHtml(tableName)}
-                </button>
+                <div class="list-group-item d-flex align-items-center justify-content-between gap-1 py-1 px-2">
+                    <button type="button" class="btn btn-link btn-sm p-0 text-start text-truncate table-name-btn" data-table="${escapeHtml(tableName)}" title="Inserisci nome tabella">
+                        <i class="fa-solid fa-table text-secondary me-1"></i>${escapeHtml(tableName)}
+                    </button>
+                    <div class="btn-group btn-group-sm flex-shrink-0" role="group">
+                        <button type="button" class="btn btn-outline-secondary btn-gen-query" data-action="select" data-table="${escapeHtml(tableName)}" title="Genera SELECT">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-gen-query" data-action="insert" data-table="${escapeHtml(tableName)}" title="Genera INSERT">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-gen-query" data-action="update" data-table="${escapeHtml(tableName)}" title="Genera UPDATE">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-gen-query" data-action="delete" data-table="${escapeHtml(tableName)}" title="Genera DELETE">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
             `).join('');
 
-            list.querySelectorAll('button[data-table]').forEach((btn) => {
+            list.querySelectorAll('.table-name-btn').forEach((btn) => {
                 btn.addEventListener('click', () => insertTableName(btn.dataset.table));
+            });
+
+            list.querySelectorAll('.btn-gen-query').forEach((btn) => {
+                btn.addEventListener('click', () => generateQuery(btn.dataset.action, btn.dataset.table));
             });
         }
 
@@ -177,6 +197,33 @@
 
         function insertTableName(tableName) {
             cmEditor.replaceSelection('`' + tableName + '`');
+            cmEditor.focus();
+        }
+
+        // Builds a ready-to-edit SQL skeleton for the table's full column list and
+        // writes it straight into the editor, replacing whatever was there.
+        function generateQuery(action, tableName) {
+            const columns = schemaTables[tableName] || [];
+            const quotedTable = '`' + tableName + '`';
+            const quotedCols = columns.map((col) => '`' + col + '`');
+            let sql = '';
+
+            switch (action) {
+                case 'select':
+                    sql = `SELECT ${quotedCols.length ? quotedCols.join(', ') : '*'}\nFROM ${quotedTable};`;
+                    break;
+                case 'insert':
+                    sql = `INSERT INTO ${quotedTable} (${quotedCols.join(', ')})\nVALUES (${columns.map(() => "''").join(', ')});`;
+                    break;
+                case 'update':
+                    sql = `UPDATE ${quotedTable}\nSET ${quotedCols.map((col) => `${col} = ''`).join(',\n    ')}\nWHERE ;`;
+                    break;
+                case 'delete':
+                    sql = `DELETE FROM ${quotedTable}\nWHERE ;`;
+                    break;
+            }
+
+            cmEditor.setValue(sql);
             cmEditor.focus();
         }
 
