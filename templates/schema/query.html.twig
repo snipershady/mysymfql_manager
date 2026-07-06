@@ -30,6 +30,19 @@
     <div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index:1100"></div>
 
     <div class="row g-3">
+        <div class="col-lg-3">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fa-solid fa-table text-primary me-1"></i>Tabelle
+                </div>
+                <div id="query-tables-list" class="list-group list-group-flush" style="max-height: 520px; overflow-y: auto;">
+                    <div class="list-group-item text-muted small">
+                        <i class="fa-solid fa-spinner fa-spin me-1"></i>Caricamento…
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="col-lg-9">
             <div class="card mb-3">
                 <div class="card-header d-flex align-items-center justify-content-between gap-2">
@@ -67,37 +80,24 @@
                     </div>
                 </div>
             </div>
-
-            <div id="query-result-alert" class="alert d-none" role="alert"></div>
-
-            <div id="query-result-card" class="card d-none">
-                <div class="card-header d-flex align-items-center justify-content-between gap-2">
-                    <span><i class="fa-solid fa-table-list text-primary me-1"></i>Risultati</span>
-                    <span id="query-result-count" class="badge bg-secondary"></span>
-                </div>
-                <div class="card-body">
-                    <div id="query-result-table-wrap" class="table-responsive">
-                        <table id="query-result-table" class="table table-hover table-bordered align-middle w-100 mb-0">
-                            <thead class="table-light"><tr></tr></thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                    <pre id="query-result-pre" class="d-none bg-body-tertiary p-3 rounded mb-0" style="font-size: .85rem; white-space: pre-wrap;"></pre>
-                </div>
-            </div>
         </div>
+    </div>
 
-        <div class="col-lg-3">
-            <div class="card">
-                <div class="card-header">
-                    <i class="fa-solid fa-table text-primary me-1"></i>Tabelle
-                </div>
-                <div id="query-tables-list" class="list-group list-group-flush" style="max-height: 520px; overflow-y: auto;">
-                    <div class="list-group-item text-muted small">
-                        <i class="fa-solid fa-spinner fa-spin me-1"></i>Caricamento…
-                    </div>
-                </div>
+    <div id="query-result-alert" class="alert d-none mt-3" role="alert"></div>
+
+    <div id="query-result-card" class="card d-none mt-3">
+        <div class="card-header d-flex align-items-center justify-content-between gap-2">
+            <span><i class="fa-solid fa-table-list text-primary me-1"></i>Risultati</span>
+            <span id="query-result-count" class="badge bg-secondary"></span>
+        </div>
+        <div class="card-body">
+            <div id="query-result-table-wrap" class="table-responsive">
+                <table id="query-result-table" class="table table-hover table-bordered align-middle w-100 mb-0">
+                    <thead class="table-light"><tr></tr></thead>
+                    <tbody></tbody>
+                </table>
             </div>
+            <pre id="query-result-pre" class="d-none bg-body-tertiary p-3 rounded mb-0" style="font-size: .85rem; white-space: pre-wrap;"></pre>
         </div>
     </div>
 
