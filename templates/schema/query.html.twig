@@ -29,58 +29,75 @@
 
     <div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index:1100"></div>
 
-    <div class="card mb-3">
-        <div class="card-header d-flex align-items-center justify-content-between gap-2">
-            <span>
-                <i class="fa-solid fa-terminal text-primary me-1"></i>
-                Query SQL su <strong>{{ db_name }}</strong>
-                <span class="text-muted small ms-2">{{ name }}</span>
-            </span>
-            <div class="d-flex gap-2">
-                <a href="{{ path('app_schema_tables', {name: name, db_name: db_name}) }}" class="btn btn-sm btn-outline-secondary">
-                    <i class="fa-solid fa-table me-1"></i>Torna alle tabelle
-                </a>
-                <a href="{{ path('app_schema_databases') }}" class="btn btn-sm btn-outline-secondary">
-                    <i class="fa-solid fa-arrow-left me-1"></i>Torna ai database
-                </a>
+    <div class="row g-3">
+        <div class="col-lg-9">
+            <div class="card mb-3">
+                <div class="card-header d-flex align-items-center justify-content-between gap-2">
+                    <span>
+                        <i class="fa-solid fa-terminal text-primary me-1"></i>
+                        Query SQL su <strong>{{ db_name }}</strong>
+                        <span class="text-muted small ms-2">{{ name }}</span>
+                    </span>
+                    <div class="d-flex gap-2">
+                        <a href="{{ path('app_schema_tables', {name: name, db_name: db_name}) }}" class="btn btn-sm btn-outline-secondary">
+                            <i class="fa-solid fa-table me-1"></i>Torna alle tabelle
+                        </a>
+                        <a href="{{ path('app_schema_databases') }}" class="btn btn-sm btn-outline-secondary">
+                            <i class="fa-solid fa-arrow-left me-1"></i>Torna ai database
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <textarea id="sql-editor" class="form-control" rows="10" spellcheck="false"
+                              style="font-family: 'Courier New', monospace; font-size: .9rem;"
+                              placeholder="SELECT * FROM ..."></textarea>
+                    <div class="d-flex align-items-center justify-content-between mt-2">
+                        <span class="text-muted small">Suggerimento: Ctrl+Invio (⌘+Invio su Mac) per eseguire.</span>
+                        <div class="btn-group">
+                            <button type="button" id="btn-explain-query" class="btn btn-outline-secondary">
+                                <i class="fa-solid fa-diagram-project me-1"></i>Explain
+                            </button>
+                            <button type="button" id="btn-explain-analyze-query" class="btn btn-outline-secondary">
+                                <i class="fa-solid fa-magnifying-glass-chart me-1"></i>Explain Analyze
+                            </button>
+                            <button type="button" id="btn-run-query" class="btn btn-primary">
+                                <i class="fa-solid fa-play me-1"></i>Esegui
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="card-body">
-            <textarea id="sql-editor" class="form-control" rows="10" spellcheck="false"
-                      style="font-family: 'Courier New', monospace; font-size: .9rem;"
-                      placeholder="SELECT * FROM ..."></textarea>
-            <div class="d-flex align-items-center justify-content-between mt-2">
-                <span class="text-muted small">Suggerimento: Ctrl+Invio (⌘+Invio su Mac) per eseguire.</span>
-                <div class="btn-group">
-                    <button type="button" id="btn-explain-query" class="btn btn-outline-secondary">
-                        <i class="fa-solid fa-diagram-project me-1"></i>Explain
-                    </button>
-                    <button type="button" id="btn-explain-analyze-query" class="btn btn-outline-secondary">
-                        <i class="fa-solid fa-magnifying-glass-chart me-1"></i>Explain Analyze
-                    </button>
-                    <button type="button" id="btn-run-query" class="btn btn-primary">
-                        <i class="fa-solid fa-play me-1"></i>Esegui
-                    </button>
+
+            <div id="query-result-alert" class="alert d-none" role="alert"></div>
+
+            <div id="query-result-card" class="card d-none">
+                <div class="card-header d-flex align-items-center justify-content-between gap-2">
+                    <span><i class="fa-solid fa-table-list text-primary me-1"></i>Risultati</span>
+                    <span id="query-result-count" class="badge bg-secondary"></span>
+                </div>
+                <div class="card-body">
+                    <div id="query-result-table-wrap" class="table-responsive">
+                        <table id="query-result-table" class="table table-hover table-bordered align-middle w-100 mb-0">
+                            <thead class="table-light"><tr></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <pre id="query-result-pre" class="d-none bg-body-tertiary p-3 rounded mb-0" style="font-size: .85rem; white-space: pre-wrap;"></pre>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div id="query-result-alert" class="alert d-none" role="alert"></div>
-
-    <div id="query-result-card" class="card d-none">
-        <div class="card-header d-flex align-items-center justify-content-between gap-2">
-            <span><i class="fa-solid fa-table-list text-primary me-1"></i>Risultati</span>
-            <span id="query-result-count" class="badge bg-secondary"></span>
-        </div>
-        <div class="card-body">
-            <div id="query-result-table-wrap" class="table-responsive">
-                <table id="query-result-table" class="table table-hover table-bordered align-middle w-100 mb-0">
-                    <thead class="table-light"><tr></tr></thead>
-                    <tbody></tbody>
-                </table>
+        <div class="col-lg-3">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fa-solid fa-table text-primary me-1"></i>Tabelle
+                </div>
+                <div id="query-tables-list" class="list-group list-group-flush" style="max-height: 520px; overflow-y: auto;">
+                    <div class="list-group-item text-muted small">
+                        <i class="fa-solid fa-spinner fa-spin me-1"></i>Caricamento…
+                    </div>
+                </div>
             </div>
-            <pre id="query-result-pre" class="d-none bg-body-tertiary p-3 rounded mb-0" style="font-size: .85rem; white-space: pre-wrap;"></pre>
         </div>
     </div>
 
@@ -126,10 +143,42 @@
             .then((res) => res.json())
             .then((json) => {
                 Object.assign(schemaTables, json.tables || {});
+                renderTablesList();
             })
             .catch(() => {
                 // Autocomplete degrades to "no suggestions" if the schema can't be loaded; editing still works.
+                renderTablesListError();
             });
+
+        function renderTablesList() {
+            const list = document.getElementById('query-tables-list');
+            const names = Object.keys(schemaTables).sort((a, b) => a.localeCompare(b));
+
+            if (names.length === 0) {
+                list.innerHTML = '<div class="list-group-item text-muted small">Nessuna tabella trovata.</div>';
+                return;
+            }
+
+            list.innerHTML = names.map((tableName) => `
+                <button type="button" class="list-group-item list-group-item-action py-1 px-2 small" data-table="${escapeHtml(tableName)}">
+                    <i class="fa-solid fa-table text-secondary me-1"></i>${escapeHtml(tableName)}
+                </button>
+            `).join('');
+
+            list.querySelectorAll('button[data-table]').forEach((btn) => {
+                btn.addEventListener('click', () => insertTableName(btn.dataset.table));
+            });
+        }
+
+        function renderTablesListError() {
+            document.getElementById('query-tables-list').innerHTML =
+                '<div class="list-group-item text-danger small"><i class="fa-solid fa-circle-xmark me-1"></i>Impossibile caricare le tabelle.</div>';
+        }
+
+        function insertTableName(tableName) {
+            cmEditor.replaceSelection('`' + tableName + '`');
+            cmEditor.focus();
+        }
 
         // Auto-trigger suggestions while typing identifiers or right after a dot (table alias access).
         cmEditor.on('inputRead', (cm, change) => {
