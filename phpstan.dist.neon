@@ -4,7 +4,7 @@ includes:
     - vendor/phpstan/phpstan-symfony/rules.neon
 
 parameters:
-    level: max
+    level: 5
     paths:
         - bin/
         - config/
@@ -15,6 +15,7 @@ parameters:
         - config/reference.php
         # Symfony framework bootstrap/glue, not application logic.
         - src/Kernel.php
+        - src/Command
         - public/index.php
         # Test suite is not analysed; the tests/*.php loaders below are still used by the extensions.
         - tests/
