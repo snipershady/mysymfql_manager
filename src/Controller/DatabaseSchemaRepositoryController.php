@@ -252,6 +252,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     ): JsonResponse {
         $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $sqlClient = $sqlClientRepository->findOneByName($name);
+        if (!$sqlClient instanceof SqlClient) {
+            return $this->json(['error' => 'Server not found or access denied'], Response::HTTP_NOT_FOUND);
+        }
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
         $versionRow = $databaseRepositoryPdo->getVersion();
@@ -270,6 +273,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $dbName = $epti->getStringValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
         $sqlClient = $sqlClientRepository->findOneByName($name);
+        if (!$sqlClient instanceof SqlClient) {
+            return $this->json(['error' => 'Server not found or access denied'], Response::HTTP_NOT_FOUND);
+        }
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
         $databaseRepositoryPdo->useDbName($dbName);
@@ -284,6 +290,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     {
         $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $sqlClient = $sqlClientRepository->findOneByName($name);
+        if (!$sqlClient instanceof SqlClient) {
+            return $this->json(['error' => 'Server not found or access denied'], Response::HTTP_NOT_FOUND);
+        }
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
 
@@ -298,6 +307,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
+        if (!$sqlClient instanceof SqlClient) {
+            return $this->json(['error' => 'Server not found or access denied'], Response::HTTP_NOT_FOUND);
+        }
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
 
@@ -311,6 +323,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     {
         $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $sqlClient = $sqlClientRepository->findOneByName($name);
+        if (!$sqlClient instanceof SqlClient) {
+            throw $this->createNotFoundException('Server not found.');
+        }
         $repo = new DatabaseSchemaRepository($sqlClient);
 
         return $this->render('schema/engine_status.html.twig', [
@@ -621,7 +636,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         return $this->json([
             'is_valid' => $result['is_valid'],
             'message' => $result['is_valid'] ? 'Backup completed successfully.' : 'Error during backup.',
-            'backup_filename' => basename((string) $result['backup_filename']),
+            'backup_filename' => basename($result['backup_filename']),
             'msg' => $result['msg'],
         ]);
     }
@@ -731,6 +746,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $dbName = $epti->getStringValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
         $table = $epti->getStringValueFromGet(needle: 'table', trim: true, forceString: true, sanitizeHtml: true);
         $sqlClient = $sqlClientRepository->findOneByName($name);
+        if (!$sqlClient instanceof SqlClient) {
+            return $this->json(['error' => 'Server not found or access denied'], Response::HTTP_NOT_FOUND);
+        }
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
         $databaseRepositoryPdo->useDbName($dbName);
@@ -751,6 +769,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $dbName = $epti->getStringValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
         $table = $epti->getStringValueFromGet(needle: 'table', trim: true, forceString: true, sanitizeHtml: true);
         $sqlClient = $sqlClientRepository->findOneByName($name);
+        if (!$sqlClient instanceof SqlClient) {
+            return $this->json(['error' => 'Server not found or access denied'], Response::HTTP_NOT_FOUND);
+        }
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
         $databaseRepositoryPdo->useDbName($dbName);
@@ -839,6 +860,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         return $this->json(['is_valid' => true, 'message' => 'Backup deleted successfully.']);
     }
 
+    /**
+     * @return list<array{db_name: string, table_count: int, size_bytes: int}>
+     */
     private function showDatabaseWithStatsByOwner(
         AppUser $user,
         SqlClient $sqlClient,
@@ -856,7 +880,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         // Remove from the full database list those not owned by the user
         $allowedDbNames = array_map(
-            static fn (DatabaseOwner $o): string => $o->getDbName(),
+            static fn (DatabaseOwner $o): string => $o->getDbName() ?? '',
             array_filter($ownedDatabase, static fn (DatabaseOwner $o): bool => $o->getSqlClient()?->getName() === $name)
         );
 

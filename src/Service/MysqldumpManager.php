@@ -19,7 +19,7 @@ final readonly class MysqldumpManager
 
     public function __construct(?EffectivePrimitiveTypeIdentifierService $epti = null)
     {
-        $disabledFunctions = array_map(trim(...), explode(',', \ini_get('disable_functions')));
+        $disabledFunctions = array_map(trim(...), explode(',', \ini_get('disable_functions') ?: ''));
         if (\in_array('exec', $disabledFunctions, strict: true)) {
             throw new \RuntimeException('The exec() function is disabled in PHP. To enable it, remove "exec" from "disable_functions" in the php.ini file (e.g. /etc/php/8.x/fpm/php.ini) and restart PHP-FPM.');
         }
@@ -35,6 +35,9 @@ final readonly class MysqldumpManager
         );
     }
 
+    /**
+     * @return array{is_valid: bool, exec_result: string|false|null, output: list<string>|null, result_code: int|null, backup_filename: string, msg: string}
+     */
     public function createBackup(SqlClient $sqlClient, string $dbName, ?string $table = null): array
     {
         if (!preg_match('/^\w+$/', $dbName)) {
@@ -139,7 +142,7 @@ final readonly class MysqldumpManager
         $isAdmin = \in_array('ROLE_ADMIN', $user->getRoles(), strict: true);
 
         $allowedDbNames = $isAdmin ? [] : array_map(
-            static fn (DatabaseOwner $o): string => $o->getDbName(),
+            static fn (DatabaseOwner $o): string => $o->getDbName() ?? '',
             $allOwnedDatabased
         );
 
@@ -163,6 +166,9 @@ final readonly class MysqldumpManager
         return $backups;
     }
 
+    /**
+     * @return list<BackupDump>
+     */
     public function listAllBackups(): array
     {
         if (!is_dir($this->backupPath)) {

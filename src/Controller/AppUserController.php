@@ -12,6 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
 
 #[Route(path: '/admin/appuser')]
 final class AppUserController extends AbstractController
@@ -57,7 +58,8 @@ final class AppUserController extends AbstractController
         Request $request,
         AppUser $appUser,
         EntityManagerInterface $entityManager,
-        UserPasswordHasherInterface $passwordHasher): Response
+        UserPasswordHasherInterface $passwordHasher,
+        EffectivePrimitiveTypeIdentifierService $epti): Response
     {
         $user = $this->getUser();
         if (!$user instanceof AppUser) {
@@ -68,8 +70,8 @@ final class AppUserController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $plainPassword = $form->get('plainPassword')->getData();
-            if (null !== $plainPassword && '' !== $plainPassword) {
+            $plainPassword = $epti->getStringValue($form->get('plainPassword')->getData(), trim: true, forceString: true);
+            if ('' !== $plainPassword) {
                 $appUser->setPassword($passwordHasher->hashPassword($appUser, $plainPassword));
             }
 

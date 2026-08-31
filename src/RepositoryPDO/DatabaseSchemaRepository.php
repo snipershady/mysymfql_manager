@@ -27,12 +27,15 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             $stmt->execute();
 
-            return $stmt->fetchAll(\PDO::FETCH_COLUMN);
+            return $this->fetchColumnList($stmt);
         } catch (\PDOException $pdoException) {
             throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function getVersion(): array
     {
         $query = 'SELECT @@version';
@@ -41,7 +44,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             $stmt->execute();
 
-            return $stmt->fetch(\PDO::FETCH_ASSOC);
+            return $this->fetchOneAssoc($stmt);
         } catch (\PDOException $pdoException) {
             throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
@@ -106,12 +109,15 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             $stmt->execute();
 
-            return $stmt->fetchAll(\PDO::FETCH_COLUMN);
+            return $this->fetchColumnList($stmt);
         } catch (\PDOException $pdoException) {
             throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
     }
 
+    /**
+     * @return list<array<string, mixed>>
+     */
     public function showCreateTable(string $table): array
     {
         $query = \sprintf('SHOW CREATE TABLE %s;', $this->quoteIdentifier($table));
@@ -120,7 +126,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             $stmt->execute();
 
-            return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            return $this->fetchAllAssoc($stmt);
         } catch (\PDOException $pdoException) {
             throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
@@ -157,7 +163,18 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             $stmt->execute();
 
-            return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            return array_map(fn (array $row): array => [
+                'nome_tabella' => $this->epti->getStringValueFromArray('nome_tabella', $row, forceString: true),
+                'engine' => $this->epti->getStringValueFromArray('engine', $row, forceString: true),
+                'collation' => $this->epti->getStringValueFromArray('collation', $row, forceString: true),
+                'record' => $this->epti->getIntValueFromArray('record', $row),
+                'dimensione' => $this->epti->getFloatValueFromArray('dimensione', $row),
+                'empty_space' => $this->epti->getFloatValueFromArray('empty_space', $row),
+                'auto_increment' => isset($row['auto_increment']) ? $this->epti->getIntValueFromArray('auto_increment', $row) : null,
+                'create_time' => isset($row['create_time']) ? $this->epti->getStringValueFromArray('create_time', $row, forceString: true) : null,
+                'update_time' => isset($row['update_time']) ? $this->epti->getStringValueFromArray('update_time', $row, forceString: true) : null,
+                'commento' => $this->epti->getStringValueFromArray('commento', $row, forceString: true),
+            ], $this->fetchAllAssoc($stmt));
         } catch (\PDOException $pdoException) {
             throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
@@ -171,7 +188,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             $stmt->execute();
 
-            return $stmt->fetch(\PDO::FETCH_ASSOC)['table_row'] ?? 0;
+            return $this->epti->getIntValueFromArray('table_row', $this->fetchOneAssoc($stmt));
         } catch (\PDOException $pdoException) {
             throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
@@ -346,7 +363,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
             $stmt->bindValue(':user', $username);
             $stmt->execute();
 
-            return $stmt->fetchAll(\PDO::FETCH_COLUMN);
+            return $this->fetchColumnList($stmt);
         } catch (\PDOException $pdoException) {
             throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
@@ -446,7 +463,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             return array_map(
                 MysqlUser::fromArray(...),
-                $stmt->fetchAll(\PDO::FETCH_ASSOC)
+                $this->fetchAllAssoc($stmt)
             );
         } catch (\PDOException $pdoException) {
             throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
@@ -489,15 +506,15 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
             $stmt->execute();
 
             $result = [];
-            foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+            foreach ($this->fetchAllAssoc($stmt) as $row) {
                 $privs = [];
                 foreach ($privMap as $col => $priv) {
-                    if (($row[$col] ?? 'N') === 'Y') {
+                    if ('Y' === $this->epti->getStringValueFromArray($col, $row, forceString: true)) {
                         $privs[] = $priv;
                     }
                 }
                 $result[] = [
-                    'db' => $row['Db'],
+                    'db' => $this->epti->getStringValueFromArray('Db', $row, forceString: true),
                     'privileges' => $privs,
                     'all_privileges' => \count($privs) === \count($privMap),
                 ];
@@ -558,7 +575,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             $stmt->execute();
 
-            return InnodbStatus::fromArray($stmt->fetch(\PDO::FETCH_ASSOC));
+            return InnodbStatus::fromArray($this->fetchOneAssoc($stmt));
         } catch (\PDOException $pdoException) {
             throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
@@ -584,11 +601,9 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
             $stmt->execute();
 
-            $resultSet = $stmt->fetchAll(\PDO::FETCH_ASSOC);
             $result = [];
-            foreach ($resultSet as $row) {
-                $pl = ProcessList::fromArray($row);
-                $result[] = $pl;
+            foreach ($this->fetchAllAssoc($stmt) as $row) {
+                $result[] = ProcessList::fromArray($row);
             }
 
             return $result;
@@ -603,9 +618,8 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
         try {
             $stmt = $this->pdo->prepare($query);
             $stmt->execute();
-            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
-            return (int) ($row['Value'] ?? 0);
+            return $this->epti->getIntValueFromArray('Value', $this->fetchOneAssoc($stmt));
         } catch (\PDOException $pdoException) {
             throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
@@ -618,7 +632,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
             $stmt = $this->pdo->prepare($query);
             $stmt->execute();
 
-            return (int) ($stmt->fetch(\PDO::FETCH_ASSOC)['cnt'] ?? 0);
+            return $this->epti->getIntValueFromArray('cnt', $this->fetchOneAssoc($stmt));
         } catch (\PDOException $pdoException) {
             // MySQL error 1227: insufficient PROCESS privilege — degrade gracefully
             if (isset($pdoException->errorInfo[1]) && 1227 === $pdoException->errorInfo[1]) {
@@ -635,7 +649,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
             $stmt = $this->pdo->prepare($query);
             $stmt->execute();
 
-            return (int) ($stmt->fetch(\PDO::FETCH_ASSOC)['cnt'] ?? 0);
+            return $this->epti->getIntValueFromArray('cnt', $this->fetchOneAssoc($stmt));
         } catch (\PDOException $pdoException) {
             // MySQL error 1227: insufficient PROCESS privilege — degrade gracefully
             if (isset($pdoException->errorInfo[1]) && 1227 === $pdoException->errorInfo[1]) {
@@ -677,7 +691,11 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
             }
             $stmt->execute();
 
-            return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            return array_map(fn (array $row): array => [
+                'db_name' => $this->epti->getStringValueFromArray('db_name', $row, forceString: true),
+                'table_count' => $this->epti->getIntValueFromArray('table_count', $row),
+                'size_bytes' => $this->epti->getIntValueFromArray('size_bytes', $row),
+            ], $this->fetchAllAssoc($stmt));
         } catch (\PDOException $pdoException) {
             throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }
@@ -702,8 +720,9 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
             $stmt->execute();
 
             $tables = [];
-            foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
-                $tables[$row['TABLE_NAME']][] = $row['COLUMN_NAME'];
+            foreach ($this->fetchAllAssoc($stmt) as $row) {
+                $tableName = $this->epti->getStringValueFromArray('TABLE_NAME', $row, forceString: true);
+                $tables[$tableName][] = $this->epti->getStringValueFromArray('COLUMN_NAME', $row, forceString: true);
             }
 
             return $tables;
@@ -733,7 +752,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
                 ];
             }
 
-            $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            $rows = $this->fetchAllAssoc($stmt);
 
             return [
                 'columns' => [] === $rows ? [] : array_keys($rows[0]),

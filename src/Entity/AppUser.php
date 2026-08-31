@@ -81,11 +81,18 @@ class AppUser implements UserInterface, PasswordAuthenticatedUserInterface, \Str
      * A visual identifier that represents this user.
      *
      * @see UserInterface
+     *
+     * @return non-empty-string
      */
     #[\Override]
     public function getUserIdentifier(): string
     {
-        return (string) $this->username;
+        $username = (string) $this->username;
+        if ('' === $username) {
+            throw new \LogicException('AppUser username is not set.');
+        }
+
+        return $username;
     }
 
     /**

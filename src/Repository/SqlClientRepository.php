@@ -19,11 +19,13 @@ class SqlClientRepository extends ServiceEntityRepository
 
     public function findOneByName(string $name): ?SqlClient
     {
-        return $this->createQueryBuilder('s')
+        $result = $this->createQueryBuilder('s')
             ->where('s.name = :name')
             ->setParameter('name', $name)
             ->getQuery()
             ->getOneOrNullResult();
+
+        return $result instanceof SqlClient ? $result : null;
     }
 
     /**

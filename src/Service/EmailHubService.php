@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service;
 
 use App\Component\DateTimeIt;
@@ -21,6 +23,9 @@ final readonly class EmailHubService
     ) {
     }
 
+    /**
+     * @return array{is_valid: bool, msg: string}
+     */
     public function emailResetPassword(Address $addressTo, string $msg, string $subject): array
     {
         $now = new DateTimeIt();
@@ -35,6 +40,9 @@ final readonly class EmailHubService
         return $this->sendEmail($addressTo, $subject, $context, $templatePath);
     }
 
+    /**
+     * @return array{is_valid: bool, msg: string}
+     */
     public function emailNotify(Address $addressTo, string $msg, string $subject): array
     {
         $now = new DateTimeIt();
@@ -51,6 +59,8 @@ final readonly class EmailHubService
 
     /**
      * @param array<string, string> $context
+     *
+     * @return array{is_valid: bool, msg: string}
      */
     private function sendEmail(Address $addressTo, string $subject, array $context, string $templatePath): array
     {
