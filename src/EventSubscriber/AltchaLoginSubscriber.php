@@ -35,7 +35,7 @@ final readonly class AltchaLoginSubscriber implements EventSubscriberInterface
         }
 
         $request = $this->requestStack->getCurrentRequest();
-        if (null === $request) {
+        if (!$request instanceof \Symfony\Component\HttpFoundation\Request) {
             return;
         }
 

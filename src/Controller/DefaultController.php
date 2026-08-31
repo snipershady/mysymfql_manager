@@ -10,7 +10,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class DefaultController extends AbstractController
 {
-    #[Route('/', name: 'app_default')]
+    #[Route(path: '/', name: 'app_default')]
     public function index(SqlClientRepository $sqlClientRepository): Response
     {
         $user = $this->getUser();

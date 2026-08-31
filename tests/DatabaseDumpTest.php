@@ -14,7 +14,7 @@ use App\Service\MysqldumpManager;
 class DatabaseDumpTest extends MyKernelTestCase
 {
     #[\Override]
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
@@ -45,7 +45,7 @@ class DatabaseDumpTest extends MyKernelTestCase
     }
 
     #[\Override]
-    public function tearDown(): void
+    protected function tearDown(): void
     {
         parent::setUp();
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);

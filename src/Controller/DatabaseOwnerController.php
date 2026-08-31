@@ -12,8 +12,8 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/admin/database-owner')]
-#[IsGranted('ROLE_ADMIN')]
+#[Route(path: '/admin/database-owner')]
+#[IsGranted(attribute: 'ROLE_ADMIN')]
 final class DatabaseOwnerController extends AbstractController
 {
     #[Route(name: 'app_database_owner_index', methods: ['GET'])]
@@ -24,7 +24,7 @@ final class DatabaseOwnerController extends AbstractController
         ]);
     }
 
-    #[Route('/new', name: 'app_database_owner_new', methods: ['GET', 'POST'])]
+    #[Route(path: '/new', name: 'app_database_owner_new', methods: ['GET', 'POST'])]
     public function new(Request $request, EntityManagerInterface $entityManager): Response
     {
         $databaseOwner = new DatabaseOwner();
@@ -46,7 +46,7 @@ final class DatabaseOwnerController extends AbstractController
         ]);
     }
 
-    #[Route('/{id}/edit', name: 'app_database_owner_edit', methods: ['GET', 'POST'])]
+    #[Route(path: '/{id}/edit', name: 'app_database_owner_edit', methods: ['GET', 'POST'])]
     public function edit(Request $request, DatabaseOwner $databaseOwner, EntityManagerInterface $entityManager): Response
     {
         $form = $this->createForm(DatabaseOwnerType::class, $databaseOwner);
@@ -66,7 +66,7 @@ final class DatabaseOwnerController extends AbstractController
         ]);
     }
 
-    #[Route('/{id}', name: 'app_database_owner_delete', methods: ['POST'])]
+    #[Route(path: '/{id}', name: 'app_database_owner_delete', methods: ['POST'])]
     public function delete(Request $request, DatabaseOwner $databaseOwner, EntityManagerInterface $entityManager): \Symfony\Component\HttpFoundation\RedirectResponse
     {
         if ($this->isCsrfTokenValid('delete' . $databaseOwner->getId(), $request->getPayload()->getString('_token'))) {

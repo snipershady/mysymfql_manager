@@ -29,19 +29,19 @@ final class UserHelper
      */
     public function initUserIp(): string
     {
-        $cfIp = filter_input(INPUT_SERVER, 'HTTP_CF_CONNECTING_IP');
+        $cfIp = filter_input(\INPUT_SERVER, 'HTTP_CF_CONNECTING_IP');
         if (!empty($cfIp)) {
             $this->setClientIp($cfIp);
 
             return $this->clientIp;
         }
-        $httpclusterip = filter_input(INPUT_SERVER, 'HTTP_X_CLUSTER_CLIENT_IP');
+        $httpclusterip = filter_input(\INPUT_SERVER, 'HTTP_X_CLUSTER_CLIENT_IP');
         if (!empty($httpclusterip)) {
             $this->setClientIp($httpclusterip);
 
             return $this->clientIp;
         }
-        $remoteAddress = filter_input(INPUT_SERVER, 'REMOTE_ADDR');
+        $remoteAddress = filter_input(\INPUT_SERVER, 'REMOTE_ADDR');
         if (!empty($remoteAddress)) {
             $this->setClientIp($remoteAddress);
 
@@ -61,7 +61,7 @@ final class UserHelper
      */
     public function initCFCountryCode(): string
     {
-        $this->cfCountryCode = strtolower(trim((string) filter_input(INPUT_SERVER, 'HTTP_CF_IPCOUNTRY', FILTER_UNSAFE_RAW)));
+        $this->cfCountryCode = strtolower(trim((string) filter_input(\INPUT_SERVER, 'HTTP_CF_IPCOUNTRY', \FILTER_UNSAFE_RAW)));
 
         return $this->cfCountryCode;
     }
@@ -73,14 +73,14 @@ final class UserHelper
      */
     public function initHttpCfRay(): string
     {
-        $this->httpCfRay = trim((string) filter_input(INPUT_SERVER, 'HTTP_CF_RAY', FILTER_UNSAFE_RAW));
+        $this->httpCfRay = trim((string) filter_input(\INPUT_SERVER, 'HTTP_CF_RAY', \FILTER_UNSAFE_RAW));
 
         return $this->httpCfRay;
     }
 
     public function isLocal(): bool
     {
-        return in_array($this->clientIp, ['127.0.0.1', '::1', '0:0:0:0:0:0:0:1'], true);
+        return \in_array($this->clientIp, ['127.0.0.1', '::1', '0:0:0:0:0:0:0:1'], strict: true);
     }
 
     /**
@@ -88,7 +88,7 @@ final class UserHelper
      */
     public function initUserAgent(): string
     {
-        $this->userAgent = (string) filter_input(INPUT_SERVER, 'HTTP_USER_AGENT', FILTER_UNSAFE_RAW);
+        $this->userAgent = (string) filter_input(\INPUT_SERVER, 'HTTP_USER_AGENT', \FILTER_UNSAFE_RAW);
 
         return $this->userAgent;
     }

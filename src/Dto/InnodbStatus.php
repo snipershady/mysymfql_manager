@@ -93,7 +93,7 @@ final readonly class InnodbStatus
     {
         $sections = [];
         $lines = explode("\n", $raw);
-        $total = count($lines);
+        $total = \count($lines);
 
         $i = 0;
         while ($i < $total) {

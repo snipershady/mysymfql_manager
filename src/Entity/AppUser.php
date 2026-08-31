@@ -98,7 +98,7 @@ class AppUser implements UserInterface, PasswordAuthenticatedUserInterface, \Str
         // guarantee every user at least has ROLE_USER
         // $roles[] = 'ROLE_USER';
 
-        return \array_unique($roles);
+        return array_unique($roles);
     }
 
     /**
@@ -138,7 +138,7 @@ class AppUser implements UserInterface, PasswordAuthenticatedUserInterface, \Str
         return $data;
     }
 
-    public function equals(AppUser $appUser): bool
+    public function equals(self $appUser): bool
     {
         return $appUser->getEmail() === $this->getEmail()
                && $appUser->getId() === $this->getId()

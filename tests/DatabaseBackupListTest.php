@@ -14,7 +14,7 @@ use App\Service\MysqldumpManager;
 class DatabaseBackupListTest extends MyKernelTestCase
 {
     #[\Override]
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
@@ -45,7 +45,7 @@ class DatabaseBackupListTest extends MyKernelTestCase
     }
 
     #[\Override]
-    public function tearDown(): void
+    protected function tearDown(): void
     {
         parent::setUp();
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
@@ -73,6 +73,6 @@ class DatabaseBackupListTest extends MyKernelTestCase
         $list = $msdm->listAllBackups();
         dump($list);
         $this->assertIsArray($list);
-        $this->assertGreaterThan(0, count($list));
+        $this->assertGreaterThan(0, \count($list));
     }
 }

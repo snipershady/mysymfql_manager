@@ -31,7 +31,7 @@ class BackupQueue
     private bool $isDequeued = false;
 
     #[ORM\Column]
-    private ?\DateTime $requestDate = null;
+    private ?\DateTime $requestDate;
 
     #[ORM\Column(nullable: true)]
     private ?\DateTime $completedDate = null;

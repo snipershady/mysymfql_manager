@@ -65,7 +65,7 @@ class SetupCommand extends Command
         $php = \PHP_BINARY;
 
         $diff = new Process([$php, $consolePath, 'doctrine:migrations:diff', '--no-interaction']);
-        $diff->run(function (string $type, string $buffer) use ($output): void {
+        $diff->run(static function (string $type, string $buffer) use ($output): void {
             $output->write($buffer);
         });
 
@@ -76,7 +76,7 @@ class SetupCommand extends Command
         }
 
         $migrate = new Process([$php, $consolePath, 'doctrine:migrations:migrate', '--no-interaction']);
-        $migrate->run(function (string $type, string $buffer) use ($output): void {
+        $migrate->run(static function (string $type, string $buffer) use ($output): void {
             $output->write($buffer);
         });
 
@@ -145,7 +145,7 @@ class SetupCommand extends Command
 
         $content = file_get_contents($envLocalPath);
 
-        return array_any(['APP_SECRET', 'SQLCLIENT_ENCRYPTION_KEY', 'ALTCHAKEY', 'APP_DB_NAME', 'APP_DB_HOSTNAME', 'APP_DB_USER', 'APP_DB_PASSWORD', 'BACKUP_PATH'], fn ($key): bool => !preg_match('/^' . $key . '=(?!CHANGE\s*$)\S/m', $content));
+        return array_any(['APP_SECRET', 'SQLCLIENT_ENCRYPTION_KEY', 'ALTCHAKEY', 'APP_DB_NAME', 'APP_DB_HOSTNAME', 'APP_DB_USER', 'APP_DB_PASSWORD', 'BACKUP_PATH'], static fn ($key): bool => !preg_match('/^' . $key . '=(?!CHANGE\s*$)\S/m', $content));
     }
 
     private function setupEnv(SymfonyStyle $io, string $envLocalPath): int
@@ -166,7 +166,7 @@ class SetupCommand extends Command
         // Read existing .env.local to preserve any existing values
         $existing = [];
         if (file_exists($envLocalPath)) {
-            foreach (file($envLocalPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+            foreach (file($envLocalPath, \FILE_IGNORE_NEW_LINES | \FILE_SKIP_EMPTY_LINES) as $line) {
                 if (str_starts_with($line, '#')) {
                     continue;
                 }
@@ -215,8 +215,8 @@ class SetupCommand extends Command
 
         // Preserve any other existing keys not managed here
         foreach ($existing as $k => $v) {
-            if (!in_array($k, $managedKeys, true)) {
-                $lines[] = sprintf('%s=%s', $k, $v);
+            if (!\in_array($k, $managedKeys, true)) {
+                $lines[] = \sprintf('%s=%s', $k, $v);
             }
         }
 

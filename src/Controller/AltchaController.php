@@ -12,7 +12,7 @@ use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
 
 final class AltchaController extends AbstractController
 {
-    #[Route('/altcha_challenge', name: 'app_altcha_challenge')]
+    #[Route(path: '/altcha_challenge', name: 'app_altcha_challenge')]
     public function index(): JsonResponse
     {
         $epti = new EffectivePrimitiveTypeIdentifierService();

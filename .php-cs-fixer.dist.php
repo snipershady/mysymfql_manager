@@ -1,14 +1,19 @@
 <?php
 
 $finder = (new PhpCsFixer\Finder())
-    ->in(__DIR__)
-    ->exclude('var')
-    ->exclude('vendor')
+        ->in(__DIR__)
+        ->exclude('var')
+        ->exclude('vendor')
+        ->notPath([
+            'config/bundles.php',
+            'config/reference.php',
+        ])
 ;
 
 return (new PhpCsFixer\Config())
                 ->setRules([
                     '@Symfony' => true,
+                    '@Symfony:risky' => true,
                     'array_syntax' => ['syntax' => 'short'],
                     'list_syntax' => ['syntax' => 'short'],
                     'modernize_types_casting' => true,
@@ -24,7 +29,7 @@ return (new PhpCsFixer\Config())
                     'no_extra_blank_lines' => ['tokens' => ['extra', 'use', 'return']],
                     // Modernizzazione safe
                     'standardize_not_equals' => true,
-                    'single_quote' => true,
+//                    'single_quote' => true,
                     'short_scalar_cast' => true,
                     'magic_constant_casing' => true,
                     'native_function_casing' => true,
@@ -37,4 +42,3 @@ return (new PhpCsFixer\Config())
                 ->setRiskyAllowed(true)
                 ->setFinder($finder)
 ;
-

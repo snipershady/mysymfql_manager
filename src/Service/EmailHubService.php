@@ -47,6 +47,9 @@ final readonly class EmailHubService
         return $this->sendEmail($addressTo, $subject, $context, $templatePath);
     }
 
+    /**
+     * @param array<string, string> $context
+     */
     private function sendEmail(Address $addressTo, string $subject, array $context, string $templatePath): array
     {
         $epti = new EffectivePrimitiveTypeIdentifierService();

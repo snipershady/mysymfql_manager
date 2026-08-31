@@ -34,7 +34,7 @@ class MyKernelTestCase extends KernelTestCase
     protected string $serverName;
 
     #[\Override]
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
 

@@ -66,7 +66,7 @@ final class DatabaseClientConnection
         $pass = $sqlClient->getPassword() ?? '';
         $port = $sqlClient->getPort();
 
-        $dsn = sprintf(
+        $dsn = \sprintf(
             'mysql:host=%s;port=%d;charset=utf8mb4',
             $host,
             $port

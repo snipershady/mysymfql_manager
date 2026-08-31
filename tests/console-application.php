@@ -1,6 +1,7 @@
 <?php
 
 use App\Kernel;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Dotenv\Dotenv;
 
 require_once dirname(__DIR__) . '/vendor/autoload.php';
@@ -9,6 +10,5 @@ require_once dirname(__DIR__) . '/vendor/autoload.php';
 
 $environment = $_SERVER['APP_ENV'] ?? 'dev';
 $kernel = new Kernel(is_string($environment) ? $environment : 'dev', (bool) ($_SERVER['APP_DEBUG'] ?? true));
-$kernel->boot();
 
-return $kernel->getContainer()->get('doctrine')->getManager();
+return new Application($kernel);

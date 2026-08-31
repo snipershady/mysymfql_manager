@@ -49,13 +49,13 @@ class SetupSqlClientCommand extends Command
         $port = (int) $input->getOption('port');
 
         if (null !== $this->sqlClientRepository->findOneBy(['host' => $host])) {
-            $io->error(sprintf('A server with host "%s" is already registered.', $host));
+            $io->error(\sprintf('A server with host "%s" is already registered.', $host));
 
             return Command::FAILURE;
         }
 
         if (null !== $this->sqlClientRepository->findOneByName($name)) {
-            $io->error(sprintf('A server with name "%s" is already registered.', $name));
+            $io->error(\sprintf('A server with name "%s" is already registered.', $name));
 
             return Command::FAILURE;
         }
@@ -70,7 +70,7 @@ class SetupSqlClientCommand extends Command
         $this->entityManager->persist($sqlClient);
         $this->entityManager->flush();
 
-        $io->success(sprintf(
+        $io->success(\sprintf(
             'MySQL server registered successfully: [%s] %s@%s:%d (id: %d)',
             $name,
             $username,

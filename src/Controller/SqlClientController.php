@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-#[Route('/sqlclient')]
+#[Route(path: '/sqlclient')]
 final class SqlClientController extends AbstractController
 {
     #[Route(name: 'app_sql_client_index', methods: ['GET'])]
@@ -28,7 +28,7 @@ final class SqlClientController extends AbstractController
         ]);
     }
 
-    #[Route('/new', name: 'app_sql_client_new', methods: ['GET', 'POST'])]
+    #[Route(path: '/new', name: 'app_sql_client_new', methods: ['GET', 'POST'])]
     public function new(Request $request, EntityManagerInterface $entityManager): Response
     {
         $sqlClient = new SqlClient();
@@ -48,7 +48,7 @@ final class SqlClientController extends AbstractController
         ]);
     }
 
-    #[Route('/{id}', name: 'app_sql_client_show', methods: ['GET'])]
+    #[Route(path: '/{id}', name: 'app_sql_client_show', methods: ['GET'])]
     public function show(SqlClient $sqlClient): Response
     {
         return $this->render('sql_client/show.html.twig', [
@@ -56,7 +56,7 @@ final class SqlClientController extends AbstractController
         ]);
     }
 
-    #[Route('/{id}/edit', name: 'app_sql_client_edit', methods: ['GET', 'POST'])]
+    #[Route(path: '/{id}/edit', name: 'app_sql_client_edit', methods: ['GET', 'POST'])]
     public function edit(Request $request, SqlClient $sqlClient, EntityManagerInterface $entityManager): Response
     {
         $form = $this->createForm(SqlClientType::class, $sqlClient);
@@ -74,7 +74,7 @@ final class SqlClientController extends AbstractController
         ]);
     }
 
-    #[Route('/{id}', name: 'app_sql_client_delete', methods: ['POST'])]
+    #[Route(path: '/{id}', name: 'app_sql_client_delete', methods: ['POST'])]
     public function delete(Request $request, SqlClient $sqlClient, EntityManagerInterface $entityManager): \Symfony\Component\HttpFoundation\RedirectResponse
     {
         if ($this->isCsrfTokenValid('delete' . $sqlClient->getId(), $request->getPayload()->getString('_token'))) {

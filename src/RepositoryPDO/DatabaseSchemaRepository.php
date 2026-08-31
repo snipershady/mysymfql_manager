@@ -49,7 +49,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
     public function useDbName(string $dbName): bool
     {
-        $query = sprintf('USE %s', $this->quoteIdentifier($dbName));
+        $query = \sprintf('USE %s', $this->quoteIdentifier($dbName));
         try {
             $stmt = $this->pdo->prepare($query);
 
@@ -61,7 +61,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
     public function optimizeTable(string $table): bool
     {
-        $query = sprintf('OPTIMIZE TABLE %s', $this->quoteIdentifier($table));
+        $query = \sprintf('OPTIMIZE TABLE %s', $this->quoteIdentifier($table));
         try {
             $stmt = $this->pdo->prepare($query);
 
@@ -73,7 +73,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
     public function optimizeWithAlterTable(string $table): bool
     {
-        $query = sprintf('ALTER TABLE %s ENGINE=INNODB;', $this->quoteIdentifier($table));
+        $query = \sprintf('ALTER TABLE %s ENGINE=INNODB;', $this->quoteIdentifier($table));
         try {
             $stmt = $this->pdo->prepare($query);
 
@@ -85,7 +85,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
     public function analyzeTable(string $table): bool
     {
-        $query = sprintf('ANALYZE TABLE %s;', $this->quoteIdentifier($table));
+        $query = \sprintf('ANALYZE TABLE %s;', $this->quoteIdentifier($table));
         try {
             $stmt = $this->pdo->prepare($query);
 
@@ -114,7 +114,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
     public function showCreateTable(string $table): array
     {
-        $query = sprintf('SHOW CREATE TABLE %s;', $this->quoteIdentifier($table));
+        $query = \sprintf('SHOW CREATE TABLE %s;', $this->quoteIdentifier($table));
         try {
             $stmt = $this->pdo->prepare($query);
 
@@ -165,7 +165,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
     public function countTableRow(string $table): int
     {
-        $query = sprintf('SELECT COUNT(*) as table_row FROM %s', $table);
+        $query = \sprintf('SELECT COUNT(*) as table_row FROM %s', $table);
         try {
             $stmt = $this->pdo->prepare($query);
 
@@ -181,7 +181,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
     {
         // PDO placeholders cannot be used for identifiers or DDL keywords:
         // use quoteIdentifier() for the db name and interpolate enum values directly (trusted).
-        $query = sprintf(
+        $query = \sprintf(
             'CREATE DATABASE IF NOT EXISTS %s CHARACTER SET %s COLLATE %s',
             $this->quoteIdentifier($dbName),
             $charset->value,
@@ -198,7 +198,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
     public function createDummyTable(): bool
     {
-        $query = sprintf("CREATE TABLE `jujutsu_kaisen_cast` (
+        $query = \sprintf("CREATE TABLE `jujutsu_kaisen_cast` (
                 `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
                 `nome` VARCHAR(100) NOT NULL,
                 `tecnica` VARCHAR(255) NOT NULL,
@@ -233,7 +233,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
     public function createDummyTableTwo(): bool
     {
-        $query = sprintf("CREATE TABLE `jojo_cast` (
+        $query = \sprintf("CREATE TABLE `jojo_cast` (
                 `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
                 `nome` VARCHAR(100) NOT NULL COMMENT 'Nome del personaggio (es. Jotaro Kujo)',
                 `stand` VARCHAR(100) DEFAULT NULL COMMENT 'Nome dello Stand (es. Star Platinum)',
@@ -272,7 +272,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
     public function dropDatabase(string $dbName): bool
     {
         // Identifier cannot be a PDO placeholder — use quoteIdentifier().
-        $query = sprintf('DROP DATABASE IF EXISTS %s', $this->quoteIdentifier($dbName));
+        $query = \sprintf('DROP DATABASE IF EXISTS %s', $this->quoteIdentifier($dbName));
         try {
             $stmt = $this->pdo->prepare($query);
 
@@ -285,7 +285,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
     public function dropUser(string $username, string $host = '%'): bool
     {
         // Account strings 'user'@'host' in DDL cannot use PDO placeholders — use PDO::quote().
-        $query = sprintf(
+        $query = \sprintf(
             'DROP USER IF EXISTS %s@%s',
             $this->pdo->quote($username),
             $this->pdo->quote($host)
@@ -301,7 +301,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
     public function dropTable(string $table): bool
     {
-        $query = sprintf(
+        $query = \sprintf(
             'DROP TABLE IF EXISTS %s',
             $table
         );
@@ -316,12 +316,12 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
     public function emptyTable(string $table): bool
     {
-        $query = sprintf(
+        $query = \sprintf(
             'DELETE FROM %s WHERE 1 = 1;',
             $table
         );
 
-        $queryResetAutoIncrement = sprintf(
+        $queryResetAutoIncrement = \sprintf(
             'ALTER TABLE %s AUTO_INCREMENT = 1',
             $table
         );
@@ -354,7 +354,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
     public function changeUserPassword(string $username, string $newPassword, string $host = '%'): bool
     {
-        $query = sprintf(
+        $query = \sprintf(
             'ALTER USER %s@%s IDENTIFIED BY %s',
             $this->pdo->quote($username),
             $this->pdo->quote($host),
@@ -372,7 +372,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
     public function createUser(string $username, string $password, string $host = '%'): bool
     {
         // Account strings and IDENTIFIED BY value in DDL cannot use PDO placeholders — use PDO::quote().
-        $query = sprintf(
+        $query = \sprintf(
             'CREATE USER %s@%s IDENTIFIED BY %s',
             $this->pdo->quote($username),
             $this->pdo->quote($host),
@@ -391,7 +391,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
     {
         // Identifiers and account strings in DDL cannot use PDO placeholders.
         // $privileges is a caller-controlled keyword string (e.g. 'ALL PRIVILEGES', 'SELECT,INSERT').
-        $query = sprintf(
+        $query = \sprintf(
             'GRANT %s ON %s.* TO %s@%s',
             $privileges,
             $this->quoteIdentifier($dbName),
@@ -499,7 +499,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
                 $result[] = [
                     'db' => $row['Db'],
                     'privileges' => $privs,
-                    'all_privileges' => count($privs) === count($privMap),
+                    'all_privileges' => \count($privs) === \count($privMap),
                 ];
             }
 
@@ -511,7 +511,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
     public function revokeAllPrivilegesOnDb(string $dbName, string $username, string $host = '%'): bool
     {
-        $query = sprintf(
+        $query = \sprintf(
             'REVOKE ALL PRIVILEGES ON %s.* FROM %s@%s',
             $this->quoteIdentifier($dbName),
             $this->pdo->quote($username),
@@ -540,7 +540,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
     public function killProcessById(int $processId): bool
     {
-        $query = sprintf('KILL %s', $processId);
+        $query = \sprintf('KILL %s', $processId);
         try {
             $stmt = $this->pdo->prepare($query);
 
@@ -738,7 +738,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
             return [
                 'columns' => [] === $rows ? [] : array_keys($rows[0]),
                 'rows' => $rows,
-                'affected_rows' => count($rows),
+                'affected_rows' => \count($rows),
                 'is_select' => true,
             ];
         } catch (\PDOException $pdoException) {

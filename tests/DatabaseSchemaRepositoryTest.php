@@ -13,7 +13,7 @@ use App\RepositoryPDO\DatabaseSchemaRepository;
 class DatabaseSchemaRepositoryTest extends MyKernelTestCase
 {
     #[\Override]
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
@@ -44,7 +44,7 @@ class DatabaseSchemaRepositoryTest extends MyKernelTestCase
     }
 
     #[\Override]
-    public function tearDown(): void
+    protected function tearDown(): void
     {
         parent::setUp();
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
@@ -82,7 +82,7 @@ class DatabaseSchemaRepositoryTest extends MyKernelTestCase
         $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
         $allDatabase = $databaseRepositoryPdo->showDatabases();
-        if (in_array($this->dbNameTestingOne, $allDatabase)) {
+        if (\in_array($this->dbNameTestingOne, $allDatabase)) {
             $databaseRepositoryPdo->useDbName($this->dbNameTestingOne);
         }
 

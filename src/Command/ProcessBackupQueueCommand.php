@@ -42,10 +42,10 @@ class ProcessBackupQueueCommand extends Command
         $dbName = $entry->getDbName();
         $table = $entry->getTable();
 
-        $io->write(sprintf(
+        $io->write(\sprintf(
             'Backup <info>%s</info>%s on <info>%s</info> ... ',
             $dbName,
-            $table ? sprintf('.<info>%s</info>', $table) : '',
+            $table ? \sprintf('.<info>%s</info>', $table) : '',
             $sqlClient->getName(),
         ));
 
@@ -53,17 +53,17 @@ class ProcessBackupQueueCommand extends Command
             $result = $this->mysqldumpManager->createBackup($sqlClient, $dbName, $table);
 
             if ($result['is_valid']) {
-                $io->writeln(sprintf('<fg=green>OK</> <fg=gray>(%s)</>', basename((string) $result['backup_filename'])));
+                $io->writeln(\sprintf('<fg=green>OK</> <fg=gray>(%s)</>', basename((string) $result['backup_filename'])));
             } else {
                 $io->writeln('<fg=red>FAILED</>');
                 if (!empty($result['output'])) {
-                    $io->writeln(array_map(fn (string $l): string => '    ' . $l, $result['output']));
+                    $io->writeln(array_map(static fn (string $l): string => '    ' . $l, $result['output']));
                 }
 
                 return Command::FAILURE;
             }
         } catch (\Throwable $throwable) {
-            $io->writeln(sprintf('<fg=red>ERROR: %s</>', $throwable->getMessage()));
+            $io->writeln(\sprintf('<fg=red>ERROR: %s</>', $throwable->getMessage()));
 
             return Command::FAILURE;
         }

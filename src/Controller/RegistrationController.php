@@ -23,7 +23,7 @@ use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
 
 class RegistrationController extends AbstractController
 {
-    #[Route('/register', name: 'app_register')]
+    #[Route(path: '/register', name: 'app_register')]
     public function register(Request $request, UserPasswordHasherInterface $userPasswordHasher, EntityManagerInterface $entityManager): Response
     {
         $user = new AppUser();
@@ -69,7 +69,7 @@ class RegistrationController extends AbstractController
         ]);
     }
 
-    #[Route('/change-password', name: 'app_change_password')]
+    #[Route(path: '/change-password', name: 'app_change_password')]
     public function changePassword(
         Request $request,
         UserPasswordHasherInterface $userPasswordHasher,
@@ -81,8 +81,8 @@ class RegistrationController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $epti = new EffectivePrimitiveTypeIdentifierService();
-            $oldPlainPassword = $epti->getTypedValue($form->get('oldPlainPassword')->getData(), true, true);
-            $newPlainPassword = $epti->getTypedValue($form->get('newPlainPassword')->getData(), true, true);
+            $oldPlainPassword = $epti->getTypedValue($form->get('oldPlainPassword')->getData(), trim: true, forceString: true);
+            $newPlainPassword = $epti->getTypedValue($form->get('newPlainPassword')->getData(), trim: true, forceString: true);
 
             // Verify whether the old password is correct
             if (!$userPasswordHasher->isPasswordValid($user, $oldPlainPassword)) {
@@ -109,7 +109,7 @@ class RegistrationController extends AbstractController
         ]);
     }
 
-    #[Route('/reset-password', name: 'app_reset_password')]
+    #[Route(path: '/reset-password', name: 'app_reset_password')]
     public function resetPassword(
         Request $request,
         UserPasswordHasherInterface $userPasswordHasher,
@@ -131,7 +131,7 @@ class RegistrationController extends AbstractController
                 $this->addFlash('success', 'A new password has been sent to the provided email address');
             } else {
                 // Hash and set the new password
-                $newPlainPassword = md5(microtime(true) . $secret);
+                $newPlainPassword = md5(microtime(as_float: true) . $secret);
                 $hashedPassword = $userPasswordHasher->hashPassword($user, $newPlainPassword);
                 $user->setPassword($hashedPassword);
 

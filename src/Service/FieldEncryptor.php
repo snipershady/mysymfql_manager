@@ -29,8 +29,8 @@ final readonly class FieldEncryptor
     {
         $key = sodium_hex2bin($encryptionKey);
 
-        if (SODIUM_CRYPTO_SECRETBOX_KEYBYTES !== strlen($key)) {
-            throw new \RuntimeException(sprintf('The encryption key must be %d bytes (%d hex characters).', SODIUM_CRYPTO_SECRETBOX_KEYBYTES, SODIUM_CRYPTO_SECRETBOX_KEYBYTES * 2));
+        if (\SODIUM_CRYPTO_SECRETBOX_KEYBYTES !== \strlen($key)) {
+            throw new \RuntimeException(\sprintf('The encryption key must be %d bytes (%d hex characters).', \SODIUM_CRYPTO_SECRETBOX_KEYBYTES, \SODIUM_CRYPTO_SECRETBOX_KEYBYTES * 2));
         }
 
         $this->key = $key;
@@ -38,14 +38,14 @@ final readonly class FieldEncryptor
 
     public function encrypt(string $plaintext): string
     {
-        $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+        $nonce = random_bytes(\SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
         $ciphertext = sodium_crypto_secretbox($plaintext, $nonce, $this->key);
 
         sodium_memzero($plaintext);
 
         return self::PREFIX . sodium_bin2base64(
             $nonce . $ciphertext,
-            SODIUM_BASE64_VARIANT_URLSAFE_NO_PADDING
+            \SODIUM_BASE64_VARIANT_URLSAFE_NO_PADDING
         );
     }
 
@@ -59,16 +59,16 @@ final readonly class FieldEncryptor
         }
 
         $raw = sodium_base642bin(
-            substr($encrypted, strlen(self::PREFIX)),
-            SODIUM_BASE64_VARIANT_URLSAFE_NO_PADDING
+            substr($encrypted, \strlen(self::PREFIX)),
+            \SODIUM_BASE64_VARIANT_URLSAFE_NO_PADDING
         );
 
-        if (strlen($raw) <= SODIUM_CRYPTO_SECRETBOX_NONCEBYTES) {
+        if (\strlen($raw) <= \SODIUM_CRYPTO_SECRETBOX_NONCEBYTES) {
             throw new \RuntimeException('Malformed encrypted payload.');
         }
 
-        $nonce = substr($raw, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
-        $ciphertext = substr($raw, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+        $nonce = substr($raw, 0, \SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+        $ciphertext = substr($raw, \SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
 
         $plaintext = sodium_crypto_secretbox_open($ciphertext, $nonce, $this->key);
 

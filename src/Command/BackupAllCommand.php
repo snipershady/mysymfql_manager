@@ -40,7 +40,7 @@ class BackupAllCommand extends Command
 
         $sqlClient = $this->sqlClientRepository->findOneByName($name);
         if (null === $sqlClient) {
-            $io->error(sprintf('No server configured with name "%s".', $name));
+            $io->error(\sprintf('No server configured with name "%s".', $name));
 
             return Command::FAILURE;
         }
@@ -54,30 +54,30 @@ class BackupAllCommand extends Command
             return Command::SUCCESS;
         }
 
-        $io->title(sprintf('Backup of %d database(s) on %s', count($databases), $name));
+        $io->title(\sprintf('Backup of %d database(s) on %s', \count($databases), $name));
 
         $success = 0;
         $failure = 0;
 
         foreach ($databases as $database) {
             $dbName = $database['db_name'];
-            $io->write(sprintf('  <info>%s</info> ... ', $dbName));
+            $io->write(\sprintf('  <info>%s</info> ... ', $dbName));
 
             try {
                 $result = $this->mysqldumpManager->createBackup($sqlClient, $dbName);
 
                 if ($result['is_valid']) {
-                    $io->writeln(sprintf('<fg=green>OK</> <fg=gray>(%s)</>', basename((string) $result['backup_filename'])));
+                    $io->writeln(\sprintf('<fg=green>OK</> <fg=gray>(%s)</>', basename((string) $result['backup_filename'])));
                     ++$success;
                 } else {
                     $io->writeln('<fg=red>FAILED</>');
                     if (!empty($result['output'])) {
-                        $io->writeln(array_map(fn (string $l): string => '    ' . $l, $result['output']));
+                        $io->writeln(array_map(static fn (string $l): string => '    ' . $l, $result['output']));
                     }
                     ++$failure;
                 }
             } catch (\Throwable $e) {
-                $io->writeln(sprintf('<fg=red>ERROR: %s</>', $e->getMessage()));
+                $io->writeln(\sprintf('<fg=red>ERROR: %s</>', $e->getMessage()));
                 ++$failure;
             }
         }
@@ -85,18 +85,18 @@ class BackupAllCommand extends Command
         $io->newLine();
 
         if (0 === $failure) {
-            $io->success(sprintf('All %d backup(s) completed successfully.', $success));
+            $io->success(\sprintf('All %d backup(s) completed successfully.', $success));
 
             return Command::SUCCESS;
         }
 
         if (0 === $success) {
-            $io->error(sprintf('All %d backup(s) failed.', $failure));
+            $io->error(\sprintf('All %d backup(s) failed.', $failure));
 
             return Command::FAILURE;
         }
 
-        $io->warning(sprintf('%d backup(s) completed, %d failed.', $success, $failure));
+        $io->warning(\sprintf('%d backup(s) completed, %d failed.', $success, $failure));
 
         return Command::FAILURE;
     }

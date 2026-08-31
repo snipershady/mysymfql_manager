@@ -23,7 +23,7 @@ class BackupQueueRepository extends ServiceEntityRepository
     {
         return $this->createQueryBuilder('b')
             ->andWhere('b.isDequeued = :dequeued')
-            ->setParameter('dequeued', false)
+            ->setParameter('dequeued', value: false)
             ->orderBy('b.requestDate', 'DESC')
             ->setMaxResults(1)
             ->getQuery()
