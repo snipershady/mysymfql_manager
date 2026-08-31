@@ -14,6 +14,11 @@ return (new PhpCsFixer\Config())
                 ->setRules([
                     '@Symfony' => true,
                     '@Symfony:risky' => true,
+                    // `declare(strict_types=1);` placement is owned by Rector
+                    // (DeclareStrictTypesRector, scoped to rector.php's paths, Command excluded).
+                    // @Symfony:risky ships `declare_strict_types => ['strategy' => 'remove']`,
+                    // which strips what Rector adds — disable the fixer so the two stay consistent.
+                    'declare_strict_types' => false,
                     'array_syntax' => ['syntax' => 'short'],
                     'list_syntax' => ['syntax' => 'short'],
                     'modernize_types_casting' => true,
@@ -29,11 +34,11 @@ return (new PhpCsFixer\Config())
                     'no_extra_blank_lines' => ['tokens' => ['extra', 'use', 'return']],
                     // Modernizzazione safe
                     'standardize_not_equals' => true,
-//                    'single_quote' => true,
+                    'single_quote' => true,
                     'short_scalar_cast' => true,
                     'magic_constant_casing' => true,
                     'native_function_casing' => true,
-//                    'trailing_comma_in_multiline' => ['elements' => ['arrays']],
+                    'trailing_comma_in_multiline' => ['elements' => ['arrays']],
                     'concat_space' => ['spacing' => 'one'],
                     'cast_spaces' => ['space' => 'single'],
                     'object_operator_without_whitespace' => true,
