@@ -2,6 +2,8 @@
 
 namespace App\Dto;
 
+use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
+
 /**
  * Represents the output of SHOW ENGINE INNODB STATUS in structured form.
  *
@@ -33,7 +35,12 @@ final readonly class InnodbStatus
      */
     public static function fromArray(array $row): self
     {
-        $raw = (string) ($row['Status'] ?? $row['status'] ?? '');
+        $epti = new EffectivePrimitiveTypeIdentifierService();
+        $raw = match (true) {
+            isset($row['Status']) => $epti->getStringValueFromArray('Status', $row, forceString: true),
+            isset($row['status']) => $epti->getStringValueFromArray('status', $row, forceString: true),
+            default => '',
+        };
 
         return new self(
             generatedAt: self::parseTimestamp($raw),

@@ -2,6 +2,8 @@
 
 namespace App\Dto;
 
+use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
+
 /**
  * Represents a row from performance_schema.processlist.
  *
@@ -27,16 +29,18 @@ final readonly class ProcessList
      */
     public static function fromArray(array $row): self
     {
+        $epti = new EffectivePrimitiveTypeIdentifierService();
+
         return new self(
-            id: (int) $row['ID'],
-            user: (string) $row['USER'],
-            host: (string) $row['HOST'],
-            db: isset($row['DB']) ? (string) $row['DB'] : null,
-            command: (string) $row['COMMAND'],
-            time: (int) $row['TIME'],
-            state: isset($row['STATE']) ? (string) $row['STATE'] : null,
-            info: isset($row['INFO']) ? (string) $row['INFO'] : null,
-            executionEngine: (string) ($row['EXECUTION_ENGINE'] ?? ''),
+            id: $epti->getIntValueFromArray('ID', $row),
+            user: $epti->getStringValueFromArray('USER', $row, forceString: true),
+            host: $epti->getStringValueFromArray('HOST', $row, forceString: true),
+            db: isset($row['DB']) ? $epti->getStringValueFromArray('DB', $row, forceString: true) : null,
+            command: $epti->getStringValueFromArray('COMMAND', $row, forceString: true),
+            time: $epti->getIntValueFromArray('TIME', $row),
+            state: isset($row['STATE']) ? $epti->getStringValueFromArray('STATE', $row, forceString: true) : null,
+            info: isset($row['INFO']) ? $epti->getStringValueFromArray('INFO', $row, forceString: true) : null,
+            executionEngine: $epti->getStringValueFromArray('EXECUTION_ENGINE', $row, forceString: true),
         );
     }
 }

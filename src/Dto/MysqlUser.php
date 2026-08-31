@@ -2,6 +2,8 @@
 
 namespace App\Dto;
 
+use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
+
 /**
  * @author Stefano Perrini <perrini.stefano@gmail.com>
  */
@@ -16,15 +18,17 @@ final readonly class MysqlUser
     }
 
     /**
-     * @param array{User: string, Host: string, account_locked: string, has_db_grant: int|string} $row
+     * @param array<string, mixed> $row
      */
     public static function fromArray(array $row): self
     {
+        $epti = new EffectivePrimitiveTypeIdentifierService();
+
         return new self(
-            user: (string) $row['User'],
-            host: (string) $row['Host'],
-            accountLocked: 'Y' === $row['account_locked'],
-            hasDbGrant: (bool) $row['has_db_grant'],
+            user: $epti->getStringValueFromArray('User', $row, forceString: true),
+            host: $epti->getStringValueFromArray('Host', $row, forceString: true),
+            accountLocked: 'Y' === $epti->getStringValueFromArray('account_locked', $row, forceString: true),
+            hasDbGrant: $epti->getBoolValueFromArray('has_db_grant', $row),
         );
     }
 }

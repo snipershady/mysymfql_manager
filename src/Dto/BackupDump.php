@@ -2,6 +2,8 @@
 
 namespace App\Dto;
 
+use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
+
 /**
  * Description of BackupDump.
  *
@@ -18,15 +20,17 @@ final readonly class BackupDump
     }
 
     /**
-     * @param array{filename: string, path: string, size: int, mtime: int} $row
+     * @param array<string, mixed> $row
      */
     public static function fromArray(array $row): self
     {
+        $epti = new EffectivePrimitiveTypeIdentifierService();
+
         return new self(
-            filename: (string) $row['filename'],
-            path: (string) $row['path'],
-            size: (int) $row['size'],
-            mtime: (int) $row['mtime'],
+            filename: $epti->getStringValueFromArray('filename', $row, forceString: true),
+            path: $epti->getStringValueFromArray('path', $row, forceString: true),
+            size: $epti->getIntValueFromArray('size', $row),
+            mtime: $epti->getIntValueFromArray('mtime', $row),
         );
     }
 }
