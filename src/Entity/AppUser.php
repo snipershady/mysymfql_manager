@@ -67,6 +67,7 @@ class AppUser implements UserInterface, PasswordAuthenticatedUserInterface, \Str
         return $this;
     }
 
+    #[\Override]
     public function __toString(): string
     {
         return 'AppUser['
