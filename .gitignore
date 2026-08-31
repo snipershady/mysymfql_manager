@@ -30,3 +30,4 @@
 phpstan.neon
 ###< phpstan/phpstan ###
 /CHANGE/
+/.rector.cache/
