@@ -16,9 +16,8 @@ use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
 final readonly class MysqldumpManager
 {
     private string $backupPath;
-    private EffectivePrimitiveTypeIdentifierService $epti;
 
-    public function __construct()
+    public function __construct(?EffectivePrimitiveTypeIdentifierService $epti = null)
     {
         $disabledFunctions = array_map(trim(...), explode(',', \ini_get('disable_functions')));
         if (\in_array('exec', $disabledFunctions, strict: true)) {
@@ -29,9 +28,9 @@ final readonly class MysqldumpManager
             throw new \RuntimeException('The mysqldump command was not found in the system PATH. Install it with: "apt install mysql-client" (Debian/Ubuntu) or "yum install mysql" (RHEL/CentOS), then verify it is accessible in the PATH of the user running PHP.');
         }
 
-        $this->epti = new EffectivePrimitiveTypeIdentifierService();
+        $epti ??= new EffectivePrimitiveTypeIdentifierService();
 
-        $this->backupPath = $this->epti->getTypedValueFromEnv(
+        $this->backupPath = $epti->getStringValueFromEnv(
             needle: 'BACKUP_PATH', trim: true, forceString: true, sanitizeHtml: false
         );
     }

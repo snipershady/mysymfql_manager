@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\EventSubscriber;
 
 use AltchaOrg\Altcha\Altcha;
@@ -19,8 +21,10 @@ use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
  */
 final readonly class AltchaLoginSubscriber implements EventSubscriberInterface
 {
-    public function __construct(private RequestStack $requestStack)
-    {
+    public function __construct(
+        private RequestStack $requestStack,
+        private EffectivePrimitiveTypeIdentifierService $epti,
+    ) {
     }
 
     public static function getSubscribedEvents(): array
@@ -39,14 +43,13 @@ final readonly class AltchaLoginSubscriber implements EventSubscriberInterface
             return;
         }
 
-        $altchaPayload = $request->request->get('altcha', '');
+        $altchaPayload = $this->epti->getStringValueFromPost(needle: 'altcha', trim: true);
 
         if ('' === $altchaPayload) {
             throw new CustomUserMessageAuthenticationException('Please complete the CAPTCHA verification.');
         }
 
-        $epti = new EffectivePrimitiveTypeIdentifierService();
-        $hmacKey = $epti->getTypedValueFromServer(needle: 'ALTCHAKEY', trim: true, forceString: true, sanitizeHtml: true);
+        $hmacKey = $this->epti->getStringValueFromServer(needle: 'ALTCHAKEY', trim: true, forceString: true, sanitizeHtml: true);
 
         $altcha = new Altcha($hmacKey);
 

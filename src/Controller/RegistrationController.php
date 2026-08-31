@@ -24,15 +24,14 @@ use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
 class RegistrationController extends AbstractController
 {
     #[Route(path: '/register', name: 'app_register')]
-    public function register(Request $request, UserPasswordHasherInterface $userPasswordHasher, EntityManagerInterface $entityManager): Response
+    public function register(Request $request, UserPasswordHasherInterface $userPasswordHasher, EntityManagerInterface $entityManager, EffectivePrimitiveTypeIdentifierService $epti): Response
     {
         $user = new AppUser();
         $form = $this->createForm(RegistrationFormType::class, $user);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $epti = new EffectivePrimitiveTypeIdentifierService();
-            $altchaPayload = $request->request->get('altcha', '');
+            $altchaPayload = $epti->getStringValueFromPost(needle: 'altcha', trim: true);
 
             if ('' === $altchaPayload) {
                 $this->addFlash('error', 'Please complete the CAPTCHA verification.');
@@ -40,7 +39,7 @@ class RegistrationController extends AbstractController
                 return $this->redirectToRoute('app_register');
             }
 
-            $hmacKey = $epti->getTypedValueFromServer(needle: 'ALTCHAKEY', trim: true, forceString: true, sanitizeHtml: true);
+            $hmacKey = $epti->getStringValueFromServer(needle: 'ALTCHAKEY', trim: true, forceString: true, sanitizeHtml: true);
             $altcha = new Altcha($hmacKey);
 
             if (!$altcha->verifySolution($altchaPayload, checkExpires: true)) {
@@ -74,15 +73,15 @@ class RegistrationController extends AbstractController
         Request $request,
         UserPasswordHasherInterface $userPasswordHasher,
         EntityManagerInterface $entityManager,
+        EffectivePrimitiveTypeIdentifierService $epti,
         #[CurrentUser] ?AppUser $user,
     ): Response {
         $form = $this->createForm(ChangePasswordType::class);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $epti = new EffectivePrimitiveTypeIdentifierService();
-            $oldPlainPassword = $epti->getTypedValue($form->get('oldPlainPassword')->getData(), trim: true, forceString: true);
-            $newPlainPassword = $epti->getTypedValue($form->get('newPlainPassword')->getData(), trim: true, forceString: true);
+            $oldPlainPassword = $epti->getStringValue($form->get('oldPlainPassword')->getData(), trim: true, forceString: true);
+            $newPlainPassword = $epti->getStringValue($form->get('newPlainPassword')->getData(), trim: true, forceString: true);
 
             // Verify whether the old password is correct
             if (!$userPasswordHasher->isPasswordValid($user, $oldPlainPassword)) {
@@ -116,16 +115,16 @@ class RegistrationController extends AbstractController
         EntityManagerInterface $entityManager,
         AppUserRepository $userRepo,
         EmailHubService $emailHubService,
+        EffectivePrimitiveTypeIdentifierService $epti,
     ): Response {
         $form = $this->createForm(PasswordRecoveryType::class);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $epti = new EffectivePrimitiveTypeIdentifierService();
-            $email = $epti->getTypedValue(data: $request->request->all()['password_recovery']['email'], trim: true, forceString: true, sanitizeHtml: true);
+            $email = $epti->getStringValueFromArray(needle: 'email', array: $request->request->all('password_recovery'), trim: true, forceString: true, sanitizeHtml: true);
             $user = $userRepo->findOneBy(['email' => $email]);
-            $prefix = $epti->getTypedValueFromEnv(needle: 'SW_NAME', trim: true, forceString: true, sanitizeHtml: true);
-            $secret = $epti->getTypedValueFromEnv(needle: 'APP_SECRET', trim: true, forceString: true, sanitizeHtml: true);
+            $prefix = $epti->getStringValueFromEnv(needle: 'SW_NAME', trim: true, forceString: true, sanitizeHtml: true);
+            $secret = $epti->getStringValueFromEnv(needle: 'APP_SECRET', trim: true, forceString: true, sanitizeHtml: true);
 
             if (!$user instanceof AppUser) {
                 $this->addFlash('success', 'A new password has been sent to the provided email address');

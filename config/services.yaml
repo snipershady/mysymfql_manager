@@ -37,8 +37,6 @@ services:
         arguments:
             $encryptionKey: '%env(SQLCLIENT_ENCRYPTION_KEY)%'
 
-    TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService:
-        arguments:
-            $htmlSanitizer: null
-
-    
+    # Register the vendor class as an autowired service so it can be
+    # injected (constructor / controller action) instead of instantiated with `new`.
+    TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService: ~

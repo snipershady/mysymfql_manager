@@ -34,7 +34,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         SqlClientRepository $sqlClientRepository,
         DatabaseOwnerRepository $databaseOwnerRepository,
     ): JsonResponse {
-        $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
 
         $ownedClients = $sqlClientRepository->findAllOwned($user);
         $sqlClient = array_find($ownedClients, static fn ($ownedClient): bool => $ownedClient->getName() === $name);
@@ -61,7 +61,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         EffectivePrimitiveTypeIdentifierService $epti,
         SqlClientRepository $sqlClientRepository): Response
     {
-        $selectedName = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $selectedName = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
 
         return $this->render('schema/databases.html.twig', [
             'sql_clients' => $sqlClientRepository->findAllOwned($user),
@@ -78,14 +78,14 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         SqlClientRepository $sqlClientRepository,
         EntityManagerInterface $entityManagerInterface): JsonResponse
     {
-        $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $dbName = $epti->getTypedValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
-        $charsetVal = $epti->getTypedValueFromPost(needle: 'charset', trim: true, forceString: true, sanitizeHtml: true);
-        $collateVal = $epti->getTypedValueFromPost(needle: 'collation', trim: true, forceString: true, sanitizeHtml: true);
-        $username = $epti->getTypedValueFromPost(needle: 'username', trim: true, forceString: true, sanitizeHtml: false);
-        $password = $epti->getTypedValueFromPost(needle: 'password', trim: true, forceString: true, sanitizeHtml: false);
-        $userHost = $epti->getTypedValueFromPost(needle: 'user_host', trim: true, forceString: true, sanitizeHtml: false);
-        $privileges = $epti->getTypedValueFromPost(needle: 'privileges', trim: true, forceString: true, sanitizeHtml: false);
+        $name = $epti->getStringValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getStringValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+        $charsetVal = $epti->getStringValueFromPost(needle: 'charset', trim: true, forceString: true, sanitizeHtml: true);
+        $collateVal = $epti->getStringValueFromPost(needle: 'collation', trim: true, forceString: true, sanitizeHtml: true);
+        $username = $epti->getStringValueFromPost(needle: 'username', trim: true, forceString: true, sanitizeHtml: false);
+        $password = $epti->getStringValueFromPost(needle: 'password', trim: true, forceString: true, sanitizeHtml: false);
+        $userHost = $epti->getStringValueFromPost(needle: 'user_host', trim: true, forceString: true, sanitizeHtml: false);
+        $privileges = $epti->getStringValueFromPost(needle: 'privileges', trim: true, forceString: true, sanitizeHtml: false);
 
         if ('' === $username) {
             return $this->json(['is_valid' => false, 'message' => 'Parameter username cannot be empty'], Response::HTTP_BAD_REQUEST);
@@ -143,8 +143,8 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         EffectivePrimitiveTypeIdentifierService $epti,
         SqlClientRepository $sqlClientRepository): Response
     {
-        $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $dbName = $epti->getTypedValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+        $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getStringValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (!$sqlClient instanceof SqlClient) {
@@ -171,8 +171,8 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         EffectivePrimitiveTypeIdentifierService $epti,
         SqlClientRepository $sqlClientRepository): Response
     {
-        $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $dbName = $epti->getTypedValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+        $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getStringValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (!$sqlClient instanceof SqlClient) {
@@ -190,10 +190,10 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         EffectivePrimitiveTypeIdentifierService $epti,
         SqlClientRepository $sqlClientRepository): JsonResponse
     {
-        $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $dbName = $epti->getTypedValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+        $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getStringValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
 
-        if ('' === (string) $name || '' === (string) $dbName) {
+        if ('' === $name || '' === $dbName) {
             return $this->json(['error' => 'Missing name or db_name parameter'], Response::HTTP_BAD_REQUEST);
         }
 
@@ -212,9 +212,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         EffectivePrimitiveTypeIdentifierService $epti,
         SqlClientRepository $sqlClientRepository): JsonResponse
     {
-        $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $dbName = $epti->getTypedValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
-        $sql = $epti->getTypedValueFromPost(needle: 'sql', trim: true, forceString: true, sanitizeHtml: false);
+        $name = $epti->getStringValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getStringValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+        $sql = $epti->getStringValueFromPost(needle: 'sql', trim: true, forceString: true, sanitizeHtml: false);
 
         if ('' === $sql) {
             return $this->json(['is_valid' => false, 'message' => 'La query non può essere vuota.'], Response::HTTP_BAD_REQUEST);
@@ -250,7 +250,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         SqlClientRepository $sqlClientRepository,
         DatabaseOwnerRepository $databaseOwnerRepository,
     ): JsonResponse {
-        $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $sqlClient = $sqlClientRepository->findOneByName($name);
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
@@ -267,8 +267,8 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         EffectivePrimitiveTypeIdentifierService $epti,
         SqlClientRepository $sqlClientRepository): JsonResponse
     {
-        $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $dbName = $epti->getTypedValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+        $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getStringValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
         $sqlClient = $sqlClientRepository->findOneByName($name);
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
@@ -282,7 +282,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         EffectivePrimitiveTypeIdentifierService $epti,
         SqlClientRepository $sqlClientRepository): JsonResponse
     {
-        $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $sqlClient = $sqlClientRepository->findOneByName($name);
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
@@ -295,7 +295,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         EffectivePrimitiveTypeIdentifierService $epti,
         SqlClientRepository $sqlClientRepository): JsonResponse
     {
-        $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
 
@@ -309,7 +309,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         EffectivePrimitiveTypeIdentifierService $epti,
         SqlClientRepository $sqlClientRepository): Response
     {
-        $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $sqlClient = $sqlClientRepository->findOneByName($name);
         $repo = new DatabaseSchemaRepository($sqlClient);
 
@@ -322,7 +322,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     #[Route(path: '/process-list', name: 'app_schema_process_list', methods: ['GET'])]
     public function processListPage(EffectivePrimitiveTypeIdentifierService $epti): Response
     {
-        $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
 
         return $this->render('schema/process_list.html.twig', [
             'name' => $name,
@@ -334,8 +334,8 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         EffectivePrimitiveTypeIdentifierService $epti,
         SqlClientRepository $sqlClientRepository): JsonResponse
     {
-        $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $pid = (int) $epti->getTypedValueFromPost(needle: 'pid', trim: true, forceString: true, sanitizeHtml: true);
+        $name = $epti->getStringValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $pid = $epti->getIntValueFromPost(needle: 'pid', trim: true);
         $sqlClient = $sqlClientRepository->findOneByName($name);
 
         if (!$sqlClient instanceof SqlClient) {
@@ -354,8 +354,8 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     #[Route(path: '/db-users', name: 'app_schema_db_users', methods: ['GET'])]
     public function dbUsers(EffectivePrimitiveTypeIdentifierService $epti): Response
     {
-        $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $dbName = $epti->getTypedValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+        $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getStringValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
 
         return $this->render('schema/db_users.html.twig', [
             'name' => $name,
@@ -368,8 +368,8 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         EffectivePrimitiveTypeIdentifierService $epti,
         SqlClientRepository $sqlClientRepository): JsonResponse
     {
-        $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $dbName = $epti->getTypedValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+        $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getStringValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (!$sqlClient instanceof SqlClient) {
@@ -394,9 +394,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         EffectivePrimitiveTypeIdentifierService $epti,
         SqlClientRepository $sqlClientRepository): JsonResponse
     {
-        $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $username = $epti->getTypedValueFromPost(needle: 'username', trim: true, forceString: true, sanitizeHtml: false);
-        $userHost = $epti->getTypedValueFromPost(needle: 'user_host', trim: true, forceString: true, sanitizeHtml: false);
+        $name = $epti->getStringValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $username = $epti->getStringValueFromPost(needle: 'username', trim: true, forceString: true, sanitizeHtml: false);
+        $userHost = $epti->getStringValueFromPost(needle: 'user_host', trim: true, forceString: true, sanitizeHtml: false);
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (!$sqlClient instanceof SqlClient) {
@@ -420,10 +420,10 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         EffectivePrimitiveTypeIdentifierService $epti,
         SqlClientRepository $sqlClientRepository): JsonResponse
     {
-        $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $username = $epti->getTypedValueFromPost(needle: 'username', trim: true, forceString: true, sanitizeHtml: false);
-        $userHost = $epti->getTypedValueFromPost(needle: 'user_host', trim: true, forceString: true, sanitizeHtml: false);
-        $newPassword = $epti->getTypedValueFromPost(needle: 'password', trim: true, forceString: true, sanitizeHtml: false);
+        $name = $epti->getStringValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $username = $epti->getStringValueFromPost(needle: 'username', trim: true, forceString: true, sanitizeHtml: false);
+        $userHost = $epti->getStringValueFromPost(needle: 'user_host', trim: true, forceString: true, sanitizeHtml: false);
+        $newPassword = $epti->getStringValueFromPost(needle: 'password', trim: true, forceString: true, sanitizeHtml: false);
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (!$sqlClient instanceof SqlClient) {
@@ -444,12 +444,12 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         EffectivePrimitiveTypeIdentifierService $epti,
         SqlClientRepository $sqlClientRepository): JsonResponse
     {
-        $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $dbName = $epti->getTypedValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
-        $username = $epti->getTypedValueFromPost(needle: 'username', trim: true, forceString: true, sanitizeHtml: false);
-        $password = $epti->getTypedValueFromPost(needle: 'password', trim: true, forceString: true, sanitizeHtml: false);
-        $userHost = $epti->getTypedValueFromPost(needle: 'user_host', trim: true, forceString: true, sanitizeHtml: false);
-        $privileges = $epti->getTypedValueFromPost(needle: 'privileges', trim: true, forceString: true, sanitizeHtml: false);
+        $name = $epti->getStringValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getStringValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+        $username = $epti->getStringValueFromPost(needle: 'username', trim: true, forceString: true, sanitizeHtml: false);
+        $password = $epti->getStringValueFromPost(needle: 'password', trim: true, forceString: true, sanitizeHtml: false);
+        $userHost = $epti->getStringValueFromPost(needle: 'user_host', trim: true, forceString: true, sanitizeHtml: false);
+        $privileges = $epti->getStringValueFromPost(needle: 'privileges', trim: true, forceString: true, sanitizeHtml: false);
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (!$sqlClient instanceof SqlClient) {
@@ -471,9 +471,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         SqlClientRepository $sqlClientRepository,
         DatabaseOwnerRepository $databaseOwnerRepository,
     ): JsonResponse {
-        $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $username = $epti->getTypedValueFromGet(needle: 'username', trim: true, forceString: true, sanitizeHtml: false);
-        $userHost = $epti->getTypedValueFromGet(needle: 'user_host', trim: true, forceString: true, sanitizeHtml: false);
+        $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $username = $epti->getStringValueFromGet(needle: 'username', trim: true, forceString: true, sanitizeHtml: false);
+        $userHost = $epti->getStringValueFromGet(needle: 'user_host', trim: true, forceString: true, sanitizeHtml: false);
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (!$sqlClient instanceof SqlClient) {
@@ -494,11 +494,11 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         EffectivePrimitiveTypeIdentifierService $epti,
         SqlClientRepository $sqlClientRepository): JsonResponse
     {
-        $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $username = $epti->getTypedValueFromPost(needle: 'username', trim: true, forceString: true, sanitizeHtml: false);
-        $userHost = $epti->getTypedValueFromPost(needle: 'user_host', trim: true, forceString: true, sanitizeHtml: false);
-        $grantsRaw = $epti->getTypedValueFromPost(needle: 'grants', trim: true, forceString: true, sanitizeHtml: false);
-        $revokedRaw = $epti->getTypedValueFromPost(needle: 'revoked_dbs', trim: true, forceString: true, sanitizeHtml: false);
+        $name = $epti->getStringValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $username = $epti->getStringValueFromPost(needle: 'username', trim: true, forceString: true, sanitizeHtml: false);
+        $userHost = $epti->getStringValueFromPost(needle: 'user_host', trim: true, forceString: true, sanitizeHtml: false);
+        $grantsRaw = $epti->getStringValueFromPost(needle: 'grants', trim: true, forceString: true, sanitizeHtml: false);
+        $revokedRaw = $epti->getStringValueFromPost(needle: 'revoked_dbs', trim: true, forceString: true, sanitizeHtml: false);
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (!$sqlClient instanceof SqlClient) {
@@ -534,8 +534,8 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         EffectivePrimitiveTypeIdentifierService $epti,
         SqlClientRepository $sqlClientRepository): JsonResponse
     {
-        $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $dbName = $epti->getTypedValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+        $name = $epti->getStringValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getStringValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (!$sqlClient instanceof SqlClient) {
@@ -556,9 +556,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         EffectivePrimitiveTypeIdentifierService $epti,
         SqlClientRepository $sqlClientRepository): JsonResponse
     {
-        $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $dbName = $epti->getTypedValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
-        $table = $epti->getTypedValueFromPost(needle: 'table', trim: true, forceString: true, sanitizeHtml: true);
+        $name = $epti->getStringValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getStringValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+        $table = $epti->getStringValueFromPost(needle: 'table', trim: true, forceString: true, sanitizeHtml: true);
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (!$sqlClient instanceof SqlClient) {
@@ -581,9 +581,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         EffectivePrimitiveTypeIdentifierService $epti,
         SqlClientRepository $sqlClientRepository): JsonResponse
     {
-        $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $dbName = $epti->getTypedValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
-        $table = $epti->getTypedValueFromPost(needle: 'table', trim: true, forceString: true, sanitizeHtml: true);
+        $name = $epti->getStringValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getStringValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+        $table = $epti->getStringValueFromPost(needle: 'table', trim: true, forceString: true, sanitizeHtml: true);
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (!$sqlClient instanceof SqlClient) {
@@ -607,9 +607,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         SqlClientRepository $sqlClientRepository,
         MysqldumpManager $mysqldumpManager): JsonResponse
     {
-        $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $dbName = $epti->getTypedValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
-        $table = $epti->getTypedValueFromPost(needle: 'table', trim: true, forceString: true, sanitizeHtml: true) ?? null;
+        $name = $epti->getStringValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getStringValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+        $table = $epti->getStringValueFromPost(needle: 'table', trim: true, forceString: true, sanitizeHtml: true) ?: null;
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (!$sqlClient instanceof SqlClient) {
@@ -634,9 +634,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         MysqldumpManager $mysqldumpManager,
         EntityManagerInterface $entityManagerInterface): JsonResponse
     {
-        $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $dbName = $epti->getTypedValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
-        $table = $epti->getTypedValueFromPost(needle: 'table', trim: true, forceString: true, sanitizeHtml: true) ?? null;
+        $name = $epti->getStringValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getStringValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+        $table = $epti->getStringValueFromPost(needle: 'table', trim: true, forceString: true, sanitizeHtml: true) ?: null;
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (!$sqlClient instanceof SqlClient) {
@@ -674,9 +674,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         MysqldumpManager $mysqldumpManager,
         DatabaseOwnerRepository $databaseOwnerRepository,
     ): Response {
-        $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $dbName = $epti->getTypedValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
-        $table = $epti->getTypedValueFromGet(needle: 'table', trim: true, forceString: true, sanitizeHtml: true);
+        $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getStringValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+        $table = $epti->getStringValueFromGet(needle: 'table', trim: true, forceString: true, sanitizeHtml: true);
 
         $allOwnedDatabased = $databaseOwnerRepository->findAllByOwner($user);
         $backups = $mysqldumpManager->listBackups($user, $allOwnedDatabased);
@@ -697,9 +697,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         MysqldumpManager $mysqldumpManager,
         DatabaseOwnerRepository $databaseOwnerRepository): JsonResponse
     {
-        $name = $epti->getTypedValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $dbName = $epti->getTypedValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
-        $backupFilename = $epti->getTypedValueFromPost(needle: 'backup_filename', trim: true, forceString: true, sanitizeHtml: true);
+        $name = $epti->getStringValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getStringValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+        $backupFilename = $epti->getStringValueFromPost(needle: 'backup_filename', trim: true, forceString: true, sanitizeHtml: true);
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (!$sqlClient instanceof SqlClient) {
@@ -727,9 +727,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         EffectivePrimitiveTypeIdentifierService $epti,
         SqlClientRepository $sqlClientRepository): JsonResponse
     {
-        $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $dbName = $epti->getTypedValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
-        $table = $epti->getTypedValueFromGet(needle: 'table', trim: true, forceString: true, sanitizeHtml: true);
+        $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getStringValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+        $table = $epti->getStringValueFromGet(needle: 'table', trim: true, forceString: true, sanitizeHtml: true);
         $sqlClient = $sqlClientRepository->findOneByName($name);
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
@@ -747,9 +747,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         EffectivePrimitiveTypeIdentifierService $epti,
         SqlClientRepository $sqlClientRepository): JsonResponse
     {
-        $name = $epti->getTypedValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $dbName = $epti->getTypedValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
-        $table = $epti->getTypedValueFromGet(needle: 'table', trim: true, forceString: true, sanitizeHtml: true);
+        $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getStringValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+        $table = $epti->getStringValueFromGet(needle: 'table', trim: true, forceString: true, sanitizeHtml: true);
         $sqlClient = $sqlClientRepository->findOneByName($name);
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
@@ -771,10 +771,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     }
 
     #[Route(path: '/backup-view', name: 'app_schema_backup_view', methods: ['GET'])]
-    public function backupView(#[CurrentUser] AppUser $user, MysqldumpManager $mysqldumpManager, DatabaseOwnerRepository $databaseOwnerRepository): Response
+    public function backupView(#[CurrentUser] AppUser $user, MysqldumpManager $mysqldumpManager, DatabaseOwnerRepository $databaseOwnerRepository, EffectivePrimitiveTypeIdentifierService $epti): Response
     {
-        $epti = new EffectivePrimitiveTypeIdentifierService();
-        $filename = $epti->getTypedValueFromGet(needle: 'filename', trim: true, forceString: true, sanitizeHtml: true);
+        $filename = $epti->getStringValueFromGet(needle: 'filename', trim: true, forceString: true, sanitizeHtml: true);
 
         $allOwnedDatabased = $databaseOwnerRepository->findAllByOwner($user);
 
@@ -801,10 +800,10 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         #[CurrentUser] AppUser $user,
         MysqldumpManager $mysqldumpManager,
         DatabaseOwnerRepository $allOwnedDatabased,
-        DatabaseOwnerRepository $databaseOwnerRepository): BinaryFileResponse
+        DatabaseOwnerRepository $databaseOwnerRepository,
+        EffectivePrimitiveTypeIdentifierService $epti): BinaryFileResponse
     {
-        $epti = new EffectivePrimitiveTypeIdentifierService();
-        $filename = $epti->getTypedValueFromGet(needle: 'filename', trim: true, forceString: true, sanitizeHtml: true);
+        $filename = $epti->getStringValueFromGet(needle: 'filename', trim: true, forceString: true, sanitizeHtml: true);
 
         $allOwnedDatabased = $databaseOwnerRepository->findAllByOwner($user);
         $backups = $mysqldumpManager->listBackups($user, $allOwnedDatabased);
@@ -821,10 +820,9 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     }
 
     #[Route(path: '/backup-delete', name: 'app_schema_backup_delete', methods: ['POST'])]
-    public function backupDelete(#[CurrentUser] AppUser $user, MysqldumpManager $mysqldumpManager, DatabaseOwnerRepository $databaseOwnerRepository): JsonResponse
+    public function backupDelete(#[CurrentUser] AppUser $user, MysqldumpManager $mysqldumpManager, DatabaseOwnerRepository $databaseOwnerRepository, EffectivePrimitiveTypeIdentifierService $epti): JsonResponse
     {
-        $epti = new EffectivePrimitiveTypeIdentifierService();
-        $filename = $epti->getTypedValueFromPost(needle: 'filename', trim: true, forceString: true, sanitizeHtml: true);
+        $filename = $epti->getStringValueFromPost(needle: 'filename', trim: true, forceString: true, sanitizeHtml: true);
 
         $allOwnedDatabased = $databaseOwnerRepository->findAllByOwner($user);
         $backups = $mysqldumpManager->listBackups($user, $allOwnedDatabased);
