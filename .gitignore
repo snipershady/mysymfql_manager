@@ -29,5 +29,9 @@
 ###> phpstan/phpstan ###
 phpstan.neon
 ###< phpstan/phpstan ###
+
+###> docker ###
+/docker/app.env
+###< docker ###
 /CHANGE/
 /.rector.cache/
