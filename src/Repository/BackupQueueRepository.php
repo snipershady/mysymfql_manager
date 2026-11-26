@@ -7,6 +7,7 @@ namespace App\Repository;
 use App\Entity\BackupQueue;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use SortDirection;
 
 /**
  * @extends ServiceEntityRepository<BackupQueue>
@@ -26,7 +27,7 @@ class BackupQueueRepository extends ServiceEntityRepository
         $result = $this->createQueryBuilder('b')
             ->andWhere('b.isDequeued = :dequeued')
             ->setParameter('dequeued', value: false)
-            ->orderBy('b.requestDate', 'DESC')
+            ->orderBy('b.requestDate', SortDirection::Descending)
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult()
