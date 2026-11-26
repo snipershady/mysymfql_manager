@@ -43,15 +43,7 @@
             {{ form_errors(registrationForm.agreeTerms) }}
         </div>
 
-        <div class="mb-4 p-3 bg-light rounded">
-            <div class="d-flex align-items-center justify-content-center">
-                <altcha-widget
-                    challengeurl="{{ path("app_altcha_challenge") }}"
-                    required
-                    strings='{"error":"Errore di verifica.","expired":"Verifica scaduta. Ricarica la pagina.","footer":"Protetto da <a href=\"https://altcha.org/\" target=\"_blank\" rel=\"noopener noreferrer\">ALTCHA</a>","label":"Sono un essere umano","verified":"Verificato","verifying":"Verifica in corso...","waitAlert":"Verifica in corso. Attendi..."}'>
-                </altcha-widget>
-            </div>
-        </div>
+        {{ include('security/_captcha.html.twig') }}
 
         <div class="d-grid">
             <button type="submit" class="btn btn-primary btn-lg">

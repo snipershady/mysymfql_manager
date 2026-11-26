@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use AltchaOrg\Altcha\Altcha;
 use App\Entity\AppUser;
 use App\Enum\RoleEnum;
 use App\Form\ChangePasswordType;
 use App\Form\RegistrationFormType;
+use App\Security\AltchaCaptcha;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -21,14 +21,14 @@ use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
 class RegistrationController extends AbstractController
 {
     #[Route(path: '/register', name: 'app_register')]
-    public function register(Request $request, UserPasswordHasherInterface $userPasswordHasher, EntityManagerInterface $entityManager, EffectivePrimitiveTypeIdentifierService $epti): Response
+    public function register(Request $request, UserPasswordHasherInterface $userPasswordHasher, EntityManagerInterface $entityManager, AltchaCaptcha $captcha): Response
     {
         $user = new AppUser();
         $form = $this->createForm(RegistrationFormType::class, $user);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $altchaPayload = $epti->getStringValueFromPost(needle: 'altcha', trim: true);
+            $altchaPayload = $request->request->all()['altcha'] ?? '';
 
             if ('' === $altchaPayload) {
                 $this->addFlash('error', 'Please complete the CAPTCHA verification.');
@@ -36,10 +36,7 @@ class RegistrationController extends AbstractController
                 return $this->redirectToRoute('app_register');
             }
 
-            $hmacKey = $epti->getStringValueFromServer(needle: 'ALTCHAKEY', trim: true, forceString: true, sanitizeHtml: true);
-            $altcha = new Altcha($hmacKey);
-
-            if (!$altcha->verifySolution($altchaPayload, checkExpires: true)) {
+            if (!\is_string($altchaPayload) || !$captcha->verify($altchaPayload)) {
                 $this->addFlash('error', 'CAPTCHA verification invalid or expired. Please try again.');
 
                 return $this->redirectToRoute('app_register');

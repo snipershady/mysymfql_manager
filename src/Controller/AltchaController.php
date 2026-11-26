@@ -4,40 +4,16 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use AltchaOrg\Altcha\Altcha;
-use AltchaOrg\Altcha\ChallengeOptions;
-use AltchaOrg\Altcha\Hasher\Algorithm;
+use App\Security\AltchaCaptcha;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
-use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
 
 final class AltchaController extends AbstractController
 {
     #[Route(path: '/altcha_challenge', name: 'app_altcha_challenge')]
-    public function index(EffectivePrimitiveTypeIdentifierService $epti): JsonResponse
+    public function index(AltchaCaptcha $captcha): JsonResponse
     {
-        $hmacKey = $epti->getStringValueFromServer(needle: 'ALTCHAKEY', trim: true, forceString: true, sanitizeHtml: true);
-
-        $altcha = new Altcha($hmacKey);
-        $randomIntValue = random_int(75000, 150000);
-        $options = new ChallengeOptions(
-            algorithm: Algorithm::SHA512,
-            maxNumber: $randomIntValue,
-            expires: new \DateTimeImmutable()->add(new \DateInterval('PT2M')) // Expires in 2 min
-        );
-        $challenge = $altcha->createChallenge($options);
-
-        // Convert to format compatible with the JavaScript widget
-        // The widget expects "maxnumber" (lowercase) not "maxNumber"
-        $challengeData = [
-            'algorithm' => $challenge->algorithm,
-            'challenge' => $challenge->challenge,
-            'maxnumber' => $challenge->maxNumber, // Convert from camelCase to lowercase
-            'salt' => $challenge->salt,
-            'signature' => $challenge->signature,
-        ];
-
-        return $this->json($challengeData);
+        return $this->json($captcha->challenge()->toArray());
     }
 }

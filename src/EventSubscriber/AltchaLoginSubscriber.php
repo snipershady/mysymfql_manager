@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace App\EventSubscriber;
 
-use AltchaOrg\Altcha\Altcha;
+use App\Security\AltchaCaptcha;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationException;
 use Symfony\Component\Security\Http\Authenticator\FormLoginAuthenticator;
 use Symfony\Component\Security\Http\Event\CheckPassportEvent;
-use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
 
 /**
  * Validates the Altcha CAPTCHA token on every login attempt.
@@ -24,7 +23,7 @@ final readonly class AltchaLoginSubscriber
 {
     public function __construct(
         private RequestStack $requestStack,
-        private EffectivePrimitiveTypeIdentifierService $epti,
+        private AltchaCaptcha $captcha,
     ) {
     }
 
@@ -40,17 +39,13 @@ final readonly class AltchaLoginSubscriber
             return;
         }
 
-        $altchaPayload = $this->epti->getStringValueFromPost(needle: 'altcha', trim: true);
+        $altchaPayload = $request->request->all()['altcha'] ?? '';
 
         if ('' === $altchaPayload) {
             throw new CustomUserMessageAuthenticationException('Please complete the CAPTCHA verification.');
         }
 
-        $hmacKey = $this->epti->getStringValueFromServer(needle: 'ALTCHAKEY', trim: true, forceString: true, sanitizeHtml: true);
-
-        $altcha = new Altcha($hmacKey);
-
-        if (!$altcha->verifySolution($altchaPayload, checkExpires: true)) {
+        if (!\is_string($altchaPayload) || !$this->captcha->verify($altchaPayload)) {
             throw new CustomUserMessageAuthenticationException('CAPTCHA verification invalid or expired. Please try again.');
         }
     }

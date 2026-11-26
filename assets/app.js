@@ -15,7 +15,6 @@ import * as bootstrap from 'bootstrap';
 import DataTable from 'datatables.net-bs5';
 import dataTablesItalian from 'datatables.net-plugins/i18n/it-IT.mjs';
 import Swal from 'sweetalert2/dist/sweetalert2.esm.js';
-import 'altcha';
 import './legacy/csrf-fetch.js';
 
 // DataTables 3 does not import jQuery: register it (creates $.fn.DataTable) and the Bootstrap 5 integration.
@@ -27,3 +26,8 @@ $.extend(true, DataTable.defaults, { language: dataTablesItalian });
 // TRANSITIONAL (frontend review, phase F1): the page scripts still live inline in the Twig templates and
 // use these globals. They go away when each page becomes a Stimulus controller (phase F2).
 Object.assign(window, { $, jQuery: $, bootstrap, DataTable, Swal });
+
+if (document.querySelector('altcha-widget')) {
+    await import('altcha');
+    await import('altcha/i18n/it');
+}
