@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\RepositoryPDO;
 
 use App\Component\DatabaseClientConnection;
@@ -13,8 +15,8 @@ use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
  */
 abstract readonly class AbstractManagerRepositoryPDO
 {
-    protected readonly \PDO $pdo;
-    protected readonly EffectivePrimitiveTypeIdentifierService $epti;
+    protected \PDO $pdo;
+    protected EffectivePrimitiveTypeIdentifierService $epti;
 
     public function __construct(SqlClient $sqlClient)
     {

@@ -13,6 +13,8 @@ use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
  * for the most common values.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
+ *
+ * @see \App\Tests\Dto\InnodbStatusTest
  */
 final readonly class InnodbStatus
 {

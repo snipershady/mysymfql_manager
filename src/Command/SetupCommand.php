@@ -109,8 +109,8 @@ class SetupCommand extends Command
         });
 
         $passwordQuestion = new Question('Password: ');
-        $passwordQuestion->setHidden(true);
-        $passwordQuestion->setHiddenFallback(false);
+        $passwordQuestion->setHidden(hidden: true);
+        $passwordQuestion->setHiddenFallback(fallback: false);
         $passwordQuestion->setValidator(static function (?string $value): string {
             if (empty($value)) {
                 throw new \RuntimeException('The password cannot be empty.');
@@ -145,7 +145,7 @@ class SetupCommand extends Command
 
         $content = file_get_contents($envLocalPath);
 
-        return array_any(['APP_SECRET', 'SQLCLIENT_ENCRYPTION_KEY', 'ALTCHAKEY', 'APP_DB_NAME', 'APP_DB_HOSTNAME', 'APP_DB_USER', 'APP_DB_PASSWORD', 'BACKUP_PATH'], static fn ($key): bool => !preg_match('/^' . $key . '=(?!CHANGE\s*$)\S/m', $content));
+        return array_any(['APP_SECRET', 'SQLCLIENT_ENCRYPTION_KEY', 'ALTCHAKEY', 'APP_DB_NAME', 'APP_DB_HOSTNAME', 'APP_DB_USER', 'APP_DB_PASSWORD', 'BACKUP_PATH'], static fn (string $key): bool => !preg_match('/^' . $key . '=(?!CHANGE\s*$)\S/m', $content));
     }
 
     private function setupEnv(SymfonyStyle $io, string $envLocalPath): int
@@ -215,7 +215,7 @@ class SetupCommand extends Command
 
         // Preserve any other existing keys not managed here
         foreach ($existing as $k => $v) {
-            if (!\in_array($k, $managedKeys, true)) {
+            if (!\in_array($k, $managedKeys, strict: true)) {
                 $lines[] = \sprintf('%s=%s', $k, $v);
             }
         }
@@ -227,6 +227,9 @@ class SetupCommand extends Command
         return Command::SUCCESS;
     }
 
+    /**
+     * @param array<string, string> $existing
+     */
     private function existingOrNull(array $existing, string $key): ?string
     {
         $value = $existing[$key] ?? null;

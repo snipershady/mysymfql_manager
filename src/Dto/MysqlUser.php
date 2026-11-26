@@ -6,6 +6,8 @@ use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
 
 /**
  * @author Stefano Perrini <perrini.stefano@gmail.com>
+ *
+ * @see \App\Tests\Dto\MysqlUserTest
  */
 final readonly class MysqlUser
 {

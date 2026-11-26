@@ -5,6 +5,9 @@ namespace App\Entity;
 use App\Repository\BackupQueueRepository;
 use Doctrine\ORM\Mapping as ORM;
 
+/**
+ * @see \App\Tests\Entity\BackupQueueTest
+ */
 #[ORM\Entity(repositoryClass: BackupQueueRepository::class)]
 class BackupQueue
 {

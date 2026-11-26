@@ -1,9 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Component;
 
 /**
  * @author Stefano Perrini <stefano.perrini@bidoo.com> aka La Matrigna
+ *
+ * @see \App\Tests\Component\DateTimeUtcTest
  */
 final class DateTimeUtc extends \DateTime
 {

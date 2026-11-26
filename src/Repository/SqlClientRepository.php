@@ -6,7 +6,6 @@ use App\Entity\AppUser;
 use App\Entity\SqlClient;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
-use SortDirection;
 
 /**
  * @extends ServiceEntityRepository<SqlClient>
@@ -38,7 +37,7 @@ class SqlClientRepository extends ServiceEntityRepository
             ->join('s.owner', 'o')
             ->where('o = :user')
             ->setParameter('user', $user)
-            ->orderBy('s.host', SortDirection::Ascending)
+            ->orderBy('s.host', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
     }

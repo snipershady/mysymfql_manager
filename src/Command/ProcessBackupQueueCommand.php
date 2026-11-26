@@ -2,6 +2,7 @@
 
 namespace App\Command;
 
+use App\Entity\BackupQueue;
 use App\Repository\BackupQueueRepository;
 use App\Service\MysqldumpManager;
 use Doctrine\ORM\EntityManagerInterface;
@@ -32,7 +33,7 @@ class ProcessBackupQueueCommand extends Command
 
         $entry = $this->backupQueueRepository->findLastOneDequeable();
 
-        if (null === $entry) {
+        if (!$entry instanceof BackupQueue) {
             $io->writeln('No pending backup in queue.');
 
             return Command::SUCCESS;
@@ -68,7 +69,7 @@ class ProcessBackupQueueCommand extends Command
             return Command::FAILURE;
         }
 
-        $entry->setIsDequeued(true);
+        $entry->setIsDequeued(isDequeued: true);
         $entry->setCompletedDate(new \DateTime());
 
         $this->entityManager->flush();

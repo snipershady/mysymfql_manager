@@ -1,9 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Component;
 
 /**
  * @author Stefano Perrini <stefano.perrini@bidoo.com> aka La Matrigna
+ *
+ * @see \App\Tests\Component\DateTimeItTest
  */
 final class DateTimeIt extends \DateTime
 {

@@ -6,7 +6,7 @@ namespace App\EventSubscriber;
 
 use App\Entity\AppUser;
 use App\Enum\RoleEnum;
-use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
@@ -18,17 +18,13 @@ use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com>
  */
-final readonly class LoginDisabledSubscriber implements EventSubscriberInterface
+final readonly class LoginDisabledSubscriber
 {
     public function __construct(private RouterInterface $router)
     {
     }
 
-    public static function getSubscribedEvents(): array
-    {
-        return [LoginSuccessEvent::class => 'onLoginSuccess'];
-    }
-
+    #[AsEventListener(event: LoginSuccessEvent::class)]
     public function onLoginSuccess(LoginSuccessEvent $event): void
     {
         $user = $event->getAuthenticatedToken()->getUser();

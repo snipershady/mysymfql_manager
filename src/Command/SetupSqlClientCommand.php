@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command;
 
 use App\Entity\SqlClient;
@@ -54,7 +56,7 @@ class SetupSqlClientCommand extends Command
             return Command::FAILURE;
         }
 
-        if (null !== $this->sqlClientRepository->findOneByName($name)) {
+        if ($this->sqlClientRepository->findOneByName($name) instanceof SqlClient) {
             $io->error(\sprintf('A server with name "%s" is already registered.', $name));
 
             return Command::FAILURE;

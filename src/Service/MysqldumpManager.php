@@ -12,6 +12,8 @@ use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
  * Description of MysqldumpManager.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
+ *
+ * @see \App\Tests\Service\MysqldumpManagerTest
  */
 final readonly class MysqldumpManager
 {

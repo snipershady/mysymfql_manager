@@ -8,6 +8,7 @@ use App\Form\AppUserType;
 use App\Repository\AppUserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -87,7 +88,7 @@ final class AppUserController extends AbstractController
     }
 
     #[Route(path: '/{id}', name: 'app_user_delete', methods: ['POST'])]
-    public function delete(Request $request, AppUser $appUser, EntityManagerInterface $entityManager): \Symfony\Component\HttpFoundation\RedirectResponse
+    public function delete(Request $request, AppUser $appUser, EntityManagerInterface $entityManager): RedirectResponse
     {
         if ($this->isCsrfTokenValid('delete' . $appUser->getId(), $request->getPayload()->getString('_token'))) {
             $entityManager->remove($appUser);

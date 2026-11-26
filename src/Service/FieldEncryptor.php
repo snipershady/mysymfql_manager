@@ -20,6 +20,8 @@ namespace App\Service;
  * Key generation:
  *   php -r "echo sodium_bin2hex(sodium_crypto_secretbox_keygen());"
  * → 64 hex characters to copy into SQLCLIENT_ENCRYPTION_KEY in .env.local
+ *
+ * @see \App\Tests\Service\FieldEncryptorTest
  */
 final readonly class FieldEncryptor
 {

@@ -3,6 +3,7 @@
 namespace App\Command;
 
 use App\Entity\SqlClient;
+use App\Repository\SqlClientRepository;
 use App\RepositoryPDO\DatabaseSchemaRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -35,7 +36,7 @@ class DummyFixturesCommand extends Command
     {
         $this
                 ->addArgument('arg1', InputArgument::OPTIONAL, 'Argument description')
-                ->addOption('option1', null, InputOption::VALUE_NONE, 'Option description')
+                ->addOption('option1', mode: InputOption::VALUE_NONE, description: 'Option description')
         ;
     }
 
@@ -44,7 +45,7 @@ class DummyFixturesCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
 
-        /** @var \App\Repository\SqlClientRepository $sqlClientRepository */
+        /** @var SqlClientRepository $sqlClientRepository */
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
         $sqlClient = $sqlClientRepository->findOneByName(self::SERVER_NAME);
 

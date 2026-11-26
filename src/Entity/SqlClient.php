@@ -7,6 +7,9 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
+/**
+ * @see \App\Tests\Entity\SqlClientTest
+ */
 #[ORM\Entity(repositoryClass: SqlClientRepository::class)]
 #[ORM\UniqueConstraint(name: 'uq_sql_client_name', columns: ['name'])]
 #[ORM\Index(name: 'idx_sql_client_host', columns: ['host'])]

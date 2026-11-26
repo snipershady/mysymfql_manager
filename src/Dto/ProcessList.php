@@ -8,6 +8,8 @@ use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
  * Represents a row from performance_schema.processlist.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
+ *
+ * @see \App\Tests\Dto\ProcessListTest
  */
 final readonly class ProcessList
 {

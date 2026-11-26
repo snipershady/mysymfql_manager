@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\EventSubscriber;
 
 use AltchaOrg\Altcha\Altcha;
-use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationException;
 use Symfony\Component\Security\Http\Authenticator\FormLoginAuthenticator;
@@ -19,7 +20,7 @@ use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com>
  */
-final readonly class AltchaLoginSubscriber implements EventSubscriberInterface
+final readonly class AltchaLoginSubscriber
 {
     public function __construct(
         private RequestStack $requestStack,
@@ -27,11 +28,7 @@ final readonly class AltchaLoginSubscriber implements EventSubscriberInterface
     ) {
     }
 
-    public static function getSubscribedEvents(): array
-    {
-        return [CheckPassportEvent::class => ['onCheckPassport', 10]];
-    }
-
+    #[AsEventListener(event: CheckPassportEvent::class, priority: 10)]
     public function onCheckPassport(CheckPassportEvent $event): void
     {
         if (!$event->getAuthenticator() instanceof FormLoginAuthenticator) {
@@ -39,7 +36,7 @@ final readonly class AltchaLoginSubscriber implements EventSubscriberInterface
         }
 
         $request = $this->requestStack->getCurrentRequest();
-        if (!$request instanceof \Symfony\Component\HttpFoundation\Request) {
+        if (!$request instanceof Request) {
             return;
         }
 

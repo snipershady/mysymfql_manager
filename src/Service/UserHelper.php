@@ -6,6 +6,8 @@ namespace App\Service;
  * Description of UserHelper.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
+ *
+ * @see \App\Tests\Service\UserHelperTest
  */
 final class UserHelper
 {

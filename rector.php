@@ -13,7 +13,7 @@ return RectorConfig::configure()
                     __DIR__ . '/src',
                 ])
                 ->withSkip([
-                     // InlineClassRoutePrefixRector::class,
+                    // InlineClassRoutePrefixRector::class,
                     NewMethodCallWithoutParenthesesRector::class,
                     RemoveUnusedForeachKeyRector::class,
                     RemoveUselessParamTagRector::class,

@@ -6,7 +6,6 @@ use App\Entity\AppUser;
 use App\Entity\DatabaseOwner;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
-use SortDirection;
 
 /**
  * @extends ServiceEntityRepository<DatabaseOwner>
@@ -26,8 +25,8 @@ class DatabaseOwnerRepository extends ServiceEntityRepository
         return $this->createQueryBuilder('d')
             ->where('d.owner = :user')
             ->setParameter('user', $user)
-            ->orderBy('d.sqlClient', SortDirection::Ascending)
-            ->addOrderBy('d.dbName', SortDirection::Ascending)
+            ->orderBy('d.sqlClient', \SortDirection::Ascending)
+            ->addOrderBy('d.dbName', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
     }

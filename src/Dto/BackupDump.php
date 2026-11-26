@@ -8,6 +8,8 @@ use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
  * Description of BackupDump.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com>
+ *
+ * @see \App\Tests\Dto\BackupDumpTest
  */
 final readonly class BackupDump
 {

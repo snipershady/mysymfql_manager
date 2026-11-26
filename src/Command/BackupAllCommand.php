@@ -2,6 +2,7 @@
 
 namespace App\Command;
 
+use App\Entity\SqlClient;
 use App\Repository\SqlClientRepository;
 use App\RepositoryPDO\DatabaseSchemaRepository;
 use App\Service\MysqldumpManager;
@@ -39,7 +40,7 @@ class BackupAllCommand extends Command
         $name = trim((string) $input->getArgument('name'));
 
         $sqlClient = $this->sqlClientRepository->findOneByName($name);
-        if (null === $sqlClient) {
+        if (!$sqlClient instanceof SqlClient) {
             $io->error(\sprintf('No server configured with name "%s".', $name));
 
             return Command::FAILURE;
@@ -48,7 +49,7 @@ class BackupAllCommand extends Command
         $repo = new DatabaseSchemaRepository($sqlClient);
         $databases = $repo->getDatabasesWithStats();
 
-        if (empty($databases)) {
+        if ([] === $databases) {
             $io->warning('No databases found on the server.');
 
             return Command::SUCCESS;

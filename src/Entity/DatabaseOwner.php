@@ -5,6 +5,9 @@ namespace App\Entity;
 use App\Repository\DatabaseOwnerRepository;
 use Doctrine\ORM\Mapping as ORM;
 
+/**
+ * @see \App\Tests\Entity\DatabaseOwnerTest
+ */
 #[ORM\Entity(repositoryClass: DatabaseOwnerRepository::class)]
 #[ORM\UniqueConstraint(name: 'uq_db_owner', columns: ['db_name', 'owner_id', 'sql_client_id'])]
 class DatabaseOwner

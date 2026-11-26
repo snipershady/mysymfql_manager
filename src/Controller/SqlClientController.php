@@ -10,6 +10,7 @@ use App\Form\SqlClientType;
 use App\Repository\SqlClientRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -77,7 +78,7 @@ final class SqlClientController extends AbstractController
     }
 
     #[Route(path: '/{id}', name: 'app_sql_client_delete', methods: ['POST'])]
-    public function delete(Request $request, SqlClient $sqlClient, EntityManagerInterface $entityManager): \Symfony\Component\HttpFoundation\RedirectResponse
+    public function delete(Request $request, SqlClient $sqlClient, EntityManagerInterface $entityManager): RedirectResponse
     {
         if ($this->isCsrfTokenValid('delete' . $sqlClient->getId(), $request->getPayload()->getString('_token'))) {
             $entityManager->remove($sqlClient);

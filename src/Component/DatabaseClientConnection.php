@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Component;
 
 use App\Entity\SqlClient;
@@ -39,9 +41,7 @@ final class DatabaseClientConnection
      */
     public static function getInstance(SqlClient $sqlClient): \PDO
     {
-        if (null === self::$instance) {
-            self::$instance = self::createConnection($sqlClient);
-        }
+        self::$instance ??= self::createConnection($sqlClient);
 
         return self::$instance;
     }
