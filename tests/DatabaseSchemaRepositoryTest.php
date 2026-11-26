@@ -119,6 +119,42 @@ class DatabaseSchemaRepositoryTest extends MyKernelTestCase
         $this->assertTrue($dropUsername);
     }
 
+    public function testHasGlobalPrivilegesIsFalseForAnAccountWithOnlyDatabaseGrants(): void
+    {
+        $sqlClient = $this->entityManager->getRepository(SqlClient::class)->findOneByName($this->serverName);
+        $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
+
+        $this->assertFalse($databaseRepositoryPdo->hasGlobalPrivileges($this->dbNameUser, '%'));
+        $this->assertSame(
+            [$this->dbNameTestingOne, $this->dbNameTestingTwo],
+            array_column($databaseRepositoryPdo->getUserGrantsByDb($this->dbNameUser, '%'), 'db')
+        );
+    }
+
+    public function testHasGlobalPrivilegesIsTrueForThePanelAccount(): void
+    {
+        $sqlClient = $this->entityManager->getRepository(SqlClient::class)->findOneByName($this->serverName);
+        $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
+        $panelAccount = (string) $sqlClient->getUsername();
+        $hosts = $databaseRepositoryPdo->getHostByUser($panelAccount);
+        $this->assertNotEmpty($hosts);
+
+        // The panel account may exist on several hosts (the suite itself creates TEST_DB_USER@'%'):
+        // at least one of them carries the global privileges the panel needs.
+        $this->assertTrue(array_any(
+            $hosts,
+            static fn (string $host): bool => $databaseRepositoryPdo->hasGlobalPrivileges($panelAccount, $host)
+        ));
+    }
+
+    public function testHasGlobalPrivilegesFailsClosedForAMissingAccount(): void
+    {
+        $sqlClient = $this->entityManager->getRepository(SqlClient::class)->findOneByName($this->serverName);
+        $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
+
+        $this->assertTrue($databaseRepositoryPdo->hasGlobalPrivileges('no_such_account_' . bin2hex(random_bytes(4)), '%'));
+    }
+
     public function testDtoInnoDbStatus(): void
     {
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);

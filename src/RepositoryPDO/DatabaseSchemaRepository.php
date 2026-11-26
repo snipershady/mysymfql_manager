@@ -533,6 +533,46 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
         }
     }
 
+    /**
+     * Tells whether a MySQL account holds anything beyond database-level grants:
+     * static global privileges (mysql.user *_priv), dynamic privileges (mysql.global_grants)
+     * or granted roles (mysql.role_edges). An account that does not exist is reported as
+     * privileged, so callers relying on this check fail closed.
+     */
+    public function hasGlobalPrivileges(string $username, string $host): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare('SELECT * FROM mysql.user WHERE User = :user AND Host = :host');
+            $stmt->bindValue(':user', $username);
+            $stmt->bindValue(':host', $host);
+            $stmt->execute();
+            $row = $this->fetchOneAssoc($stmt);
+            if ([] === $row) {
+                return true;
+            }
+
+            foreach ($row as $column => $value) {
+                if (str_ends_with((string) $column, '_priv') && 'Y' === $value) {
+                    return true;
+                }
+            }
+
+            $stmt = $this->pdo->prepare(
+                'SELECT (SELECT COUNT(*) FROM mysql.global_grants WHERE USER = :user1 AND HOST = :host1)
+                      + (SELECT COUNT(*) FROM mysql.role_edges WHERE TO_USER = :user2 AND TO_HOST = :host2) AS extra'
+            );
+            $stmt->bindValue(':user1', $username);
+            $stmt->bindValue(':host1', $host);
+            $stmt->bindValue(':user2', $username);
+            $stmt->bindValue(':host2', $host);
+            $stmt->execute();
+
+            return $this->epti->getIntValueFromArray('extra', $this->fetchOneAssoc($stmt)) > 0;
+        } catch (\PDOException $pdoException) {
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
+        }
+    }
+
     public function revokeAllPrivilegesOnDb(string $dbName, string $username, string $host = '%'): bool
     {
         $query = \sprintf(
@@ -596,7 +636,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
      * SET GLOBAL performance_schema_show_processlist = ON;
      * </p>.
      *
-     * @return array<ProcessList>
+     * @return list<ProcessList>
      *
      * @throws RepositoryException
      */

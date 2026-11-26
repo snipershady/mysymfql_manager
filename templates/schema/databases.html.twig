@@ -138,9 +138,11 @@
     <div class="card-header d-flex align-items-center justify-content-between gap-2">
         <span><i class="fa-solid fa-server text-primary me-1"></i>Seleziona server</span>
         <div class="d-flex gap-2">
+            {% if is_granted('ROLE_ADMIN') %}
             <a id="btn-open-engine-status" href="#" class="btn btn-sm btn-outline-info disabled">
                 <i class="fa-solid fa-gauge-high me-1"></i>Engine Status
             </a>
+            {% endif %}
             <a id="btn-open-process-list" href="#" class="btn btn-sm btn-outline-secondary disabled">
                 <i class="fa-solid fa-list me-1"></i>Process List
             </a>
@@ -302,8 +304,11 @@ $('#select-sql-client').on('change', function () {
         const btnUsers = document.getElementById('btn-open-users');
         btnUsers.href = '#';
         btnUsers.classList.add('disabled');
-        document.getElementById('btn-open-engine-status').href = '#';
-        document.getElementById('btn-open-engine-status').classList.add('disabled');
+        const btnEngineOff = document.getElementById('btn-open-engine-status');
+        if (btnEngineOff) {
+            btnEngineOff.href = '#';
+            btnEngineOff.classList.add('disabled');
+        }
         document.getElementById('btn-open-process-list').href = '#';
         document.getElementById('btn-open-process-list').classList.add('disabled');
         return;
@@ -316,8 +321,10 @@ $('#select-sql-client').on('change', function () {
     btnUsers.classList.remove('disabled');
 
     const btnEngine = document.getElementById('btn-open-engine-status');
-    btnEngine.href = `${URL_ENGINE_STATUS}?name=${encodeURIComponent(name)}`;
-    btnEngine.classList.remove('disabled');
+    if (btnEngine) {
+        btnEngine.href = `${URL_ENGINE_STATUS}?name=${encodeURIComponent(name)}`;
+        btnEngine.classList.remove('disabled');
+    }
 
     const btnProc = document.getElementById('btn-open-process-list');
     btnProc.href = `${URL_PROCESS_LIST}?name=${encodeURIComponent(name)}`;

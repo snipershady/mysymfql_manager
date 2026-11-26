@@ -4,6 +4,7 @@ namespace App\Repository;
 
 use App\Entity\AppUser;
 use App\Entity\DatabaseOwner;
+use App\Entity\SqlClient;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -29,5 +30,25 @@ class DatabaseOwnerRepository extends ServiceEntityRepository
             ->addOrderBy('d.dbName', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * Names of the databases that $user owns on $sqlClient.
+     *
+     * @return list<string>
+     */
+    public function findDbNamesOwnedOn(AppUser $user, SqlClient $sqlClient): array
+    {
+        /** @var list<array{dbName: string}> $rows */
+        $rows = $this->createQueryBuilder('d')
+            ->select('d.dbName')
+            ->where('d.owner = :user')
+            ->andWhere('d.sqlClient = :sqlClient')
+            ->setParameter('user', $user)
+            ->setParameter('sqlClient', $sqlClient)
+            ->getQuery()
+            ->getArrayResult();
+
+        return array_column($rows, 'dbName');
     }
 }
