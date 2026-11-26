@@ -26,6 +26,13 @@ services:
                     - '%env(REDIS_SERVER)%'
                     - '%env(int:REDIS_PORT)%'
                     
+    # snipershady/ratelimiter on the shared Redis connection (used by the password-reset throttle)
+    RateLimiter\Adapter\PhpRedisAdapter:
+        arguments: ['@Redis']
+    RateLimiter\Service\RateLimiterInterface:
+        class: RateLimiter\Service\RateLimiterServiceRedis
+        arguments: ['@RateLimiter\Adapter\PhpRedisAdapter']
+
     Symfony\Component\HttpFoundation\Session\Storage\Handler\RedisSessionHandler:
         arguments:
             - '@Redis'

@@ -13,7 +13,10 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\DependencyInjection\Attribute\When;
 
+// Destructive (DROP DATABASE / DROP USER on the managed server): never registered in prod.
+#[When(env: 'dev')]
 #[AsCommand(
     name: 'dummy-fixtures',
     description: 'Creates two databases and populates them with test data',
