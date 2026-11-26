@@ -8,17 +8,18 @@ use App\Controller\ResetPasswordController;
 use App\Entity\AppUser;
 use App\Security\PasswordReset\PasswordResetThrottle;
 use App\Security\PasswordReset\PasswordResetTokenManager;
+use App\Tests\Fixtures\TestCatalog;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\DomCrawler\Crawler;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
  * HTTP-level checks of the password-reset flow.
  *
- * Read-only on the application catalog (the test DB is shared with dev, see CLAUDE.md):
- * tokens are issued for an existing user and the confirm form is only displayed, never submitted.
+ * Runs on the dedicated test catalog; changes are rolled back by dama/doctrine-test-bundle.
  * E-mails go to the null transport (MAILER_DSN in .env.test) and are inspected through the test mailer;
  * the throttle counters touched in Redis are cleared after each test.
  */
@@ -127,6 +128,55 @@ final class ResetPasswordTest extends WebTestCase
         $this->assertResponseRedirects('/reset-password');
     }
 
+    public function testValidLinkChangesThePasswordOnceAndCannotBeReused(): void
+    {
+        $user = $this->existingUser();
+        $tokenManager = self::getContainer()->get(PasswordResetTokenManager::class);
+        \assert($tokenManager instanceof PasswordResetTokenManager);
+        $url = '/reset-password/confirm?' . http_build_query($tokenManager->issue($user));
+
+        $crawler = $this->client->request('GET', $url);
+        $form = $crawler->filter('form')->form();
+        $form['reset_password_confirm[newPlainPassword][first]'] = 'Brand-new-passw0rd';
+        $form['reset_password_confirm[newPlainPassword][second]'] = 'Brand-new-passw0rd';
+        $this->client->submit($form);
+
+        $this->assertResponseRedirects('/login');
+        $hasher = self::getContainer()->get(UserPasswordHasherInterface::class);
+        \assert($hasher instanceof UserPasswordHasherInterface);
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        \assert($entityManager instanceof EntityManagerInterface);
+        $entityManager->clear();
+        $reloaded = $entityManager->getRepository(AppUser::class)->find($user->getId());
+        \assert($reloaded instanceof AppUser);
+        $this->assertTrue($hasher->isPasswordValid($reloaded, 'Brand-new-passw0rd'));
+
+        // Same link again: the password hash is part of the signature, so it is now invalid.
+        $this->client->request('GET', $url);
+        $this->assertResponseRedirects('/reset-password');
+    }
+
+    public function testMismatchedPasswordsAreRejectedAndTheLinkStaysValid(): void
+    {
+        $user = $this->existingUser();
+        $passwordBefore = $user->getPassword();
+        $tokenManager = self::getContainer()->get(PasswordResetTokenManager::class);
+        \assert($tokenManager instanceof PasswordResetTokenManager);
+        $url = '/reset-password/confirm?' . http_build_query($tokenManager->issue($user));
+
+        $form = $this->client->request('GET', $url)->filter('form')->form();
+        $form['reset_password_confirm[newPlainPassword][first]'] = 'Brand-new-passw0rd';
+        $form['reset_password_confirm[newPlainPassword][second]'] = 'Different-passw0rd';
+        $this->client->submit($form);
+
+        // Invalid form re-rendered with its errors.
+        $this->assertResponseStatusCodeSame(422);
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        \assert($entityManager instanceof EntityManagerInterface);
+        $entityManager->clear();
+        $this->assertSame($passwordBefore, $entityManager->getRepository(AppUser::class)->find($user->getId())?->getPassword());
+    }
+
     private function submitRequest(Crawler $crawler, string $email): void
     {
         $this->requestedEmails[] = $email;
@@ -139,7 +189,7 @@ final class ResetPasswordTest extends WebTestCase
     {
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);
         \assert($entityManager instanceof EntityManagerInterface);
-        $user = $entityManager->getRepository(AppUser::class)->findOneBy([]);
+        $user = $entityManager->getRepository(AppUser::class)->findOneBy(['username' => TestCatalog::OWNER]);
         if (!$user instanceof AppUser) {
             self::markTestSkipped('No AppUser in the application database.');
         }

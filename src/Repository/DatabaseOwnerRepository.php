@@ -51,4 +51,19 @@ class DatabaseOwnerRepository extends ServiceEntityRepository
 
         return array_column($rows, 'dbName');
     }
+
+    /**
+     * Removes every ownership of $dbName on $sqlClient (all users); returns the number of rows deleted.
+     */
+    public function removeAllFor(SqlClient $sqlClient, string $dbName): int
+    {
+        return $this->createQueryBuilder('d')
+            ->delete()
+            ->where('d.sqlClient = :sqlClient')
+            ->andWhere('d.dbName = :dbName')
+            ->setParameter('sqlClient', $sqlClient)
+            ->setParameter('dbName', $dbName)
+            ->getQuery()
+            ->execute();
+    }
 }

@@ -211,6 +211,18 @@ final class MysqldumpManagerTest extends TestCase
         chmod($this->backupDir, 0o777);
     }
 
+    public function testFailedDumpLeavesNoFileBehind(): void
+    {
+        mkdir($this->backupDir, 0777, true);
+
+        // Connection refused: mysqldump fails after the shell has created the output file.
+        $result = $this->manager()->createBackup($this->persistedSqlClient(7)->setHost('127.0.0.1')->setPort(1), 'shop');
+
+        $this->assertFalse($result['is_valid']);
+        $this->assertSame([], glob($this->backupDir . '/7/shop/*') ?: []);
+        $this->assertStringEndsNotWith('.part', $result['backup_filename']);
+    }
+
     private function writeDump(string $relativePath, int $mtime = 1_700_000_000): void
     {
         $path = $this->backupDir . '/' . $relativePath;

@@ -93,9 +93,11 @@ final readonly class MysqldumpManager
         file_put_contents($cnfFile, \sprintf("[client]\npassword=%s\n", addslashes((string) $pass)));
         chmod($cnfFile, 0600);
 
+        $suffix = null !== $table ? '_' . $table : '_full';
+        $backupFilename = $backupDir . '/bkp_' . $dateString . '_' . $dbName . $suffix . '.sql';
+        $partialFilename = $backupFilename . '.part';
+        $completed = false;
         try {
-            $suffix = null !== $table ? '_' . $table : '_full';
-            $backupFilename = $backupDir . '/bkp_' . $dateString . '_' . $dbName . $suffix . '.sql';
             $dbLevelFlags = null === $table ? '--routines --events' : '';
             $command = \sprintf(
                 'mysqldump --defaults-extra-file=%s -h %s -P %d -u %s --single-transaction --set-gtid-purged=OFF --triggers %s %s %s > %s',
@@ -106,21 +108,26 @@ final readonly class MysqldumpManager
                 $dbLevelFlags,
                 escapeshellarg($dbName),
                 null !== $table ? escapeshellarg($table) : '',
-                escapeshellarg($backupFilename)
+                escapeshellarg($partialFilename)
             );
             $output = [];
             $resultCode = 0;
             $execResult = exec($command, $output, $resultCode);
 
-            if (0 !== $resultCode && file_exists($backupFilename)) {
-                unlink($backupFilename);
+            // The dump is written to "<name>.part" and renamed only when complete: an interrupted or failed
+            // run never leaves a truncated bkp_*.sql that the listing would offer for restore.
+            if (false !== $execResult && 0 === $resultCode && rename($partialFilename, $backupFilename)) {
+                $completed = true;
             }
         } finally {
             unlink($cnfFile);
+            if (!$completed && file_exists($partialFilename)) {
+                unlink($partialFilename);
+            }
         }
 
         return [
-            'is_valid' => false !== $execResult && 0 === $resultCode,
+            'is_valid' => $completed,
             'exec_result' => $execResult,
             'output' => $output,
             'result_code' => $resultCode,

@@ -15,9 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * HTTP-level checks of the CSRF protection on /schema/*.
  *
- * Read-only on the application catalog (the test DB is shared with dev, see CLAUDE.md):
- * it logs in an existing enabled user and only targets a server name that does not exist,
- * so no request can reach a managed MySQL server.
+ * Only targets a server name that does not exist, so no request can reach a managed MySQL server.
  */
 #[CoversClass(SchemaCsrfListener::class)]
 final class SchemaCsrfTest extends WebTestCase

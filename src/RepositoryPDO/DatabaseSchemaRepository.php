@@ -195,12 +195,17 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
         }
     }
 
-    public function createDatabase(string $dbName, CharsetEnum $charset = CharsetEnum::UTF8MB4, CollationEnum $collate = CollationEnum::UTF8MB4_0900_AI_CI): bool
+    /**
+     * @param bool $ifNotExists false makes the statement fail when the schema already exists: callers that
+     *                          compensate with DROP DATABASE must use it, so they never drop someone else's schema
+     */
+    public function createDatabase(string $dbName, CharsetEnum $charset = CharsetEnum::UTF8MB4, CollationEnum $collate = CollationEnum::UTF8MB4_0900_AI_CI, bool $ifNotExists = true): bool
     {
         // PDO placeholders cannot be used for identifiers or DDL keywords:
         // use quoteIdentifier() for the db name and interpolate enum values directly (trusted).
         $query = \sprintf(
-            'CREATE DATABASE IF NOT EXISTS %s CHARACTER SET %s COLLATE %s',
+            'CREATE DATABASE %s%s CHARACTER SET %s COLLATE %s',
+            $ifNotExists ? 'IF NOT EXISTS ' : '',
             $this->quoteIdentifier($dbName),
             $charset->value,
             $collate->value

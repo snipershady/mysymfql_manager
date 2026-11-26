@@ -7,17 +7,19 @@ use App\Dto\MysqlUser;
 use App\Dto\ProcessList;
 use App\Entity\AppUser;
 use App\Entity\BackupQueue;
-use App\Entity\DatabaseOwner;
 use App\Entity\SqlClient;
 use App\Enum\CharsetEnum;
 use App\Enum\CollationEnum;
 use App\Enum\DatabasePrivilegeEnum;
+use App\Exception\ProvisioningConflictException;
+use App\Exception\ProvisioningException;
 use App\Exception\RepositoryException;
 use App\Repository\DatabaseOwnerRepository;
 use App\Repository\SqlClientRepository;
 use App\RepositoryPDO\DatabaseSchemaRepository;
 use App\Security\MysqlAccountPolicy;
 use App\Security\SqlClientAccessResolver;
+use App\Service\DatabaseProvisioner;
 use App\Service\MysqldumpManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -85,7 +87,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
     public function createDatabase(
         #[CurrentUser] AppUser $user,
         EffectivePrimitiveTypeIdentifierService $epti,
-        EntityManagerInterface $entityManagerInterface): JsonResponse
+        DatabaseProvisioner $provisioner): JsonResponse
     {
         $name = $epti->getStringValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $dbName = $epti->getStringValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
@@ -130,27 +132,16 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $charset = CharsetEnum::tryFrom($charsetVal) ?? CharsetEnum::UTF8MB4;
         $collation = CollationEnum::tryFrom($collateVal) ?? CollationEnum::UTF8MB4_0900_AI_CI;
 
-        $repo = new DatabaseSchemaRepository($sqlClient);
-        // CREATE DATABASE IF NOT EXISTS would silently succeed on an existing schema and the
-        // DatabaseOwner below would hand it over to the current user: refuse it explicitly.
-        if (\in_array($dbName, $repo->showDatabases(), strict: true)) {
-            return $this->json(['is_valid' => false, 'message' => 'Database already exists.'], Response::HTTP_CONFLICT);
-        }
-
-        $repo->createDatabase($dbName, $charset, $collation);
-
         try {
-            $repo->createUser($username, $password, $userHost);
-            $repo->grantPrivileges($dbName, $username, $privileges, $userHost);
-            $repo->flushPrivileges();
-        } catch (\Exception $exception) {
-            return $this->json(['is_valid' => false, 'message' => 'Exception: ' . $exception->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+            $provisioner->createDatabaseWithOwner(
+                new DatabaseSchemaRepository($sqlClient), $sqlClient, $user,
+                $dbName, $charset, $collation, $username, $password, $userHost, $privileges,
+            );
+        } catch (ProvisioningConflictException $conflict) {
+            return $this->json(['is_valid' => false, 'message' => $conflict->getMessage()], Response::HTTP_CONFLICT);
+        } catch (ProvisioningException $provisioningException) {
+            return $this->json(['is_valid' => false, 'message' => $provisioningException->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        // Assign the newly created database to the user as "owner"
-        $dbowner = new DatabaseOwner()->setDbName($dbName)->setOwner($user)->setSqlClient($sqlClient);
-        $entityManagerInterface->persist($dbowner);
-        $entityManagerInterface->flush();
 
         return $this->json(['is_valid' => true, 'message' => 'Database created successfully.']);
     }
@@ -500,7 +491,8 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
     #[Route(path: '/db-user-create', name: 'app_schema_db_user_create', methods: ['POST'])]
     public function dbUserCreate(
-        EffectivePrimitiveTypeIdentifierService $epti): JsonResponse
+        EffectivePrimitiveTypeIdentifierService $epti,
+        DatabaseProvisioner $provisioner): JsonResponse
     {
         $name = $epti->getStringValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $dbName = $epti->getStringValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
@@ -520,10 +512,13 @@ final class DatabaseSchemaRepositoryController extends AbstractController
             return $this->json(['is_valid' => false, 'message' => 'Server not found.'], Response::HTTP_NOT_FOUND);
         }
 
-        $repo = new DatabaseSchemaRepository($sqlClient);
-        $repo->createUser($username, $password, $userHost);
-        $repo->grantPrivileges($dbName, $username, $privileges, $userHost);
-        $repo->flushPrivileges();
+        try {
+            $provisioner->createUserWithGrant(new DatabaseSchemaRepository($sqlClient), $dbName, $username, $password, $userHost, $privileges);
+        } catch (ProvisioningConflictException $conflict) {
+            return $this->json(['is_valid' => false, 'message' => $conflict->getMessage()], Response::HTTP_CONFLICT);
+        } catch (ProvisioningException $provisioningException) {
+            return $this->json(['is_valid' => false, 'message' => $provisioningException->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
 
         return $this->json(['is_valid' => true, 'message' => 'User created successfully.']);
     }
@@ -619,7 +614,8 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
     #[Route(path: '/drop-database', name: 'app_schema_drop_database', methods: ['POST'])]
     public function dropDatabase(
-        EffectivePrimitiveTypeIdentifierService $epti): JsonResponse
+        EffectivePrimitiveTypeIdentifierService $epti,
+        DatabaseProvisioner $provisioner): JsonResponse
     {
         $name = $epti->getStringValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
         $dbName = $epti->getStringValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
@@ -629,13 +625,13 @@ final class DatabaseSchemaRepositoryController extends AbstractController
             return $this->json(['is_valid' => false, 'message' => 'Server not found.'], Response::HTTP_NOT_FOUND);
         }
 
-        $repo = new DatabaseSchemaRepository($sqlClient);
-        $ok = $repo->dropDatabase($dbName);
+        try {
+            $provisioner->dropDatabaseAndOwnerships(new DatabaseSchemaRepository($sqlClient), $sqlClient, $dbName);
+        } catch (ProvisioningException $provisioningException) {
+            return $this->json(['is_valid' => false, 'message' => $provisioningException->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
 
-        return $this->json([
-            'is_valid' => $ok,
-            'message' => $ok ? 'Database deleted successfully.' : 'Error during deletion.',
-        ]);
+        return $this->json(['is_valid' => true, 'message' => 'Database deleted successfully.']);
     }
 
     #[Route(path: '/table-empty', name: 'app_schema_table_empty', methods: ['POST'])]
