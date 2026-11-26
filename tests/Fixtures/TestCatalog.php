@@ -10,11 +10,15 @@ use App\Entity\SqlClient;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Psr\Container\ContainerInterface;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\BufferedOutput;
+use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
  * Rebuilds the dedicated test catalog (APP_DB_NAME in .env.test) before the suite runs:
- * drops and recreates the schema from the entity mapping, then loads a fixed set of users,
+ * empties it, applies the versioned migrations, validates them against the mapping, then loads a fixed set of users,
  * servers and ownerships. Every test then runs in a transaction rolled back by
  * dama/doctrine-test-bundle, so this baseline is the same for all of them.
  *
@@ -41,8 +45,10 @@ final class TestCatalog
 
     public const string OTHER_SERVER = 'server_other';
 
-    public static function rebuild(ContainerInterface $container): void
+    public static function rebuild(KernelInterface $kernel): void
     {
+        $container = $kernel->getContainer()->get('test.service_container');
+        \assert($container instanceof ContainerInterface);
         $entityManager = $container->get(EntityManagerInterface::class);
         \assert($entityManager instanceof EntityManagerInterface);
         $hasher = $container->get(UserPasswordHasherInterface::class);
@@ -53,10 +59,12 @@ final class TestCatalog
             throw new \RuntimeException(\sprintf('Refusing to rebuild "%s": the test catalog name must end with "_test" (APP_DB_NAME in .env.test).', $database));
         }
 
-        $schemaTool = new SchemaTool($entityManager);
-        $metadata = $entityManager->getMetadataFactory()->getAllMetadata();
-        $schemaTool->dropDatabase();
-        $schemaTool->createSchema($metadata);
+        // Empty database, then the versioned migrations (the same path as a fresh install), then
+        // a check that they produce exactly the entity mapping: a changed entity without its
+        // migration fails the whole suite here.
+        new SchemaTool($entityManager)->dropDatabase();
+        self::console($kernel, ['command' => 'doctrine:migrations:migrate', '--no-interaction' => true, '--allow-no-migration' => true]);
+        self::console($kernel, ['command' => 'doctrine:schema:validate']);
 
         $user = static function (string $username, string $role) use ($entityManager, $hasher): AppUser {
             $appUser = new AppUser()->setUsername($username)->setEmail($username . '@example.com')->setRoles([$role]);
@@ -90,6 +98,19 @@ final class TestCatalog
 
         $entityManager->flush();
         $entityManager->clear();
+    }
+
+    /**
+     * @param array<string, bool|string> $input
+     */
+    private static function console(KernelInterface $kernel, array $input): void
+    {
+        $application = new Application($kernel);
+        $application->setAutoExit(false);
+        $output = new BufferedOutput();
+        if (0 !== $application->run(new ArrayInput($input), $output)) {
+            throw new \RuntimeException(\sprintf("Test catalog: \"%s\" failed:\n%s", $input['command'], $output->fetch()));
+        }
     }
 
     private static function env(string $name): string

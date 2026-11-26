@@ -1,10 +1,11 @@
 <?php
 
-namespace App\Tests;
+namespace App\Tests\Integration;
 
 use App\Entity\SqlClient;
 use App\RepositoryPDO\DatabaseSchemaRepository;
 use App\Service\MysqldumpManager;
+use App\Tests\MyKernelTestCase;
 
 /**
  * Description of DatabaseBackupListTest.
@@ -65,14 +66,12 @@ class DatabaseBackupListTest extends MyKernelTestCase
 
         $msdm = new MysqldumpManager();
         $check = $msdm->createBackup($sqlClient, $this->dbNameTestingOne);
-        dump($check);
         $this->assertTrue($check['is_valid']);
 
         $backupFilename = $check['backup_filename'];
         $this->assertStringContainsString(\sprintf('/%d/%s/bkp_', $sqlClient->getId(), $this->dbNameTestingOne), $backupFilename);
 
         $list = $msdm->listAllBackups();
-        dump($list);
         $this->assertIsArray($list);
         $this->assertGreaterThan(0, \count($list));
     }

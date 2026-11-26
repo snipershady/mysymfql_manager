@@ -1,9 +1,10 @@
 <?php
 
-namespace App\Tests;
+namespace App\Tests\Integration;
 
 use App\Entity\SqlClient;
 use App\RepositoryPDO\DatabaseSchemaRepository;
+use App\Tests\MyKernelTestCase;
 
 /**
  * Description of DatabaseSchemaRepositoryTest.
@@ -72,7 +73,6 @@ class DatabaseSchemaRepositoryTest extends MyKernelTestCase
         $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
-        // dump($databaseRepositoryPdo->showDatabases());
         $this->assertIsArray($databaseRepositoryPdo->showDatabases());
     }
 
@@ -86,7 +86,6 @@ class DatabaseSchemaRepositoryTest extends MyKernelTestCase
             $databaseRepositoryPdo->useDbName($this->dbNameTestingOne);
         }
 
-        // dump($databaseRepositoryPdo->showTables());
         $this->assertIsArray($databaseRepositoryPdo->showTables());
     }
 
@@ -162,7 +161,6 @@ class DatabaseSchemaRepositoryTest extends MyKernelTestCase
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
         $res = $databaseRepositoryPdo->showEngineInnodbStatus();
-        dump($res);
         $this->assertTrue(true);
     }
 
@@ -172,7 +170,6 @@ class DatabaseSchemaRepositoryTest extends MyKernelTestCase
         $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
         $processListArray = $databaseRepositoryPdo->showProcessList();
-        // dump($processListArray);
 
         $this->assertIsArray($processListArray);
     }

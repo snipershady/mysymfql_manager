@@ -172,7 +172,7 @@ php bin/console app:setup
 
 Con `.env.local` ora presente, il comando:
 
-1. Genera e applica la migrazione Doctrine (`doctrine:migrations:diff` + `doctrine:migrations:migrate`) per creare lo schema applicativo.
+1. Applica le migrazioni Doctrine versionate (`doctrine:migrations:migrate`) per creare lo schema applicativo.
 2. Richiede in modo interattivo i dati del **primo account amministratore**:
    - `Username`
    - `Email`
@@ -197,6 +197,57 @@ Imposta la document root del tuo web server sulla directory `public/`. Esempio p
 Per Nginx, usa `try_files $uri /index.php$is_args$args;` all'interno del blocco location.
 
 ---
+
+## Aggiornare un'installazione esistente
+
+Dopo ogni `git pull` e `composer install --no-dev --optimize-autoloader` eseguire sempre:
+
+```bash
+php bin/console doctrine:migrations:migrate --no-interaction
+php bin/console cache:clear --env=prod
+```
+
+### Passaggio una tantum: migrazioni versionate
+
+Fino a novembre 2026 `app:setup` **generava** le migrazioni sul server (`doctrine:migrations:diff`), quindi non erano mai
+versionate. Il repository ora contiene una **migrazione baseline** (`Version20261126225626`) che crea lo stesso schema.
+Su un'installazione precedente le tabelle esistono già: marcare la baseline come eseguita **invece di** eseguirla
+(nessun SQL sulle tabelle applicative, cambia solo la tabella di servizio `doctrine_migration_versions`):
+
+```bash
+# 1. Lo schema deve corrispondere alle entità (attesi due [OK])
+php bin/console doctrine:schema:validate
+# 2. Dimenticare le vecchie versioni generate localmente e registrare la baseline
+php bin/console doctrine:migrations:version --delete --all --no-interaction
+php bin/console doctrine:migrations:version 'DoctrineMigrations\Version20261126225626' --add --no-interaction
+# 3. Verifica: "New" deve essere 0 e migrate deve rispondere "Already at the latest version"
+php bin/console doctrine:migrations:status
+php bin/console doctrine:migrations:migrate --no-interaction
+```
+
+Se il punto 1 segnala uno schema non allineato, fermarsi e sistemarlo prima (non marcare la baseline).
+Eventuali vecchi file di migrazione generati da `app:setup` in `migrations/` si possono cancellare.
+
+## Eseguire i test
+
+La suite usa un database applicativo **dedicato** il cui nome deve finire con `_test` (default `mysymfql_test`, vedi
+`.env.test`); viene svuotato e ricreato dalle migrazioni a ogni esecuzione. Le password vanno in `.env.test.local`
+(ignorato da git):
+
+```dotenv
+APP_DB_PASSWORD=...        # password dell'utente MySQL mysymfql_test
+TEST_SERVER_PASSWORD=...   # password dell'account che gestisce il MySQL locale (TEST_SERVER_USER)
+```
+
+```bash
+composer test:unit          # non richiede MySQL / Redis
+composer test:integration   # server MySQL reale
+composer test:functional    # test HTTP (MySQL + Redis)
+composer test               # tutto
+composer quality-check      # Rector, PHP-CS-Fixer, PHPStan (come in CI)
+```
+
+Gli stessi controlli girano su GitHub Actions (`.github/workflows/ci.yml`) con PHP 8.4 e 8.5.
 
 ## Aggiungere un server MySQL gestito — creazione di un account manager remoto
 

@@ -17,9 +17,29 @@
         <server name="SHELL_VERBOSITY" value="-1" />
     </php>
 
+    <!--
+        unit:        no MySQL, no Redis (tests/bootstrap.php skips the catalog rebuild when only the unit suite runs);
+                     a few tests need the mysqldump binary and are skipped without it.
+        integration: real MySQL server (TEST_SERVER_*) and the dedicated test catalog.
+        functional:  HTTP tests (KernelBrowser) on the test catalog, MySQL and Redis.
+    -->
     <testsuites>
-        <testsuite name="Project Test Suite">
-            <directory>tests</directory>
+        <testsuite name="unit">
+            <directory>tests/Command</directory>
+            <directory>tests/Component</directory>
+            <directory>tests/Dto</directory>
+            <directory>tests/Entity</directory>
+            <directory>tests/Enum</directory>
+            <directory>tests/EventListener</directory>
+            <directory>tests/Exception</directory>
+            <directory>tests/Security</directory>
+            <directory>tests/Service</directory>
+        </testsuite>
+        <testsuite name="integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+        <testsuite name="functional">
+            <directory>tests/Functional</directory>
         </testsuite>
     </testsuites>
 

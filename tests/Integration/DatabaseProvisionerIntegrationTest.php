@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Tests;
+namespace App\Tests\Integration;
 
 use App\Entity\AppUser;
 use App\Entity\SqlClient;
@@ -12,6 +12,7 @@ use App\Exception\ProvisioningConflictException;
 use App\Exception\ProvisioningException;
 use App\RepositoryPDO\DatabaseSchemaRepository;
 use App\Service\DatabaseProvisioner;
+use App\Tests\MyKernelTestCase;
 
 /**
  * Compensation against a real MySQL server (TEST_SERVER_NAME). The failure is triggered before the

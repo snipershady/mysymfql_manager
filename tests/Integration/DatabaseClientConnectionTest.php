@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Tests;
+namespace App\Tests\Integration;
 
 use App\Component\DatabaseClientConnection;
 use App\Entity\SqlClient;
 use App\RepositoryPDO\DatabaseSchemaRepository;
+use App\Tests\MyKernelTestCase;
 
 /**
  * Integration tests (real MySQL, server TEST_SERVER_NAME) for the per-client connection registry.

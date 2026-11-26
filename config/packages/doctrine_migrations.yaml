@@ -4,3 +4,6 @@ doctrine_migrations:
         # as migrations classes should NOT be autoloaded
         'DoctrineMigrations': '%kernel.project_dir%/migrations'
     enable_profiler: false
+    # MySQL commits implicitly on every DDL statement: wrapping migrations in a transaction only
+    # leaves DBAL with a stale transaction level ("There is no active transaction" / missing savepoints).
+    transactional: false

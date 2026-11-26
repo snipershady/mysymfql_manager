@@ -64,17 +64,7 @@ class SetupCommand extends Command
         $consolePath = $projectDir . '/bin/console';
         $php = \PHP_BINARY;
 
-        $diff = new Process([$php, $consolePath, 'doctrine:migrations:diff', '--no-interaction']);
-        $diff->run(static function (string $type, string $buffer) use ($output): void {
-            $output->write($buffer);
-        });
-
-        if (!$diff->isSuccessful()) {
-            $io->error('Error during migration generation (diff).');
-
-            return Command::FAILURE;
-        }
-
+        // Migrations are versioned in migrations/: setup only applies them (never generates new ones).
         $migrate = new Process([$php, $consolePath, 'doctrine:migrations:migrate', '--no-interaction']);
         $migrate->run(static function (string $type, string $buffer) use ($output): void {
             $output->write($buffer);

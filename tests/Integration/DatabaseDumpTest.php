@@ -1,10 +1,11 @@
 <?php
 
-namespace App\Tests;
+namespace App\Tests\Integration;
 
 use App\Entity\SqlClient;
 use App\RepositoryPDO\DatabaseSchemaRepository;
 use App\Service\MysqldumpManager;
+use App\Tests\MyKernelTestCase;
 
 /**
  * Description of DatabaseDumpTest.
@@ -66,7 +67,6 @@ class DatabaseDumpTest extends MyKernelTestCase
         $dbName = $this->dbNameTestingOne;
         $table = $this->dummyTableOne;
         $check = $msdm->createBackup($sqlClient, $dbName, $table);
-        dump($check);
         $this->assertTrue($check['is_valid']);
         $this->assertTrue(true);
     }
@@ -81,16 +81,13 @@ class DatabaseDumpTest extends MyKernelTestCase
         $msdm = new MysqldumpManager();
 
         $check = $msdm->createBackup($sqlClient, $this->dbNameTestingOne, $this->dummyTableOne);
-        dump($check);
         $this->assertTrue($check['is_valid']);
         $backupFilename = $check['backup_filename'];
 
         $checkRestore = $msdm->restoreBackup($sqlClient, $this->dbNameTestingTwo, $backupFilename);
-        dump($checkRestore);
 
         $databaseRepositoryPdo->useDbName($this->dbNameTestingTwo);
         $arrayTables = $databaseRepositoryPdo->showTables();
-        dump($arrayTables);
         $this->assertIsArray($arrayTables);
         $this->assertSame($this->dummyTableOne, $arrayTables[0]);
         $rowCount = $databaseRepositoryPdo->countTableRow($this->dummyTableOne);
@@ -104,7 +101,6 @@ class DatabaseDumpTest extends MyKernelTestCase
 
         $msdm = new MysqldumpManager();
         $check = $msdm->createBackup($sqlClient, $this->dbNameTestingOne);
-        dump($check);
         $this->assertTrue($check['is_valid']);
     }
 
@@ -117,7 +113,6 @@ class DatabaseDumpTest extends MyKernelTestCase
 
         $msdm = new MysqldumpManager();
         $check = $msdm->createBackup($sqlClient, $this->dbNameTestingOne);
-        dump($check);
         $this->assertTrue($check['is_valid']);
 
         $backupFilename = $check['backup_filename'];
@@ -126,7 +121,6 @@ class DatabaseDumpTest extends MyKernelTestCase
 
         $databaseRepositoryPdo->useDbName($this->dbNameTestingTwo);
         $arrayTables = $databaseRepositoryPdo->showTables();
-        dump($arrayTables);
         $this->assertIsArray($arrayTables);
         $this->assertSame($this->dummyTableOne, $arrayTables[1]);
         $this->assertSame($this->dummyTableTwo, $arrayTables[0]);
