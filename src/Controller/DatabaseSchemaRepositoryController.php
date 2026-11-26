@@ -806,13 +806,13 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         ]);
     }
 
-    #[Route(path: '/table-optimize', name: 'app_table_optimize', methods: ['GET'])]
+    #[Route(path: '/table-optimize', name: 'app_table_optimize', methods: ['POST'])]
     public function tableOptimize(
         EffectivePrimitiveTypeIdentifierService $epti): JsonResponse
     {
-        $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
-        $dbName = $epti->getStringValueFromGet(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
-        $table = $epti->getStringValueFromGet(needle: 'table', trim: true, forceString: true, sanitizeHtml: true);
+        $name = $epti->getStringValueFromPost(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        $dbName = $epti->getStringValueFromPost(needle: 'db_name', trim: true, forceString: true, sanitizeHtml: true);
+        $table = $epti->getStringValueFromPost(needle: 'table', trim: true, forceString: true, sanitizeHtml: true);
         $sqlClient = $this->access->database($name, $dbName);
         if (!$sqlClient instanceof SqlClient) {
             return $this->json(['error' => 'Server not found or access denied'], Response::HTTP_NOT_FOUND);

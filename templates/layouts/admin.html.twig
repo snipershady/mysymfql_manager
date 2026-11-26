@@ -2,6 +2,7 @@
 
 {% block head_extra %}
 <link rel="stylesheet" href="/asset/css/admin.css">
+<meta name="csrf-token" content="{{ csrf_token('schema_ajax') }}">
 {% endblock %}
 
 {% block body %}
@@ -146,6 +147,7 @@
 {% endblock %}
 
 {% block scripts_extra %}
+<script src="/asset/js/csrf-fetch.js"></script>
 <script src="/asset/js/admin.js"></script>
 <script>
 document.addEventListener('submit', async function (e) {
