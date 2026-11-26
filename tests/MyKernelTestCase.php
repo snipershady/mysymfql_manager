@@ -46,8 +46,12 @@ class MyKernelTestCase extends KernelTestCase
 
         $this->dbNameTestingOne = $_ENV['TEST_DB_NAME_ONE'] ?? 'unit_testing_one';
         $this->dbNameTestingTwo = $_ENV['TEST_DB_NAME_TWO'] ?? 'unit_testing_two';
-        $this->dbNameUser = $_ENV['TEST_DB_USER'] ?? 'root';
+        $this->dbNameUser = $_ENV['TEST_DB_USER'] ?? 'unit_testing_user';
         $this->dbNamePassword = $_ENV['TEST_DB_PASSWORD'] ?? '';
+        // The suite CREATEs and DROPs TEST_DB_USER@'%': refuse privileged or password-less accounts.
+        if (\in_array($this->dbNameUser, ['root', $_ENV['APP_DB_USER'] ?? 'root'], true) || '' === $this->dbNamePassword) {
+            self::fail('TEST_DB_USER must be a dedicated throwaway account (not root / APP_DB_USER) with a non-empty TEST_DB_PASSWORD.');
+        }
         $this->dummyTableOne = $_ENV['TEST_DUMMY_TABLE_ONE'] ?? 'jujutsu_kaisen_cast';
         $this->dummyTableTwo = $_ENV['TEST_DUMMY_TABLE_TWO'] ?? 'jojo_cast';
         $this->host = $_ENV['TEST_DB_HOST'] ?? 'localhost';

@@ -98,9 +98,10 @@ final readonly class MysqldumpManager
             $backupFilename = $backupDir . '/bkp_' . $dateString . '_' . $dbName . $suffix . '.sql';
             $dbLevelFlags = null === $table ? '--routines --events' : '';
             $command = \sprintf(
-                'mysqldump --defaults-extra-file=%s -h %s -u %s --single-transaction --set-gtid-purged=OFF --triggers %s %s %s > %s',
+                'mysqldump --defaults-extra-file=%s -h %s -P %d -u %s --single-transaction --set-gtid-purged=OFF --triggers %s %s %s > %s',
                 escapeshellarg($cnfFile),
                 escapeshellarg((string) $host),
+                $sqlClient->getPort(),
                 escapeshellarg((string) $user),
                 $dbLevelFlags,
                 escapeshellarg($dbName),
@@ -271,9 +272,10 @@ final readonly class MysqldumpManager
 
         try {
             $command = \sprintf(
-                'mysql --defaults-extra-file=%s -h %s -u %s %s %s < %s',
+                'mysql --defaults-extra-file=%s -h %s -P %d -u %s %s %s < %s',
                 escapeshellarg($cnfFile),
                 escapeshellarg((string) $host),
+                $sqlClient->getPort(),
                 escapeshellarg((string) $user),
                 null !== $table ? '--one-database' : '',
                 escapeshellarg($dbName),

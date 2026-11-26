@@ -136,4 +136,29 @@ class DatabaseDumpTest extends MyKernelTestCase
         $rowCount = $databaseRepositoryPdo->countTableRow($this->dummyTableTwo);
         $this->assertSame($rowCount, 6);
     }
+
+    public function testDumpUsesThePortOfTheSqlClient(): void
+    {
+        $sqlClient = $this->entityManager->getRepository(SqlClient::class)->findOneByName($this->serverName);
+        $msdm = new MysqldumpManager();
+
+        // 127.0.0.1 forces TCP (with "localhost" the client uses the socket and ignores the port, like PDO).
+        $overTcp = fn (int $port): SqlClient => $this->copyWithId($sqlClient)->setHost('127.0.0.1')->setPort($port);
+
+        $this->assertTrue($msdm->createBackup($overTcp($sqlClient->getPort()), $this->dbNameTestingOne, $this->dummyTableOne)['is_valid']);
+        $this->assertFalse($msdm->createBackup($overTcp(1), $this->dbNameTestingOne, $this->dummyTableOne)['is_valid']);
+    }
+
+    private function copyWithId(SqlClient $sqlClient): SqlClient
+    {
+        $copy = new SqlClient()
+            ->setName('copy')
+            ->setHost((string) $sqlClient->getHost())
+            ->setPort($sqlClient->getPort())
+            ->setUsername((string) $sqlClient->getUsername())
+            ->setPassword((string) $sqlClient->getPassword());
+        new \ReflectionProperty(SqlClient::class, 'id')->setValue($copy, $sqlClient->getId());
+
+        return $copy;
+    }
 }
