@@ -154,6 +154,6 @@
 {% block scripts_extra %}
 {{ parent() }}
 {% if sql_clients is not empty %}
-<script src="/asset/js/dashboard.js"></script>
+<script type="module" src="{{ asset('legacy/dashboard.js') }}"></script>
 {% endif %}
 {% endblock %}

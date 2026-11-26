@@ -82,7 +82,7 @@
 
 {% block scripts_extra %}
 {{ parent() }}
-<script>
+<script type="module">
 
 const URL_DELETE = '{{ path('app_schema_backup_delete') }}';
 
@@ -107,7 +107,6 @@ function showToast(message, success) {
 const dt = $('#table-backups').DataTable({
     order: [[2, 'desc']],
     pageLength: 25,
-    language: { url: 'https://cdn.datatables.net/plug-ins/2.3.7/i18n/it-IT.json' },
     columnDefs: [{ orderable: false, targets: 3 }],
 });
 

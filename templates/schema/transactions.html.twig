@@ -55,7 +55,7 @@
 
 {% block scripts_extra %}
 {{ parent() }}
-<script>
+<script type="module">
 
 const URL_GET_TRANSACTIONS = '{{ path('app_schema_transactions_get_data') }}';
 const URL_KILL_PROCESS     = '{{ path('app_schema_kill_process') }}';
@@ -145,7 +145,6 @@ let dt = $('#table-transactions').DataTable({
         { data: null, orderable: false, className: 'text-end',
           render: (d, t, row) => `<button class="btn btn-sm btn-outline-danger btn-kill-row" data-thread="${row.threadId}" title="Kill thread ${row.threadId}"><i class="fa-solid fa-stop"></i></button>` },
     ],
-    language: { url: 'https://cdn.datatables.net/plug-ins/2.3.7/i18n/it-IT.json' },
 });
 
 document.getElementById('table-transactions').addEventListener('click', (e) => {

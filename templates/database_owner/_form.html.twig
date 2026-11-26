@@ -46,7 +46,7 @@
 
 {{ form_end(form) }}
 
-<script>
+<script type="module">
 const URL_GET_DATABASES = '{{ path('app_show_databases_get_data') }}';
 const SYSTEM_DBS        = new Set(['information_schema', 'mysql', 'performance_schema', 'sys']);
 const PRESELECTED_DB    = '{{ current_db_name|e('js') }}';

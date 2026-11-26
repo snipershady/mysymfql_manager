@@ -85,7 +85,7 @@
 {% block scripts_extra %}
     {{ parent() }}
     {% if app.request.query.get('disabled') %}
-        <script>
+        <script type="module">
             document.addEventListener('DOMContentLoaded', () => {
                 Swal.fire({
                     title: 'Accesso non consentito',

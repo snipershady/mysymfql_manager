@@ -254,7 +254,7 @@
 
 {% block scripts_extra %}
 {{ parent() }}
-<script>
+<script type="module">
 
 const URL_USERS_GET_DATA  = '{{ path('app_schema_db_users_get_data') }}';
 const URL_USER_DROP       = '{{ path('app_schema_db_user_drop') }}';
@@ -326,7 +326,6 @@ function initDatatables() {
             { data: 'account_locked', render: _renderLocked, orderable: false },
             { data: null,             render: _renderActions, orderable: false, className: 'text-end' },
         ],
-        language: { url: 'https://cdn.datatables.net/plug-ins/2.3.7/i18n/it-IT.json' },
     });
 }
 

@@ -4,6 +4,9 @@ framework:
         paths:
             - assets/
         missing_import_mode: strict
+        # No es-module-shims polyfill: it is loaded from a CDN (ga.jspm.io) and every supported
+        # browser handles import maps natively (Chrome 89+, Firefox 108+, Safari 16.4+).
+        importmap_polyfill: false
 
 when@prod:
     framework:

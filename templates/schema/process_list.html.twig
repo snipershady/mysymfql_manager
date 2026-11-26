@@ -72,7 +72,7 @@
 
 {% block scripts_extra %}
 {{ parent() }}
-<script>
+<script type="module">
 
 const URL_GET_PROCESSLIST = '{{ path('app_show_processlist_get_data') }}';
 const URL_KILL_PROCESS    = '{{ path('app_schema_kill_process') }}';
@@ -178,7 +178,6 @@ function initDatatables() {
             { data: 'info',    render: _renderInfo },
             { data: null,      render: _renderActions, orderable: false, className: 'text-end' },
         ],
-        language: { url: 'https://cdn.datatables.net/plug-ins/2.3.7/i18n/it-IT.json' },
     });
 }
 

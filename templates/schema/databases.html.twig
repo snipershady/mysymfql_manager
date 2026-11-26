@@ -205,7 +205,7 @@
 
 {% block scripts_extra %}
 {{ parent() }}
-<script>
+<script type="module">
 
 const URL_GET_DATABASES    = '{{ path('app_show_databases_get_data') }}';
 const URL_TABLES_PAGE      = '{{ path('app_schema_tables') }}';
@@ -291,9 +291,6 @@ function initDatatables() {
             { data: 'size_bytes',  render: _renderSize },
             { data: null, orderable: false, className: 'text-end', render: _renderActions },
         ],
-        language: {
-            url: 'https://cdn.datatables.net/plug-ins/2.3.7/i18n/it-IT.json'
-        }
     });
 }
 

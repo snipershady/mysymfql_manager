@@ -95,7 +95,7 @@
 
 {% block scripts_extra %}
 {{ parent() }}
-<script>
+<script type="module">
 
 const URL_RESTORE_EXEC = '{{ path('app_schema_table_restore_exec') }}';
 const CURRENT_NAME     = '{{ name|e('js') }}';
@@ -107,9 +107,6 @@ $('#table-backups').DataTable({
     paging: true,
     pageLength: 25,
     order: [],
-    language: {
-        url: 'https://cdn.datatables.net/plug-ins/2.3.7/i18n/it-IT.json'
-    }
 });
 {% endif %}
 

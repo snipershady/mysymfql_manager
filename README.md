@@ -218,8 +218,12 @@ Always run, after `git pull` and `composer install --no-dev --optimize-autoloade
 
 ```bash
 php bin/console doctrine:migrations:migrate --no-interaction
+php bin/console asset-map:compile          # front-end assets -> public/assets (AssetMapper)
 php bin/console cache:clear --env=prod
 ```
+
+`composer install` also runs `importmap:install`, which downloads the front-end libraries listed in `importmap.php`
+into `assets/vendor/` (from the jsDelivr registry, at deploy time only: browsers never contact a CDN).
 
 ### One-time step: switching to versioned migrations
 

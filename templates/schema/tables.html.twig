@@ -94,7 +94,7 @@
 
 {% block scripts_extra %}
 {{ parent() }}
-<script>
+<script type="module">
 
 const URL_GET_TABLES     = '{{ path('app_show_tables_get_data') }}';
 const URL_TABLE_BACKUP   = '{{ path('app_schema_table_backup') }}';
@@ -424,9 +424,6 @@ function initDatatables() {
             { data: 'commento',     render: _renderComment, orderable: false },
             { data: null,           render: _renderActions, orderable: false, searchable: false }
         ],
-        language: {
-            url: 'https://cdn.datatables.net/plug-ins/2.3.7/i18n/it-IT.json'
-        }
     });
 
     document.getElementById('table-tables').addEventListener('click', (e) => {
