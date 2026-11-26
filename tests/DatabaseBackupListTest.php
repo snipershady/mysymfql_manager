@@ -69,6 +69,7 @@ class DatabaseBackupListTest extends MyKernelTestCase
         $this->assertTrue($check['is_valid']);
 
         $backupFilename = $check['backup_filename'];
+        $this->assertStringContainsString(\sprintf('/%d/%s/bkp_', $sqlClient->getId(), $this->dbNameTestingOne), $backupFilename);
 
         $list = $msdm->listAllBackups();
         dump($list);

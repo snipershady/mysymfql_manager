@@ -42,11 +42,12 @@
                 <tbody>
                     {% for backup in backups %}
                     <tr class="backup-row" style="cursor:pointer"
-                        data-filename="{{ backup.filename }}"
-                        data-view-url="{{ path('app_schema_backup_view') }}?filename={{ backup.filename|url_encode }}">
+                        data-filename="{{ backup.id }}"
+                        data-view-url="{{ path('app_schema_backup_view') }}?filename={{ backup.id|url_encode }}">
                         <td>
                             <i class="fa-solid fa-file-code text-muted me-2"></i>
                             <span class="font-monospace">{{ backup.filename }}</span>
+                            {% if backup.dbName is not null %}<span class="badge text-bg-light border ms-2">#{{ backup.sqlClientId }} · {{ backup.dbName }}</span>{% else %}<span class="badge text-bg-warning ms-2" title="Backup in formato precedente: server non determinabile, visibile solo agli admin">legacy</span>{% endif %}
                         </td>
                         <td class="text-muted">
                             {% set kb = (backup.size / 1024)|round(1) %}
@@ -58,13 +59,13 @@
                         </td>
                         <td class="text-muted">{{ backup.mtime|date('d/m/Y H:i:s') }}</td>
                         <td class="text-end">
-                            <a href="{{ path('app_schema_backup_download') }}?filename={{ backup.filename|url_encode }}"
+                            <a href="{{ path('app_schema_backup_download') }}?filename={{ backup.id|url_encode }}"
                                class="btn btn-sm btn-outline-primary btn-download me-1"
                                title="Scarica backup">
                                 <i class="fa-solid fa-download"></i>
                             </a>
                             <button class="btn btn-sm btn-outline-danger btn-delete"
-                                    data-filename="{{ backup.filename }}"
+                                    data-filename="{{ backup.id }}"
                                     title="Elimina backup">
                                 <i class="fa-solid fa-trash-can"></i>
                             </button>

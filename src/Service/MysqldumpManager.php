@@ -56,8 +56,12 @@ final readonly class MysqldumpManager
         $now = new \DateTime();
         $dateString = $now->format('Y-m-d_H-i-s');
 
-        if (!is_dir($this->backupPath) && !mkdir($this->backupPath, 0755, recursive: true)) {
-            $msg = \sprintf('Unable to create the backup directory: %s', $this->backupPath);
+        $sqlClientId = $sqlClient->getId()
+            ?? throw new \InvalidArgumentException('Only a persisted SqlClient can be backed up: its id is part of the backup path.');
+        $backupDir = \sprintf('%s/%d/%s', $this->backupPath, $sqlClientId, $dbName);
+
+        if (!$this->ensureBackupDirectory($backupDir)) {
+            $msg = \sprintf('Unable to create the backup directory: %s', $backupDir);
 
             // throw new \RuntimeException(sprintf('Unable to create the backup directory: %s', $this->backupPath));
             return [
@@ -91,7 +95,7 @@ final readonly class MysqldumpManager
 
         try {
             $suffix = null !== $table ? '_' . $table : '_full';
-            $backupFilename = $this->backupPath . '/bkp_' . $dateString . '_' . $dbName . $suffix . '.sql';
+            $backupFilename = $backupDir . '/bkp_' . $dateString . '_' . $dbName . $suffix . '.sql';
             $dbLevelFlags = null === $table ? '--routines --events' : '';
             $command = \sprintf(
                 'mysqldump --defaults-extra-file=%s -h %s -u %s --single-transaction --set-gtid-purged=OFF --triggers %s %s %s > %s',
@@ -125,50 +129,38 @@ final readonly class MysqldumpManager
     }
 
     /**
+     * Backups visible to $user: admins see everything (legacy flat dumps included);
+     * other users only dumps stored under a (server id, database) pair they own.
+     *
      * @param DatabaseOwner[] $allOwnedDatabased
      *
-     * @return BackupDump[]
+     * @return list<BackupDump>
      */
     public function listBackups(AppUser $user, array $allOwnedDatabased): array
     {
-        if (!is_dir($this->backupPath)) {
-            return [];
+        if (\in_array('ROLE_ADMIN', $user->getRoles(), strict: true)) {
+            return $this->listAllBackups();
         }
 
-        $files = glob($this->backupPath . '/bkp_*.sql');
-
-        if (false === $files) {
-            return [];
+        $allowed = [];
+        foreach ($allOwnedDatabased as $owned) {
+            $sqlClientId = $owned->getSqlClient()?->getId();
+            $dbName = $owned->getDbName();
+            if (null !== $sqlClientId && null !== $dbName) {
+                $allowed[$sqlClientId . '/' . $dbName] = true;
+            }
         }
 
-        $isAdmin = \in_array('ROLE_ADMIN', $user->getRoles(), strict: true);
-
-        $allowedDbNames = $isAdmin ? [] : array_map(
-            static fn (DatabaseOwner $o): string => $o->getDbName() ?? '',
-            $allOwnedDatabased
-        );
-
-        $filtered = $isAdmin ? $files : array_filter($files, static function (string $file) use ($allowedDbNames): bool {
-            // Format: bkp_YYYY-MM-DD_HH-II-SS_dbName_suffix.sql
-            // Remove the fixed prefix to isolate dbName_suffix.sql
-            $rest = (string) preg_replace('/^bkp_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_/', '', basename($file));
-
-            return array_any($allowedDbNames, static fn (string $dbName): bool => str_starts_with($rest, $dbName . '_'));
-        });
-
-        $backups = array_map(static fn (string $file): BackupDump => BackupDump::fromArray([
-            'filename' => basename($file),
-            'path' => $file,
-            'size' => (int) filesize($file),
-            'mtime' => (int) filemtime($file),
-        ]), $filtered);
-
-        usort($backups, static fn (BackupDump $a, BackupDump $b): int => $b->mtime <=> $a->mtime);
-
-        return $backups;
+        return array_values(array_filter(
+            $this->listAllBackups(),
+            static fn (BackupDump $b): bool => null !== $b->sqlClientId && isset($allowed[$b->sqlClientId . '/' . $b->dbName])
+        ));
     }
 
     /**
+     * Every dump under BACKUP_PATH, newest first: structured dumps ({sqlClientId}/{dbName}/bkp_*.sql)
+     * plus legacy flat dumps (bkp_*.sql in the root, not attributable to a server).
+     *
      * @return list<BackupDump>
      */
     public function listAllBackups(): array
@@ -177,25 +169,70 @@ final readonly class MysqldumpManager
             return [];
         }
 
-        $files = glob($this->backupPath . '/bkp_*.sql');
-
-        if (false === $files) {
-            return [];
+        $backups = [];
+        foreach (glob($this->backupPath . '/bkp_*.sql') ?: [] as $file) {
+            $backups[] = $this->toBackupDump($file, basename($file), sqlClientId: null, dbName: null);
         }
 
-        $backups = [];
-        foreach ($files as $file) {
-            $backups[] = BackupDump::fromArray([
-                'filename' => basename($file),
-                'path' => $file,
-                'size' => (int) filesize($file),
-                'mtime' => (int) filemtime($file),
-            ]);
+        foreach (glob($this->backupPath . '/*/*/bkp_*.sql') ?: [] as $file) {
+            $relative = substr($file, \strlen($this->backupPath) + 1);
+            [$serverDir, $dbDir] = explode('/', $relative, 3);
+            // Only directories this class creates: numeric server id and \w+ database name.
+            if (!ctype_digit($serverDir) || !preg_match('/^\w+$/', $dbDir)) {
+                continue;
+            }
+
+            $backups[] = $this->toBackupDump($file, $relative, (int) $serverDir, $dbDir);
         }
 
         usort($backups, static fn (BackupDump $a, BackupDump $b): int => $b->mtime <=> $a->mtime);
 
         return $backups;
+    }
+
+    /**
+     * Creates BACKUP_PATH/{id}/{db} giving every new level the same permission bits as BACKUP_PATH:
+     * the web user (www-data) and the CLI/cron user both write dumps here, so the operator decides
+     * the access policy once, on the root directory (see "Note operative" in CLAUDE.md).
+     */
+    private function ensureBackupDirectory(string $backupDir): bool
+    {
+        if (is_dir($backupDir)) {
+            return true;
+        }
+
+        if (!is_dir($this->backupPath) && !mkdir($this->backupPath, 0770, recursive: true)) {
+            return false;
+        }
+
+        $mode = fileperms($this->backupPath) & 0o777;
+        $current = $this->backupPath;
+        foreach (explode('/', substr($backupDir, \strlen($this->backupPath) + 1)) as $segment) {
+            $current .= '/' . $segment;
+            if (is_dir($current)) {
+                continue;
+            }
+
+            // chmod() as well: mkdir() is subject to the process umask.
+            if ((!mkdir($current, $mode) && !is_dir($current)) || !chmod($current, $mode)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function toBackupDump(string $file, string $id, ?int $sqlClientId, ?string $dbName): BackupDump
+    {
+        return new BackupDump(
+            filename: basename($file),
+            path: $file,
+            size: (int) filesize($file),
+            mtime: (int) filemtime($file),
+            id: $id,
+            sqlClientId: $sqlClientId,
+            dbName: $dbName,
+        );
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Dto\BackupDump;
 use App\Dto\MysqlUser;
 use App\Dto\ProcessList;
 use App\Entity\AppUser;
@@ -792,7 +793,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         $allOwnedDatabased = $databaseOwnerRepository->findAllByOwner($user);
         $backups = $mysqldumpManager->listBackups($user, $allOwnedDatabased);
-        $selectedBackup = array_find($backups, static fn ($backup): bool => $backup->filename === $backupFilename);
+        $selectedBackup = array_find($backups, static fn (BackupDump $backup): bool => $backup->id === $backupFilename);
 
         if (!$selectedBackup) {
             return $this->json(['is_valid' => false, 'message' => 'Backup file not found.'], Response::HTTP_NOT_FOUND);
@@ -866,7 +867,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $allOwnedDatabased = $databaseOwnerRepository->findAllByOwner($user);
 
         $backups = $mysqldumpManager->listBackups($user, $allOwnedDatabased);
-        $backup = array_find($backups, static fn ($b): bool => $b->filename === $filename);
+        $backup = array_find($backups, static fn (BackupDump $b): bool => $b->id === $filename);
 
         if (!$backup) {
             throw $this->createNotFoundException('Backup file not found.');
@@ -895,7 +896,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         $allOwnedDatabased = $databaseOwnerRepository->findAllByOwner($user);
         $backups = $mysqldumpManager->listBackups($user, $allOwnedDatabased);
-        $backup = array_find($backups, static fn ($b): bool => $b->filename === $filename);
+        $backup = array_find($backups, static fn (BackupDump $b): bool => $b->id === $filename);
 
         if (!$backup) {
             throw $this->createNotFoundException('Backup file not found.');
@@ -914,7 +915,7 @@ final class DatabaseSchemaRepositoryController extends AbstractController
 
         $allOwnedDatabased = $databaseOwnerRepository->findAllByOwner($user);
         $backups = $mysqldumpManager->listBackups($user, $allOwnedDatabased);
-        $backup = array_find($backups, static fn ($b): bool => $b->filename === $filename);
+        $backup = array_find($backups, static fn (BackupDump $b): bool => $b->id === $filename);
 
         if (!$backup) {
             return $this->json(['is_valid' => false, 'message' => 'Backup file not found.'], Response::HTTP_NOT_FOUND);

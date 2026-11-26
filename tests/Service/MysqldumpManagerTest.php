@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Service;
 
 use App\Entity\AppUser;
+use App\Entity\DatabaseOwner;
 use App\Entity\SqlClient;
 use App\Service\MysqldumpManager;
 use PHPUnit\Framework\TestCase;
@@ -18,6 +19,11 @@ final class MysqldumpManagerTest extends TestCase
 {
     private string $backupDir;
 
+    /**
+     * @var array{env: mixed, server: mixed, getenv: string|false}
+     */
+    private array $previousBackupPath;
+
     #[\Override]
     protected function setUp(): void
     {
@@ -29,6 +35,11 @@ final class MysqldumpManagerTest extends TestCase
             self::markTestSkipped('mysqldump is not installed.');
         }
 
+        $this->previousBackupPath = [
+            'env' => $_ENV['BACKUP_PATH'] ?? null,
+            'server' => $_SERVER['BACKUP_PATH'] ?? null,
+            'getenv' => getenv('BACKUP_PATH'),
+        ];
         $this->backupDir = sys_get_temp_dir() . '/mysqldump_manager_test_' . bin2hex(random_bytes(6));
         $_ENV['BACKUP_PATH'] = $this->backupDir;
         $_SERVER['BACKUP_PATH'] = $this->backupDir;
@@ -39,13 +50,26 @@ final class MysqldumpManagerTest extends TestCase
     protected function tearDown(): void
     {
         if (is_dir($this->backupDir)) {
-            foreach (glob($this->backupDir . '/*') ?: [] as $file) {
-                unlink($file);
+            $items = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($this->backupDir, \FilesystemIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::CHILD_FIRST
+            );
+            foreach ($items as $item) {
+                \assert($item instanceof \SplFileInfo);
+                $item->isDir() ? rmdir($item->getPathname()) : unlink($item->getPathname());
             }
             rmdir($this->backupDir);
         }
+
+        // Restore the previous values: other test classes (integration dumps) read BACKUP_PATH too.
         unset($_ENV['BACKUP_PATH'], $_SERVER['BACKUP_PATH']);
-        putenv('BACKUP_PATH');
+        if (null !== $this->previousBackupPath['env']) {
+            $_ENV['BACKUP_PATH'] = $this->previousBackupPath['env'];
+        }
+        if (null !== $this->previousBackupPath['server']) {
+            $_SERVER['BACKUP_PATH'] = $this->previousBackupPath['server'];
+        }
+        putenv(false === $this->previousBackupPath['getenv'] ? 'BACKUP_PATH' : 'BACKUP_PATH=' . $this->previousBackupPath['getenv']);
     }
 
     private function manager(): MysqldumpManager
@@ -123,5 +147,85 @@ final class MysqldumpManagerTest extends TestCase
         $this->assertCount(1, $backups);
         $this->assertSame('bkp_2024-01-01_00-00-00_shop_full.sql', $backups[0]->filename);
         $this->assertSame($path, $backups[0]->path);
+    }
+
+    public function testCreateBackupRequiresAPersistedSqlClient(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->manager()->createBackup($this->sqlClient(), 'valid_db');
+    }
+
+    public function testNonAdminSeesOnlyDumpsOfTheExactServerAndDatabaseOwned(): void
+    {
+        $this->writeDump('1/app/bkp_2024-01-01_00-00-01_app_full.sql');
+        $this->writeDump('1/app_old/bkp_2024-01-01_00-00-02_app_old_full.sql');
+        $this->writeDump('2/app/bkp_2024-01-01_00-00-03_app_full.sql');
+        $this->writeDump('bkp_2024-01-01_00-00-04_app_full.sql');
+
+        $user = new AppUser()->setUsername('alice')->setEmail('alice@example.com')->setRoles(['ROLE_USER']);
+        $owned = [new DatabaseOwner()->setDbName('app')->setOwner($user)->setSqlClient($this->persistedSqlClient(1))];
+
+        $backups = $this->manager()->listBackups($user, $owned);
+
+        $this->assertSame(['1/app/bkp_2024-01-01_00-00-01_app_full.sql'], array_map(static fn ($b): string => $b->id, $backups));
+        $this->assertSame(1, $backups[0]->sqlClientId);
+        $this->assertSame('app', $backups[0]->dbName);
+        $this->assertSame('bkp_2024-01-01_00-00-01_app_full.sql', $backups[0]->filename);
+    }
+
+    public function testAdminSeesStructuredAndLegacyDumpsNewestFirst(): void
+    {
+        $this->writeDump('1/app/bkp_2024-01-01_00-00-01_app_full.sql', mtime: 100);
+        $this->writeDump('bkp_2024-01-01_00-00-02_app_full.sql', mtime: 200);
+
+        $admin = new AppUser()->setUsername('root')->setEmail('root@example.com')->setRoles(['ROLE_ADMIN']);
+        $backups = $this->manager()->listBackups($admin, []);
+
+        $this->assertSame(
+            ['bkp_2024-01-01_00-00-02_app_full.sql', '1/app/bkp_2024-01-01_00-00-01_app_full.sql'],
+            array_map(static fn ($b): string => $b->id, $backups)
+        );
+        $this->assertNull($backups[0]->sqlClientId);
+        $this->assertNull($backups[0]->dbName);
+    }
+
+    public function testUnexpectedDirectoriesAreIgnored(): void
+    {
+        $this->writeDump('srv/app/bkp_2024-01-01_00-00-01_app_full.sql');
+        $this->writeDump('1/bad-name/bkp_2024-01-01_00-00-01_x_full.sql');
+
+        $this->assertSame([], $this->manager()->listAllBackups());
+    }
+
+    public function testBackupDirectoriesInheritThePermissionsOfTheBackupRoot(): void
+    {
+        mkdir($this->backupDir, 0777, true);
+        chmod($this->backupDir, 0o751);
+
+        // The dump itself fails (no server on this port), but the target directories are created first.
+        $sqlClient = $this->persistedSqlClient(7)->setHost('127.0.0.1')->setPort(1);
+        $this->manager()->createBackup($sqlClient, 'shop');
+
+        $this->assertSame(0o751, fileperms($this->backupDir . '/7') & 0o777);
+        $this->assertSame(0o751, fileperms($this->backupDir . '/7/shop') & 0o777);
+        chmod($this->backupDir, 0o777);
+    }
+
+    private function writeDump(string $relativePath, int $mtime = 1_700_000_000): void
+    {
+        $path = $this->backupDir . '/' . $relativePath;
+        if (!is_dir(\dirname($path))) {
+            mkdir(\dirname($path), 0777, true);
+        }
+        file_put_contents($path, '-- dump');
+        touch($path, $mtime);
+    }
+
+    private function persistedSqlClient(int $id): SqlClient
+    {
+        $sqlClient = $this->sqlClient();
+        new \ReflectionProperty(SqlClient::class, 'id')->setValue($sqlClient, $id);
+
+        return $sqlClient;
     }
 }
