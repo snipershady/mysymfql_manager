@@ -45,7 +45,9 @@ mysymfql_manager è un'applicazione web che consente di gestire uno o più serve
 
 ### Monitoraggio del server
 - Lista dei processi con terminazione del processo tramite ID
-- Stato del motore InnoDB
+- Stato del motore InnoDB (solo admin)
+- Transazioni InnoDB aperte (`information_schema.INNODB_TRX`: thread, stato, inizio, righe bloccate) con terminazione del thread
+- Gli utenti non admin vedono solo processi e transazioni che lavorano sui propri database
 
 ---
 

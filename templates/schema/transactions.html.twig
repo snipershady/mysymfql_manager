@@ -1,0 +1,159 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Transaction — {{ name }}{% endblock %}
+{% block page_title %}Transaction{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{{ path('app_schema_databases') }}">Database</a></li>
+    <li class="breadcrumb-item active">Transaction</li>
+{% endblock %}
+
+{% block content %}
+
+<div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index:1100"></div>
+
+<div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between gap-2">
+        <span>
+            <i class="fa-solid fa-right-left text-primary me-1"></i>
+            Transazioni InnoDB aperte &mdash; <span class="text-muted small">{{ name }}</span>
+        </span>
+        <div class="d-flex gap-2">
+            <button id="btn-refresh" class="btn btn-sm btn-outline-secondary">
+                <i class="fa-solid fa-rotate-right me-1"></i>Aggiorna
+            </button>
+            <a href="{{ path('app_schema_process_list', {'name': name}) }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fa-solid fa-list me-1"></i>Process List
+            </a>
+            <a href="{{ path('app_schema_databases') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fa-solid fa-arrow-left me-1"></i>Torna ai database
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">
+            <i class="fa-solid fa-circle-info me-1"></i>
+            Origine: <code>information_schema.INNODB_TRX</code>. Il thread è l'ID del processo (Process List):
+            terminarlo annulla (rollback) la transazione. Orari nel fuso del server MySQL.
+        </p>
+        <table id="table-transactions" class="table table-hover align-middle w-100" style="font-size:.85rem">
+            <thead class="table-light">
+                <tr>
+                    <th style="width:110px">Thread</th>
+                    <th>Stato</th>
+                    <th>Iniziata</th>
+                    <th style="width:140px">Righe bloccate</th>
+                    <th class="text-end" style="width:90px">Azioni</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts_extra %}
+{{ parent() }}
+<script>
+
+const URL_GET_TRANSACTIONS = '{{ path('app_schema_transactions_get_data') }}';
+const URL_KILL_PROCESS     = '{{ path('app_schema_kill_process') }}';
+const CURRENT_NAME         = '{{ name|e('js') }}';
+
+function showToast(message, success) {
+    const id  = `toast-${Date.now()}`;
+    const bg  = success ? 'text-bg-success' : 'text-bg-danger';
+    const ico = success ? 'fa-circle-check' : 'fa-circle-xmark';
+    document.getElementById('toast-container').insertAdjacentHTML('beforeend', `
+        <div id="${id}" class="toast align-items-center ${bg} border-0" role="alert" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body"><i class="fa-solid ${ico} me-2"></i>${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>`);
+    const el = document.getElementById(id);
+    const t  = new bootstrap.Toast(el, { delay: 4000 });
+    t.show();
+    el.addEventListener('hidden.bs.toast', () => el.remove());
+}
+
+async function killThread(threadId, btn) {
+    const result = await Swal.fire({
+        title: `Termina thread ${threadId}`,
+        text:  `Terminare il thread ${threadId}? La sua transazione verrà annullata (rollback).`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Kill',
+        cancelButtonText: 'Annulla',
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+    });
+    if (!result.isConfirmed) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    try {
+        const fd = new FormData();
+        fd.append('name', CURRENT_NAME);
+        fd.append('pid',  threadId);
+        const res  = await fetch(URL_KILL_PROCESS, { method: 'POST', body: fd });
+        const json = await res.json();
+        showToast(json.message, json.is_valid);
+        if (json.is_valid) dt.ajax.reload(null, false);
+    } catch {
+        showToast('Errore di rete.', false);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-stop"></i>';
+    }
+}
+
+const STATE_BADGES = {
+    'RUNNING':      'text-bg-success',
+    'LOCK WAIT':    'text-bg-danger',
+    'ROLLING BACK': 'text-bg-warning',
+    'COMMITTING':   'text-bg-info',
+};
+
+function _renderState(data) {
+    const cls = STATE_BADGES[data] ?? 'text-bg-secondary';
+    return `<span class="badge ${cls}">${$.fn.dataTable.render.text().display(data)}</span>`;
+}
+
+function _renderRows(data) {
+    return data > 0 ? `<span class="fw-semibold text-danger">${data}</span>` : data;
+}
+
+let dt = $('#table-transactions').DataTable({
+    processing: true,
+    serverSide: false,
+    paging: true,
+    pageLength: 25,
+    order: [[2, 'asc']],
+    ajax: {
+        url: URL_GET_TRANSACTIONS,
+        type: 'GET',
+        dataSrc: 'data',
+        data: (o) => { o.name = CURRENT_NAME; return o; },
+    },
+    columns: [
+        { data: 'threadId',   render: (d) => `<span class="badge bg-secondary font-monospace">${d}</span>` },
+        { data: 'state',      render: _renderState },
+        { data: 'started',    render: $.fn.dataTable.render.text() },
+        { data: 'rowsLocked', render: _renderRows },
+        { data: null, orderable: false, className: 'text-end',
+          render: (d, t, row) => `<button class="btn btn-sm btn-outline-danger btn-kill-row" data-thread="${row.threadId}" title="Kill thread ${row.threadId}"><i class="fa-solid fa-stop"></i></button>` },
+    ],
+    language: { url: 'https://cdn.datatables.net/plug-ins/2.3.7/i18n/it-IT.json' },
+});
+
+document.getElementById('table-transactions').addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-kill-row');
+    if (btn) killThread(parseInt(btn.dataset.thread, 10), btn);
+});
+
+document.getElementById('btn-refresh').addEventListener('click', () => dt.ajax.reload(null, false));
+
+</script>
+{% endblock %}

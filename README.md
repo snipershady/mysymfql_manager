@@ -57,7 +57,9 @@ mysymfql_manager is a web application that allows you to manage one or more remo
 
 ### Server Monitoring
 - Process list with process termination by ID
-- InnoDB engine status
+- InnoDB engine status (admins only)
+- Open InnoDB transactions (`information_schema.INNODB_TRX`: thread, state, start time, locked rows) with thread termination
+- Non-admin users only see processes and transactions working on their own databases
 
 ---
 

@@ -3,6 +3,7 @@
 namespace App\RepositoryPDO;
 
 use App\Dto\InnodbStatus;
+use App\Dto\InnodbTransaction;
 use App\Dto\MysqlUser;
 use App\Dto\ProcessList;
 use App\Enum\CharsetEnum;
@@ -659,6 +660,27 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
             }
 
             return $result;
+        } catch (\PDOException $pdoException) {
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
+        }
+    }
+
+    /**
+     * Open InnoDB transactions on the server. Requires the PROCESS privilege
+     * (without it MySQL returns only the transactions of the current account).
+     *
+     * @return list<InnodbTransaction>
+     *
+     * @throws RepositoryException
+     */
+    public function showInnodbTransactions(): array
+    {
+        $query = 'SELECT trx_mysql_thread_id, trx_state, trx_started, trx_rows_locked FROM information_schema.INNODB_TRX;';
+        try {
+            $stmt = $this->pdo->prepare($query);
+            $stmt->execute();
+
+            return array_map(InnodbTransaction::fromArray(...), $this->fetchAllAssoc($stmt));
         } catch (\PDOException $pdoException) {
             throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
         }

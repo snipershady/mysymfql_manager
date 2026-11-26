@@ -146,6 +146,9 @@
             <a id="btn-open-process-list" href="#" class="btn btn-sm btn-outline-secondary disabled">
                 <i class="fa-solid fa-list me-1"></i>Process List
             </a>
+            <a id="btn-open-transactions" href="#" class="btn btn-sm btn-outline-secondary disabled">
+                <i class="fa-solid fa-right-left me-1"></i>Transaction
+            </a>
             <a id="btn-open-users" href="#" class="btn btn-sm btn-outline-secondary disabled">
                 <i class="fa-solid fa-users me-1"></i>Utenti MySQL
             </a>
@@ -209,6 +212,7 @@ const URL_TABLES_PAGE      = '{{ path('app_schema_tables') }}';
 const URL_USERS_PAGE       = '{{ path('app_schema_db_users') }}';
 const URL_ENGINE_STATUS    = '{{ path('app_schema_engine_status') }}';
 const URL_PROCESS_LIST     = '{{ path('app_schema_process_list') }}';
+const URL_TRANSACTIONS     = '{{ path('app_schema_transactions') }}';
 const URL_CREATE_DATABASE  = '{{ path('app_schema_create_database') }}';
 const URL_DROP_DATABASE    = '{{ path('app_schema_drop_database') }}';
 const URL_TABLE_BACKUP     = '{{ path('app_schema_table_backup') }}';
@@ -311,6 +315,8 @@ $('#select-sql-client').on('change', function () {
         }
         document.getElementById('btn-open-process-list').href = '#';
         document.getElementById('btn-open-process-list').classList.add('disabled');
+        document.getElementById('btn-open-transactions').href = '#';
+        document.getElementById('btn-open-transactions').classList.add('disabled');
         return;
     }
 
@@ -329,6 +335,10 @@ $('#select-sql-client').on('change', function () {
     const btnProc = document.getElementById('btn-open-process-list');
     btnProc.href = `${URL_PROCESS_LIST}?name=${encodeURIComponent(name)}`;
     btnProc.classList.remove('disabled');
+
+    const btnTrx = document.getElementById('btn-open-transactions');
+    btnTrx.href = `${URL_TRANSACTIONS}?name=${encodeURIComponent(name)}`;
+    btnTrx.classList.remove('disabled');
     $('#card-databases').show();
 
     if (dt === null) {

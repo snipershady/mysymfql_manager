@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Dto\BackupDump;
+use App\Dto\InnodbTransaction;
 use App\Dto\MysqlUser;
 use App\Dto\ProcessList;
 use App\Entity\AppUser;
@@ -346,6 +347,51 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         }
 
         return $this->render('schema/process_list.html.twig', [
+            'name' => $name,
+        ]);
+    }
+
+    /**
+     * Open InnoDB transactions (information_schema.INNODB_TRX).
+     *
+     * Panel: admin or server owner; non-admins only see transactions whose thread works on one of
+     * their databases (same rule as the process list). MySQL privilege: PROCESS. Read-only.
+     */
+    #[Route(path: '/transactions-get-data', name: 'app_schema_transactions_get_data', methods: ['GET'])]
+    public function transactionsGetData(
+        #[CurrentUser] AppUser $user,
+        EffectivePrimitiveTypeIdentifierService $epti,
+        DatabaseOwnerRepository $databaseOwnerRepository): JsonResponse
+    {
+        $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+
+        $sqlClient = $this->access->server($name);
+        if (!$sqlClient instanceof SqlClient) {
+            return $this->json(['error' => 'Server not found or access denied'], Response::HTTP_NOT_FOUND);
+        }
+
+        $repo = new DatabaseSchemaRepository($sqlClient);
+        $transactions = $repo->showInnodbTransactions();
+        if (!$this->access->isAdmin()) {
+            $visibleThreads = array_map(static fn (ProcessList $p): int => $p->id, $this->visibleProcesses($user, $sqlClient, $repo, $databaseOwnerRepository));
+            $transactions = array_values(array_filter(
+                $transactions,
+                static fn (InnodbTransaction $t): bool => \in_array($t->threadId, $visibleThreads, strict: true)
+            ));
+        }
+
+        return $this->json(['data' => $transactions]);
+    }
+
+    #[Route(path: '/transactions', name: 'app_schema_transactions', methods: ['GET'])]
+    public function transactionsPage(EffectivePrimitiveTypeIdentifierService $epti): Response
+    {
+        $name = $epti->getStringValueFromGet(needle: 'name', trim: true, forceString: true, sanitizeHtml: true);
+        if (!$this->access->server($name) instanceof SqlClient) {
+            throw $this->createNotFoundException('Server not found.');
+        }
+
+        return $this->render('schema/transactions.html.twig', [
             'name' => $name,
         ]);
     }

@@ -2,9 +2,11 @@
 
 namespace App\Tests\Integration;
 
+use App\Dto\InnodbTransaction;
 use App\Entity\SqlClient;
 use App\RepositoryPDO\DatabaseSchemaRepository;
 use App\Tests\MyKernelTestCase;
+use App\Tests\Support\OpenTransaction;
 
 /**
  * Description of DatabaseSchemaRepositoryTest.
@@ -152,6 +154,28 @@ class DatabaseSchemaRepositoryTest extends MyKernelTestCase
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
 
         $this->assertTrue($databaseRepositoryPdo->hasGlobalPrivileges('no_such_account_' . bin2hex(random_bytes(4)), '%'));
+    }
+
+    public function testShowInnodbTransactionsListsAnOpenTransaction(): void
+    {
+        $sqlClient = $this->entityManager->getRepository(SqlClient::class)->findOneByName($this->serverName);
+        $repo = new DatabaseSchemaRepository($sqlClient);
+        $trx = new OpenTransaction($sqlClient, $this->dbNameTestingOne);
+
+        $find = static fn (): ?InnodbTransaction => array_find($repo->showInnodbTransactions(), static fn (InnodbTransaction $t): bool => $t->threadId === $trx->threadId);
+
+        try {
+            $this->assertTrue(OpenTransaction::eventually(static fn (): bool => $find() instanceof InnodbTransaction));
+            $found = $find();
+            $this->assertInstanceOf(InnodbTransaction::class, $found);
+            $this->assertSame('RUNNING', $found->state);
+            $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $found->started);
+            $this->assertSame(0, $found->rowsLocked);
+        } finally {
+            $trx->close();
+        }
+
+        $this->assertTrue(OpenTransaction::eventually(static fn (): bool => null === $find()), 'The transaction is still listed after ROLLBACK.');
     }
 
     public function testDtoInnoDbStatus(): void
