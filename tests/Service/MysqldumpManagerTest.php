@@ -224,6 +224,47 @@ final class MysqldumpManagerTest extends TestCase
         $this->assertStringEndsNotWith('.part', $result['backup_filename']);
     }
 
+    public function testLegacyDumpIsRelocatedToTheServerAndDatabaseFolder(): void
+    {
+        $this->writeDump('bkp_2024-01-01_00-00-01_shop_full.sql');
+        $this->writeDump('3/shop/bkp_2024-01-01_00-00-02_shop_full.sql');
+        $manager = $this->manager();
+
+        $legacy = $manager->listLegacyBackups();
+        $this->assertSame(['bkp_2024-01-01_00-00-01_shop_full.sql'], array_map(static fn (BackupDump $b): string => $b->id, $legacy));
+
+        $target = $manager->relocateLegacyBackup($legacy[0], $this->persistedSqlClient(3), 'shop');
+
+        $this->assertSame($this->backupDir . '/3/shop/bkp_2024-01-01_00-00-01_shop_full.sql', $target);
+        $this->assertFileDoesNotExist($this->backupDir . '/bkp_2024-01-01_00-00-01_shop_full.sql');
+        $this->assertSame([], $manager->listLegacyBackups());
+        // Now visible to the owners of (3, shop).
+        $this->assertSame(3, array_values(array_filter($manager->listAllBackups(), static fn (BackupDump $b): bool => str_ends_with($b->id, '00-00-01_shop_full.sql')))[0]->sqlClientId);
+    }
+
+    public function testRelocationNeverOverwritesAnExistingDump(): void
+    {
+        $this->writeDump('bkp_2024-01-01_00-00-01_shop_full.sql');
+        $this->writeDump('3/shop/bkp_2024-01-01_00-00-01_shop_full.sql');
+        $legacy = $this->manager()->listLegacyBackups();
+
+        $this->expectException(\RuntimeException::class);
+        try {
+            $this->manager()->relocateLegacyBackup($legacy[0], $this->persistedSqlClient(3), 'shop');
+        } finally {
+            $this->assertFileExists($this->backupDir . '/bkp_2024-01-01_00-00-01_shop_full.sql');
+        }
+    }
+
+    public function testOnlyLegacyDumpsCanBeRelocated(): void
+    {
+        $this->writeDump('3/shop/bkp_2024-01-01_00-00-02_shop_full.sql');
+        $structured = $this->manager()->listAllBackups()[0];
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->manager()->relocateLegacyBackup($structured, $this->persistedSqlClient(4), 'shop');
+    }
+
     private function writeDump(string $relativePath, int $mtime = 1_700_000_000): void
     {
         $path = $this->backupDir . '/' . $relativePath;

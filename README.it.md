@@ -230,6 +230,11 @@ php bin/console doctrine:migrations:migrate --no-interaction
 Se il punto 1 segnala uno schema non allineato, fermarsi e sistemarlo prima (non marcare la baseline).
 Eventuali vecchi file di migrazione generati da `app:setup` in `migrations/` si possono cancellare.
 
+### Passaggio una tantum: backup legacy
+
+I backup creati prima di questa versione sono visibili solo agli amministratori. Assegnarli al loro server con
+`app:backup-relocate <server> [--force]` (vedi la sezione sui comandi CLI) perché gli owner dei database li rivedano.
+
 ## Eseguire i test
 
 La suite usa un database applicativo **dedicato** il cui nome deve finire con `_test` (default `mysymfql_test`, vedi
@@ -456,6 +461,33 @@ Per eseguire un backup notturno di un database specifico alle 03:00:
 ```
 
 ---
+
+### `app:backup-relocate` — Assegna i backup legacy a un server
+
+I backup creati prima di novembre 2026 sono stati scritti direttamente in `BACKUP_PATH`
+(`bkp_<data>_<db>_<tabella|full>.sql`) e non sono attribuibili a un server, quindi li vedono solo gli amministratori.
+I nuovi backup sono salvati in `BACKUP_PATH/<id server>/<database>/` e li vedono gli owner di quel database. Questo
+comando sposta i file legacy di un server nella nuova struttura.
+
+```bash
+php bin/console app:backup-relocate <name> [--db=<database>]... [--force]
+```
+
+| Argomento / opzione | Descrizione |
+|---|---|
+| `name` | Nome del `SqlClient` da cui provengono i dump legacy |
+| `--db` | Nome di database aggiuntivo da considerare (ripetibile), es. un database eliminato dopo il dump |
+| `--force` | Sposta davvero i file; senza, il comando mostra solo il piano |
+
+Ogni nome file viene confrontato con i database esistenti sul server (più `--db`). I nomi compatibili con più database
+(`app_old_users` = `app` + `old_users` oppure `app_old` + `users`) vengono risolti controllando quale tabella esiste;
+i file che restano senza corrispondenza o ambigui vengono lasciati al loro posto e segnalati. I file esistenti non
+vengono mai sovrascritti.
+
+```bash
+php bin/console app:backup-relocate Produzione            # controllare il piano
+php bin/console app:backup-relocate Produzione --force    # spostare i file
+```
 
 ### `app:setup-sqlclient` — Registra un server MySQL (SqlClient)
 

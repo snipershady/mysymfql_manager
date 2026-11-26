@@ -14,6 +14,8 @@ use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
  * Description of EmailHubService.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
+ *
+ * @see \App\Tests\Service\EmailHubServiceTest
  */
 final readonly class EmailHubService
 {
@@ -66,14 +68,16 @@ final readonly class EmailHubService
     {
         $emailFrom = $this->epti->getStringValueFromEnv(needle: 'EMAIL_FROM', trim: true, forceString: true, sanitizeHtml: false);
 
-        $email = new TemplatedEmail()
-                ->from($emailFrom)
-                ->to($addressTo)
-                ->subject($subject)
-                ->htmlTemplate($templatePath)
-                ->context($context)
-        ;
+        // Building the message is inside the try too: an invalid EMAIL_FROM (or recipient) throws an
+        // RfcComplianceException while creating the Address, and callers expect is_valid:false, not a 500.
         try {
+            $email = new TemplatedEmail()
+                    ->from($emailFrom)
+                    ->to($addressTo)
+                    ->subject($subject)
+                    ->htmlTemplate($templatePath)
+                    ->context($context)
+            ;
             $this->mailer->send($email);
         } catch (\Exception $exception) {
             return ['is_valid' => false, 'msg' => $exception->getMessage()];

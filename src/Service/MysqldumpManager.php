@@ -201,6 +201,48 @@ final readonly class MysqldumpManager
     }
 
     /**
+     * Legacy flat dumps (BACKUP_PATH/bkp_*.sql), not attributable to a server.
+     *
+     * @return list<BackupDump>
+     */
+    public function listLegacyBackups(): array
+    {
+        return array_values(array_filter($this->listAllBackups(), static fn (BackupDump $b): bool => null === $b->sqlClientId));
+    }
+
+    /**
+     * Moves a legacy flat dump to BACKUP_PATH/{sqlClientId}/{dbName}/ (same filename), making it visible
+     * to the owners of that database. Returns the new path.
+     *
+     * @throws \InvalidArgumentException when the dump is not a legacy one, the database name is invalid or the client is not persisted
+     * @throws \RuntimeException         when the target exists or the file cannot be moved
+     */
+    public function relocateLegacyBackup(BackupDump $legacy, SqlClient $sqlClient, string $dbName): string
+    {
+        if (null !== $legacy->sqlClientId || \dirname($legacy->path) !== $this->backupPath) {
+            throw new \InvalidArgumentException(\sprintf('"%s" is not a legacy dump in the root of BACKUP_PATH.', $legacy->id));
+        }
+
+        if (!preg_match('/^\w+$/', $dbName)) {
+            throw new \InvalidArgumentException(\sprintf('Invalid database name: "%s".', $dbName));
+        }
+
+        $sqlClientId = $sqlClient->getId() ?? throw new \InvalidArgumentException('Only a persisted SqlClient can own a backup.');
+        $targetDir = \sprintf('%s/%d/%s', $this->backupPath, $sqlClientId, $dbName);
+        $target = $targetDir . '/' . $legacy->filename;
+
+        if (file_exists($target)) {
+            throw new \RuntimeException(\sprintf('Target already exists: %s', $target));
+        }
+
+        if (!$this->ensureBackupDirectory($targetDir) || !rename($legacy->path, $target)) {
+            throw new \RuntimeException(\sprintf('Unable to move %s to %s', $legacy->path, $target));
+        }
+
+        return $target;
+    }
+
+    /**
      * Creates BACKUP_PATH/{id}/{db} giving every new level the same permission bits as BACKUP_PATH:
      * the web user (www-data) and the CLI/cron user both write dumps here, so the operator decides
      * the access policy once, on the root directory (see "Note operative" in CLAUDE.md).

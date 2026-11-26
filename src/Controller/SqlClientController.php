@@ -11,6 +11,7 @@ use App\Repository\SqlClientRepository;
 use App\Security\Voter\SqlClientVoter;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -42,6 +43,7 @@ final class SqlClientController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            $this->applyTypedPassword($form, $sqlClient);
             $entityManager->persist($sqlClient);
             $entityManager->flush();
 
@@ -67,10 +69,11 @@ final class SqlClientController extends AbstractController
     #[IsGranted(attribute: SqlClientVoter::MANAGE, subject: 'sqlClient')]
     public function edit(Request $request, SqlClient $sqlClient, EntityManagerInterface $entityManager): Response
     {
-        $form = $this->createForm(SqlClientType::class, $sqlClient);
+        $form = $this->createForm(SqlClientType::class, $sqlClient, ['require_password' => false]);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            $this->applyTypedPassword($form, $sqlClient);
             $entityManager->flush();
 
             return $this->redirectToRoute('app_sql_client_index', [], Response::HTTP_SEE_OTHER);
@@ -92,5 +95,18 @@ final class SqlClientController extends AbstractController
         }
 
         return $this->redirectToRoute('app_sql_client_index', [], Response::HTTP_SEE_OTHER);
+    }
+
+    /**
+     * The password field is not mapped: set it only when something was typed (edit keeps the stored one).
+     *
+     * @param FormInterface<SqlClient> $form
+     */
+    private function applyTypedPassword(FormInterface $form, SqlClient $sqlClient): void
+    {
+        $password = $form->get('password')->getData();
+        if (\is_string($password) && '' !== $password) {
+            $sqlClient->setPassword($password);
+        }
     }
 }
