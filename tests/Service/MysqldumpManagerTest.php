@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\Dto\BackupDump;
 use App\Entity\AppUser;
 use App\Entity\DatabaseOwner;
 use App\Entity\SqlClient;
@@ -28,7 +29,7 @@ final class MysqldumpManagerTest extends TestCase
     protected function setUp(): void
     {
         $disabled = array_map(trim(...), explode(',', (string) \ini_get('disable_functions')));
-        if (\in_array('exec', $disabled, true) || \in_array('shell_exec', $disabled, true)) {
+        if (\in_array('exec', $disabled, strict: true) || \in_array('shell_exec', $disabled, strict: true)) {
             self::markTestSkipped('exec()/shell_exec() are disabled in this environment.');
         }
         if (!shell_exec('which mysqldump 2>/dev/null')) {
@@ -55,7 +56,7 @@ final class MysqldumpManagerTest extends TestCase
                 \RecursiveIteratorIterator::CHILD_FIRST
             );
             foreach ($items as $item) {
-                \assert($item instanceof \SplFileInfo);
+                $this->assertInstanceOf(\SplFileInfo::class, $item);
                 $item->isDir() ? rmdir($item->getPathname()) : unlink($item->getPathname());
             }
             rmdir($this->backupDir);
@@ -107,9 +108,9 @@ final class MysqldumpManagerTest extends TestCase
 
     public function testRestoreBackupRejectsFilesOutsideTheBackupDirectory(): void
     {
-        mkdir($this->backupDir, 0777, true);
+        mkdir($this->backupDir, 0777, recursive: true);
         $outside = tempnam(sys_get_temp_dir(), 'not_a_backup_');
-        self::assertIsString($outside);
+        $this->assertIsString($outside);
 
         try {
             $this->expectException(\InvalidArgumentException::class);
@@ -126,7 +127,7 @@ final class MysqldumpManagerTest extends TestCase
 
     public function testListBackupsReturnsEmptyArrayForANonAdminWithoutOwnedDatabases(): void
     {
-        mkdir($this->backupDir, 0777, true);
+        mkdir($this->backupDir, 0777, recursive: true);
         file_put_contents($this->backupDir . '/bkp_2024-01-01_00-00-00_shop_full.sql', '-- dump');
 
         $user = new AppUser()->setUsername('alice')->setEmail('alice@example.com')->setRoles(['ROLE_USER']);
@@ -136,7 +137,7 @@ final class MysqldumpManagerTest extends TestCase
 
     public function testListBackupsReturnsMatchingDumpsForAnAdmin(): void
     {
-        mkdir($this->backupDir, 0777, true);
+        mkdir($this->backupDir, 0777, recursive: true);
         $path = $this->backupDir . '/bkp_2024-01-01_00-00-00_shop_full.sql';
         file_put_contents($path, '-- dump');
 
@@ -167,7 +168,7 @@ final class MysqldumpManagerTest extends TestCase
 
         $backups = $this->manager()->listBackups($user, $owned);
 
-        $this->assertSame(['1/app/bkp_2024-01-01_00-00-01_app_full.sql'], array_map(static fn ($b): string => $b->id, $backups));
+        $this->assertSame(['1/app/bkp_2024-01-01_00-00-01_app_full.sql'], array_map(static fn (BackupDump $b): string => $b->id, $backups));
         $this->assertSame(1, $backups[0]->sqlClientId);
         $this->assertSame('app', $backups[0]->dbName);
         $this->assertSame('bkp_2024-01-01_00-00-01_app_full.sql', $backups[0]->filename);
@@ -183,7 +184,7 @@ final class MysqldumpManagerTest extends TestCase
 
         $this->assertSame(
             ['bkp_2024-01-01_00-00-02_app_full.sql', '1/app/bkp_2024-01-01_00-00-01_app_full.sql'],
-            array_map(static fn ($b): string => $b->id, $backups)
+            array_map(static fn (BackupDump $b): string => $b->id, $backups)
         );
         $this->assertNull($backups[0]->sqlClientId);
         $this->assertNull($backups[0]->dbName);
@@ -199,7 +200,7 @@ final class MysqldumpManagerTest extends TestCase
 
     public function testBackupDirectoriesInheritThePermissionsOfTheBackupRoot(): void
     {
-        mkdir($this->backupDir, 0777, true);
+        mkdir($this->backupDir, 0777, recursive: true);
         chmod($this->backupDir, 0o751);
 
         // The dump itself fails (no server on this port), but the target directories are created first.
@@ -213,7 +214,7 @@ final class MysqldumpManagerTest extends TestCase
 
     public function testFailedDumpLeavesNoFileBehind(): void
     {
-        mkdir($this->backupDir, 0777, true);
+        mkdir($this->backupDir, 0777, recursive: true);
 
         // Connection refused: mysqldump fails after the shell has created the output file.
         $result = $this->manager()->createBackup($this->persistedSqlClient(7)->setHost('127.0.0.1')->setPort(1), 'shop');
@@ -227,7 +228,7 @@ final class MysqldumpManagerTest extends TestCase
     {
         $path = $this->backupDir . '/' . $relativePath;
         if (!is_dir(\dirname($path))) {
-            mkdir(\dirname($path), 0777, true);
+            mkdir(\dirname($path), 0777, recursive: true);
         }
         file_put_contents($path, '-- dump');
         touch($path, $mtime);

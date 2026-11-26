@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command;
 
 use App\Entity\SqlClient;
@@ -51,6 +53,11 @@ class DummyFixturesCommand extends Command
         /** @var SqlClientRepository $sqlClientRepository */
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
         $sqlClient = $sqlClientRepository->findOneByName(self::SERVER_NAME);
+        if (!$sqlClient instanceof SqlClient) {
+            $io->error(\sprintf('Server "%s" not found: register it with app:setup-sqlclient first.', self::SERVER_NAME));
+
+            return Command::FAILURE;
+        }
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
 

@@ -29,12 +29,12 @@ final class SchemaCsrfTest extends WebTestCase
     {
         $this->client = self::createClient();
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);
-        \assert($entityManager instanceof EntityManagerInterface);
+        $this->assertInstanceOf(EntityManagerInterface::class, $entityManager);
 
         $user = array_find(
             $entityManager->getRepository(AppUser::class)->findAll(),
             static fn (AppUser $u): bool => [] !== array_intersect(['ROLE_USER', 'ROLE_ADMIN'], $u->getRoles())
-                && !\in_array('ROLE_DISABLED', $u->getRoles(), true)
+                && !\in_array('ROLE_DISABLED', $u->getRoles(), strict: true)
         );
         if (!$user instanceof AppUser) {
             self::markTestSkipped('No enabled AppUser in the application database.');

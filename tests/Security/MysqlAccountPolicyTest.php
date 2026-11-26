@@ -16,7 +16,7 @@ final class MysqlAccountPolicyTest extends TestCase
 
     public function testAccountConfinedToOwnedDatabasesIsManageable(): void
     {
-        $this->assertTrue(MysqlAccountPolicy::isManageableByOwner('panel', 'shop_rw', false, ['shop', 'blog'], self::OWNED));
+        $this->assertTrue(MysqlAccountPolicy::isManageableByOwner('panel', 'shop_rw', hasGlobalPrivileges: false, grantedDbs: ['shop', 'blog'], ownedDbs: self::OWNED));
     }
 
     /**

@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command;
 
 use App\Entity\BackupQueue;
+use App\Entity\SqlClient;
 use App\Repository\BackupQueueRepository;
 use App\Service\MysqldumpManager;
 use Doctrine\ORM\EntityManagerInterface;
@@ -61,6 +64,13 @@ class ProcessBackupQueueCommand extends Command
         $sqlClient = $entry->getSqlClient();
         $dbName = $entry->getDbName();
         $table = $entry->getTable();
+        if (!$sqlClient instanceof SqlClient || null === $dbName) {
+            // Claimed but unusable (should not happen: both columns are NOT NULL): leave it as failed.
+            $io->writeln('<fg=red>Invalid queue entry: missing server or database.</>');
+            $this->logger->error('Invalid backup queue entry.', ['entry' => $entry->getId()]);
+
+            return Command::FAILURE;
+        }
 
         $io->write(\sprintf(
             'Backup <info>%s</info>%s on <info>%s</info> ... ',

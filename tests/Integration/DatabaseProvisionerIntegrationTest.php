@@ -26,7 +26,6 @@ final class DatabaseProvisionerIntegrationTest extends MyKernelTestCase
 
     private string $username;
 
-    #[\Override]
     protected function setUp(): void
     {
         parent::setUp();
@@ -38,7 +37,6 @@ final class DatabaseProvisionerIntegrationTest extends MyKernelTestCase
         $this->username = 'ut_prov_' . $suffix;
     }
 
-    #[\Override]
     protected function tearDown(): void
     {
         $this->repo->dropUser($this->username);

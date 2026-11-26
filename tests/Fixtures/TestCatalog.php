@@ -69,6 +69,7 @@ final class TestCatalog
         $user = static function (string $username, string $role) use ($entityManager, $hasher): AppUser {
             $appUser = new AppUser()->setUsername($username)->setEmail($username . '@example.com')->setRoles([$role]);
             $appUser->setPassword($hasher->hashPassword($appUser, self::PASSWORD));
+
             $entityManager->persist($appUser);
 
             return $appUser;
@@ -106,7 +107,8 @@ final class TestCatalog
     private static function console(KernelInterface $kernel, array $input): void
     {
         $application = new Application($kernel);
-        $application->setAutoExit(false);
+        $application->setAutoExit(boolean: false);
+
         $output = new BufferedOutput();
         if (0 !== $application->run(new ArrayInput($input), $output)) {
             throw new \RuntimeException(\sprintf("Test catalog: \"%s\" failed:\n%s", $input['command'], $output->fetch()));

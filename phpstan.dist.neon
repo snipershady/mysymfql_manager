@@ -15,7 +15,6 @@ parameters:
         - config/reference.php
         # Symfony framework bootstrap/glue, not application logic.
         - src/Kernel.php
-        - src/Command
         - public/index.php
         # Test suite is not analysed; the tests/*.php loaders below are still used by the extensions.
         - tests/

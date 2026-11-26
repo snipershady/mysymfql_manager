@@ -21,6 +21,8 @@ use Symfony\Component\Security\Core\Authorization\Voter\Voter;
  * @extends Voter<string, ManagedDatabase>
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
+ *
+ * @see \App\Tests\Security\Voter\DatabaseVoterTest
  */
 final class DatabaseVoter extends Voter
 {

@@ -47,7 +47,7 @@ final class RepositoryExceptionTest extends TestCase
     public function testItCanBeCaughtAsAStandardException(): void
     {
         $this->expectException(\Exception::class);
-        $this->expectExceptionMessage('boom, caller message = root cause');
+        $this->expectExceptionMessageIsOrContains('boom, caller message = root cause');
 
         throw new RepositoryException('boom', 0, new \LogicException('root cause'));
     }

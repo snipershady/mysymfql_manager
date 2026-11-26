@@ -44,7 +44,7 @@ final class DatabaseOwnerTest extends TestCase
         $link = new DatabaseOwner();
 
         $this->assertSame($link, $link->setDbName('x'));
-        $this->assertSame($link, $link->setOwner(null));
-        $this->assertSame($link, $link->setSqlClient(null));
+        $this->assertSame($link, $link->setOwner(owner: null));
+        $this->assertSame($link, $link->setSqlClient(sqlClient: null));
     }
 }

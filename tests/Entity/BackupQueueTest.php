@@ -47,7 +47,7 @@ final class BackupQueueTest extends TestCase
         $queue = new BackupQueue();
         $completedAt = new \DateTime('2024-05-01 08:00:00');
 
-        $queue->setIsDequeued(true)->setCompletedDate($completedAt);
+        $queue->setIsDequeued(isDequeued: true)->setCompletedDate($completedAt);
 
         $this->assertTrue($queue->isDequeued());
         $this->assertSame($completedAt, $queue->getCompletedDate());
@@ -65,7 +65,7 @@ final class BackupQueueTest extends TestCase
 
     public function testTableIsNullable(): void
     {
-        $queue = new BackupQueue()->setTable('orders')->setTable(null);
+        $queue = new BackupQueue()->setTable('orders')->setTable(tableName: null);
 
         $this->assertNull($queue->getTable());
     }

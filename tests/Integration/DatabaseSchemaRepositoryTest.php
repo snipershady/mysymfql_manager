@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\Integration;
 
 use App\Dto\InnodbTransaction;
@@ -13,22 +15,18 @@ use App\Tests\Support\OpenTransaction;
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
-class DatabaseSchemaRepositoryTest extends MyKernelTestCase
+final class DatabaseSchemaRepositoryTest extends MyKernelTestCase
 {
-    #[\Override]
     protected function setUp(): void
     {
         parent::setUp();
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
         $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
-
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
-
         // Dropp di tutti i possibili elementi esistenti per il testing
         $databaseRepositoryPdo->dropUser($this->dbNameUser);
         $databaseRepositoryPdo->dropDatabase($this->dbNameTestingOne);
         $databaseRepositoryPdo->dropDatabase($this->dbNameTestingTwo);
-
         // Creo e popolo DB1
         $databaseRepositoryPdo->createDatabase($this->dbNameTestingOne);
         $databaseRepositoryPdo->createUser($this->dbNameUser, $this->dbNamePassword);
@@ -39,7 +37,6 @@ class DatabaseSchemaRepositoryTest extends MyKernelTestCase
         $databaseRepositoryPdo->populateDummiTable();
         $databaseRepositoryPdo->createDummyTableTwo();
         $databaseRepositoryPdo->populateDummiTableTwo();
-
         // Creo e popolo DB2
         $databaseRepositoryPdo->createDatabase($this->dbNameTestingTwo);
         $databaseRepositoryPdo->grantPrivileges($this->dbNameTestingTwo, $this->dbNameUser);
@@ -175,7 +172,7 @@ class DatabaseSchemaRepositoryTest extends MyKernelTestCase
             $trx->close();
         }
 
-        $this->assertTrue(OpenTransaction::eventually(static fn (): bool => null === $find()), 'The transaction is still listed after ROLLBACK.');
+        $this->assertTrue(OpenTransaction::eventually(static fn (): bool => !$find() instanceof InnodbTransaction), 'The transaction is still listed after ROLLBACK.');
     }
 
     public function testDtoInnoDbStatus(): void
@@ -184,7 +181,7 @@ class DatabaseSchemaRepositoryTest extends MyKernelTestCase
         $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
-        $res = $databaseRepositoryPdo->showEngineInnodbStatus();
+        $databaseRepositoryPdo->showEngineInnodbStatus();
         $this->assertTrue(true);
     }
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Rector\CodeQuality\Rector\Attribute\ExplicitAttributeNamedArgsRector;
 use Rector\CodingStyle\Rector\ClassLike\NewlineBetweenClassLikeStmtsRector;
 use Rector\Config\RectorConfig;
@@ -7,10 +9,12 @@ use Rector\DeadCode\Rector\ClassMethod\RemoveUselessParamTagRector;
 use Rector\DeadCode\Rector\ClassMethod\RemoveUselessReturnTagRector;
 use Rector\DeadCode\Rector\Foreach_\RemoveUnusedForeachKeyRector;
 use Rector\Php84\Rector\MethodCall\NewMethodCallWithoutParenthesesRector;
+use Rector\TypeDeclaration\Rector\StmtsAwareInterface\SafeDeclareStrictTypesRector;
 
 return RectorConfig::configure()
                 ->withPaths([
                     __DIR__ . '/src',
+                    __DIR__ . '/tests',
                 ])
                 ->withSkip([
                     // InlineClassRoutePrefixRector::class,
@@ -23,6 +27,9 @@ return RectorConfig::configure()
                     ExplicitAttributeNamedArgsRector::class => [__DIR__ . '/tests'],
                 ])
                 ->withCache(__DIR__ . '/.rector.cache')
+                // Adds declare(strict_types=1) where it cannot change runtime behaviour; files it skips
+                // (possible scalar coercions) need it by hand, after checking with PHPStan and the tests.
+                ->withRules([SafeDeclareStrictTypesRector::class])
                 ->withPreparedSets(
                     deadCode: true,
                     codeQuality: true,

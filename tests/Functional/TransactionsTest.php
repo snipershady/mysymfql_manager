@@ -6,6 +6,7 @@ namespace App\Tests\Functional;
 
 use App\Component\DatabaseClientConnection;
 use App\Controller\DatabaseSchemaRepositoryController;
+use App\Dto\InnodbTransaction;
 use App\RepositoryPDO\DatabaseSchemaRepository;
 use App\Tests\Fixtures\TestCatalog;
 use App\Tests\Support\OpenTransaction;
@@ -24,7 +25,6 @@ final class TransactionsTest extends FunctionalTestCase
 
     private OpenTransaction $foreignTrx;
 
-    #[\Override]
     protected function setUp(): void
     {
         parent::setUp();
@@ -32,18 +32,17 @@ final class TransactionsTest extends FunctionalTestCase
         $this->remote = new DatabaseSchemaRepository($sqlClient);
         $this->remote->createDatabase(self::env('TEST_DB_NAME_ONE'));
         $this->remote->createDatabase(self::env('TEST_DB_NAME_TWO'));
+
         $this->ownedTrx = new OpenTransaction($sqlClient, self::env('TEST_DB_NAME_ONE'));
         $this->foreignTrx = new OpenTransaction($sqlClient, self::env('TEST_DB_NAME_TWO'));
-
         // INNODB_TRX is a cache refreshed at most every 0.1 s: wait until both transactions are in it.
         $threads = [$this->ownedTrx->threadId, $this->foreignTrx->threadId];
-        self::assertTrue(OpenTransaction::eventually(fn (): bool => [] === array_diff(
+        $this->assertTrue(OpenTransaction::eventually(fn (): bool => [] === array_diff(
             $threads,
-            array_map(static fn ($t): int => $t->threadId, $this->remote->showInnodbTransactions())
+            array_map(static fn (InnodbTransaction $t): int => $t->threadId, $this->remote->showInnodbTransactions())
         )));
     }
 
-    #[\Override]
     protected function tearDown(): void
     {
         $this->ownedTrx->close();
@@ -68,8 +67,8 @@ final class TransactionsTest extends FunctionalTestCase
         $this->loginAs(TestCatalog::OWNER);
         $threads = $this->listedThreads();
 
-        self::assertContains($this->ownedTrx->threadId, $threads);
-        self::assertNotContains($this->foreignTrx->threadId, $threads);
+        $this->assertContains($this->ownedTrx->threadId, $threads);
+        $this->assertNotContains($this->foreignTrx->threadId, $threads);
     }
 
     public function testAdminSeesEveryTransaction(): void
@@ -77,8 +76,8 @@ final class TransactionsTest extends FunctionalTestCase
         $this->loginAs(TestCatalog::ADMIN);
         $threads = $this->listedThreads();
 
-        self::assertContains($this->ownedTrx->threadId, $threads);
-        self::assertContains($this->foreignTrx->threadId, $threads);
+        $this->assertContains($this->ownedTrx->threadId, $threads);
+        $this->assertContains($this->foreignTrx->threadId, $threads);
     }
 
     public function testRowsExposeTheRequestedColumns(): void
@@ -87,9 +86,9 @@ final class TransactionsTest extends FunctionalTestCase
         $this->client->request('GET', '/schema/transactions-get-data', ['name' => self::env('TEST_SERVER_NAME')]);
 
         $row = array_find($this->json()['data'], fn (array $r): bool => $r['threadId'] === $this->ownedTrx->threadId);
-        self::assertIsArray($row);
-        self::assertSame(['threadId', 'state', 'started', 'rowsLocked'], array_keys($row));
-        self::assertSame('RUNNING', $row['state']);
+        $this->assertIsArray($row);
+        $this->assertSame(['threadId', 'state', 'started', 'rowsLocked'], array_keys($row));
+        $this->assertSame('RUNNING', $row['state']);
     }
 
     public function testNonOwnerOfTheServerGets404(): void

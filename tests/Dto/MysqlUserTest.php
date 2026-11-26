@@ -14,7 +14,7 @@ final class MysqlUserTest extends TestCase
 {
     public function testConstructorStoresValues(): void
     {
-        $user = new MysqlUser('app', '10.0.0.%', true, false);
+        $user = new MysqlUser('app', '10.0.0.%', accountLocked: true, hasDbGrant: false);
 
         $this->assertSame('app', $user->user);
         $this->assertSame('10.0.0.%', $user->host);

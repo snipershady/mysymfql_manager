@@ -17,18 +17,15 @@ final class DatabaseClientConnectionTest extends MyKernelTestCase
 {
     private SqlClient $sqlClient;
 
-    #[\Override]
     protected function setUp(): void
     {
         parent::setUp();
         DatabaseClientConnection::reset();
-
         $sqlClient = $this->entityManager->getRepository(SqlClient::class)->findOneByName($this->serverName);
         $this->assertInstanceOf(SqlClient::class, $sqlClient);
         $this->sqlClient = $sqlClient;
     }
 
-    #[\Override]
     protected function tearDown(): void
     {
         DatabaseClientConnection::reset();

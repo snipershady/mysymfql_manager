@@ -14,6 +14,8 @@ namespace App\Security;
  * Wildcard grants (e.g. `app\_%`) never match an owned name, so they are denied.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
+ *
+ * @see \App\Tests\Security\MysqlAccountPolicyTest
  */
 final class MysqlAccountPolicy
 {

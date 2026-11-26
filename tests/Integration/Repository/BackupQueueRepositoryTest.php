@@ -22,9 +22,9 @@ final class BackupQueueRepositoryTest extends KernelTestCase
     public function testAnEntryCanBeClaimedOnlyOnce(): void
     {
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);
-        \assert($entityManager instanceof EntityManagerInterface);
+        $this->assertInstanceOf(EntityManagerInterface::class, $entityManager);
         $repository = $entityManager->getRepository(BackupQueue::class);
-        \assert($repository instanceof BackupQueueRepository);
+        $this->assertInstanceOf(BackupQueueRepository::class, $repository);
 
         $entry = new BackupQueue()
             ->setDbName($_ENV['TEST_DB_NAME_ONE'])

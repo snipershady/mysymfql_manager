@@ -16,6 +16,8 @@ use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
  * (both null), so callers answer with the same 404 and never touch the remote server.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
+ *
+ * @see \App\Tests\Security\SqlClientAccessResolverTest
  */
 final readonly class SqlClientAccessResolver
 {

@@ -14,6 +14,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\DomCrawler\Crawler;
+use Symfony\Component\Mime\RawMessage;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
@@ -39,15 +40,13 @@ final class ResetPasswordTest extends WebTestCase
         $this->client = self::createClient();
     }
 
-    #[\Override]
     protected function tearDown(): void
     {
         $throttle = self::getContainer()->get(PasswordResetThrottle::class);
-        \assert($throttle instanceof PasswordResetThrottle);
+        $this->assertInstanceOf(PasswordResetThrottle::class, $throttle);
         foreach ($this->requestedEmails as $email) {
             $throttle->clear(self::CLIENT_IP, $email);
         }
-
         parent::tearDown();
     }
 
@@ -74,13 +73,13 @@ final class ResetPasswordTest extends WebTestCase
         $this->assertResponseRedirects('/login');
         $this->assertEmailCount(1);
         $email = $this->getMailerMessage();
-        $this->assertNotNull($email);
+        $this->assertInstanceOf(RawMessage::class, $email);
         $this->assertEmailHtmlBodyContains($email, '/reset-password/confirm?');
         $this->assertEmailHtmlBodyNotContains($email, 'Your new password');
 
         // Requesting a reset alone never changes the password.
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);
-        \assert($entityManager instanceof EntityManagerInterface);
+        $this->assertInstanceOf(EntityManagerInterface::class, $entityManager);
         $entityManager->clear();
         $this->assertSame($passwordBefore, $entityManager->getRepository(AppUser::class)->find($user->getId())?->getPassword());
     }
@@ -107,7 +106,7 @@ final class ResetPasswordTest extends WebTestCase
     {
         $user = $this->existingUser();
         $tokenManager = self::getContainer()->get(PasswordResetTokenManager::class);
-        \assert($tokenManager instanceof PasswordResetTokenManager);
+        $this->assertInstanceOf(PasswordResetTokenManager::class, $tokenManager);
 
         $this->client->request('GET', '/reset-password/confirm', $tokenManager->issue($user));
 
@@ -120,7 +119,7 @@ final class ResetPasswordTest extends WebTestCase
     {
         $user = $this->existingUser();
         $tokenManager = self::getContainer()->get(PasswordResetTokenManager::class);
-        \assert($tokenManager instanceof PasswordResetTokenManager);
+        $this->assertInstanceOf(PasswordResetTokenManager::class, $tokenManager);
         $token = $tokenManager->issue($user);
 
         $this->client->request('GET', '/reset-password/confirm', [...$token, 'expires' => time() - 1]);
@@ -132,7 +131,7 @@ final class ResetPasswordTest extends WebTestCase
     {
         $user = $this->existingUser();
         $tokenManager = self::getContainer()->get(PasswordResetTokenManager::class);
-        \assert($tokenManager instanceof PasswordResetTokenManager);
+        $this->assertInstanceOf(PasswordResetTokenManager::class, $tokenManager);
         $url = '/reset-password/confirm?' . http_build_query($tokenManager->issue($user));
 
         $crawler = $this->client->request('GET', $url);
@@ -143,12 +142,12 @@ final class ResetPasswordTest extends WebTestCase
 
         $this->assertResponseRedirects('/login');
         $hasher = self::getContainer()->get(UserPasswordHasherInterface::class);
-        \assert($hasher instanceof UserPasswordHasherInterface);
+        $this->assertInstanceOf(UserPasswordHasherInterface::class, $hasher);
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);
-        \assert($entityManager instanceof EntityManagerInterface);
+        $this->assertInstanceOf(EntityManagerInterface::class, $entityManager);
         $entityManager->clear();
         $reloaded = $entityManager->getRepository(AppUser::class)->find($user->getId());
-        \assert($reloaded instanceof AppUser);
+        $this->assertInstanceOf(AppUser::class, $reloaded);
         $this->assertTrue($hasher->isPasswordValid($reloaded, 'Brand-new-passw0rd'));
 
         // Same link again: the password hash is part of the signature, so it is now invalid.
@@ -161,7 +160,7 @@ final class ResetPasswordTest extends WebTestCase
         $user = $this->existingUser();
         $passwordBefore = $user->getPassword();
         $tokenManager = self::getContainer()->get(PasswordResetTokenManager::class);
-        \assert($tokenManager instanceof PasswordResetTokenManager);
+        $this->assertInstanceOf(PasswordResetTokenManager::class, $tokenManager);
         $url = '/reset-password/confirm?' . http_build_query($tokenManager->issue($user));
 
         $form = $this->client->request('GET', $url)->filter('form')->form();
@@ -172,7 +171,7 @@ final class ResetPasswordTest extends WebTestCase
         // Invalid form re-rendered with its errors.
         $this->assertResponseStatusCodeSame(422);
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);
-        \assert($entityManager instanceof EntityManagerInterface);
+        $this->assertInstanceOf(EntityManagerInterface::class, $entityManager);
         $entityManager->clear();
         $this->assertSame($passwordBefore, $entityManager->getRepository(AppUser::class)->find($user->getId())?->getPassword());
     }
@@ -188,7 +187,7 @@ final class ResetPasswordTest extends WebTestCase
     private function existingUser(): AppUser
     {
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);
-        \assert($entityManager instanceof EntityManagerInterface);
+        $this->assertInstanceOf(EntityManagerInterface::class, $entityManager);
         $user = $entityManager->getRepository(AppUser::class)->findOneBy(['username' => TestCatalog::OWNER]);
         if (!$user instanceof AppUser) {
             self::markTestSkipped('No AppUser in the application database.');

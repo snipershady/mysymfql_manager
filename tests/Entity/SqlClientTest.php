@@ -40,7 +40,7 @@ final class SqlClientTest extends TestCase
 
     public function testSetPortFallsBackToTheDefaultWhenGivenNull(): void
     {
-        $client = new SqlClient()->setPort(9999)->setPort(null);
+        $client = new SqlClient()->setPort(9999)->setPort(port: null);
 
         $this->assertSame(3306, $client->getPort());
     }

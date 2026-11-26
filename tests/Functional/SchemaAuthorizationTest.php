@@ -37,7 +37,6 @@ final class SchemaAuthorizationTest extends FunctionalTestCase
 
     private string $newUser;
 
-    #[\Override]
     protected function setUp(): void
     {
         parent::setUp();
@@ -47,13 +46,11 @@ final class SchemaAuthorizationTest extends FunctionalTestCase
         $suffix = bin2hex(random_bytes(4));
         $this->newDb = 'unit_testing_http_' . $suffix;
         $this->newUser = 'ut_http_' . $suffix;
-
         $this->remote = new DatabaseSchemaRepository($this->sqlClient($this->server));
         $this->remote->createDatabase($this->ownedDb);
         $this->remote->createDatabase($this->foreignDb);
     }
 
-    #[\Override]
     protected function tearDown(): void
     {
         $this->remote->dropUser($this->newUser);
@@ -70,7 +67,7 @@ final class SchemaAuthorizationTest extends FunctionalTestCase
         $this->client->request('GET', '/schema/show-tables-get-data', ['name' => $this->server, 'db_name' => $this->ownedDb]);
 
         self::assertResponseIsSuccessful();
-        self::assertArrayHasKey('data', $this->json());
+        $this->assertArrayHasKey('data', $this->json());
     }
 
     public function testServerOwnerCannotReachADatabaseItDoesNotOwn(): void
@@ -96,7 +93,7 @@ final class SchemaAuthorizationTest extends FunctionalTestCase
 
         self::assertResponseIsSuccessful();
         $names = array_column($this->json()['data'], 'db_name');
-        self::assertSame([$this->ownedDb], $names);
+        $this->assertSame([$this->ownedDb], $names);
     }
 
     public function testAdminReachesEveryDatabase(): void
@@ -113,7 +110,7 @@ final class SchemaAuthorizationTest extends FunctionalTestCase
         $this->schemaPost('/schema/drop-database', ['name' => $this->server, 'db_name' => $this->foreignDb]);
 
         self::assertResponseStatusCodeSame(404);
-        self::assertContains($this->foreignDb, $this->remote->showDatabases());
+        $this->assertContains($this->foreignDb, $this->remote->showDatabases());
     }
 
     public function testOwnerDropRemovesTheDatabaseAndItsOwnerships(): void
@@ -122,9 +119,9 @@ final class SchemaAuthorizationTest extends FunctionalTestCase
         $this->schemaPost('/schema/drop-database', ['name' => $this->server, 'db_name' => $this->ownedDb]);
 
         self::assertResponseIsSuccessful();
-        self::assertTrue($this->json()['is_valid']);
-        self::assertNotContains($this->ownedDb, $this->remote->showDatabases());
-        self::assertSame(0, $this->entityManager()->getRepository(DatabaseOwner::class)->count(['dbName' => $this->ownedDb]));
+        $this->assertTrue($this->json()['is_valid']);
+        $this->assertNotContains($this->ownedDb, $this->remote->showDatabases());
+        $this->assertSame(0, $this->entityManager()->getRepository(DatabaseOwner::class)->count(['dbName' => $this->ownedDb]));
     }
 
     public function testEngineStatusIsAdminOnly(): void
@@ -143,13 +140,14 @@ final class SchemaAuthorizationTest extends FunctionalTestCase
         // The panel's own connection: no current schema, so it is not visible to a non-admin.
         $pdo = DatabaseClientConnection::getInstance($this->sqlClient($this->server));
         $pdo->exec('USE mysql');
+
         $threadId = (int) $pdo->query('SELECT CONNECTION_ID()')?->fetchColumn();
 
         $this->loginAs(TestCatalog::OWNER);
         $this->schemaPost('/schema/kill-process', ['name' => $this->server, 'pid' => $threadId]);
 
         self::assertResponseStatusCodeSame(404);
-        self::assertSame($threadId, (int) $pdo->query('SELECT CONNECTION_ID()')?->fetchColumn());
+        $this->assertSame($threadId, (int) $pdo->query('SELECT CONNECTION_ID()')?->fetchColumn());
     }
 
     public function testOwnerCreatesADatabaseAndBecomesItsOwner(): void
@@ -158,9 +156,9 @@ final class SchemaAuthorizationTest extends FunctionalTestCase
         $this->schemaPost('/schema/create-database', $this->createPayload($this->newDb));
 
         self::assertResponseIsSuccessful();
-        self::assertTrue($this->json()['is_valid']);
-        self::assertContains($this->newDb, $this->remote->showDatabases());
-        self::assertSame(1, $this->entityManager()->getRepository(DatabaseOwner::class)->count(['dbName' => $this->newDb, 'owner' => $owner]));
+        $this->assertTrue($this->json()['is_valid']);
+        $this->assertContains($this->newDb, $this->remote->showDatabases());
+        $this->assertSame(1, $this->entityManager()->getRepository(DatabaseOwner::class)->count(['dbName' => $this->newDb, 'owner' => $owner]));
     }
 
     public function testCreatingAnExistingDatabaseIsAConflictAndDoesNotGrantOwnership(): void
@@ -169,8 +167,8 @@ final class SchemaAuthorizationTest extends FunctionalTestCase
         $this->schemaPost('/schema/create-database', $this->createPayload($this->foreignDb));
 
         self::assertResponseStatusCodeSame(409);
-        self::assertSame([], $this->remote->getHostByUser($this->newUser));
-        self::assertSame(0, $this->entityManager()->getRepository(DatabaseOwner::class)->count(['dbName' => $this->foreignDb, 'owner' => $this->loginAs(TestCatalog::OWNER)]));
+        $this->assertSame([], $this->remote->getHostByUser($this->newUser));
+        $this->assertSame(0, $this->entityManager()->getRepository(DatabaseOwner::class)->count(['dbName' => $this->foreignDb, 'owner' => $this->loginAs(TestCatalog::OWNER)]));
     }
 
     /**

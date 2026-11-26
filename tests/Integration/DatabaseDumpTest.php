@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\Integration;
 
 use App\Entity\SqlClient;
@@ -12,22 +14,18 @@ use App\Tests\MyKernelTestCase;
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
-class DatabaseDumpTest extends MyKernelTestCase
+final class DatabaseDumpTest extends MyKernelTestCase
 {
-    #[\Override]
     protected function setUp(): void
     {
         parent::setUp();
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
         $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
-
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
-
         // Dropp di tutti i possibili elementi esistenti per il testing
         $databaseRepositoryPdo->dropUser($this->dbNameUser);
         $databaseRepositoryPdo->dropDatabase($this->dbNameTestingOne);
         $databaseRepositoryPdo->dropDatabase($this->dbNameTestingTwo);
-
         // Creo e popolo DB1
         $databaseRepositoryPdo->createDatabase($this->dbNameTestingOne);
         $databaseRepositoryPdo->createUser($this->dbNameUser, $this->dbNamePassword);
@@ -38,7 +36,6 @@ class DatabaseDumpTest extends MyKernelTestCase
         $databaseRepositoryPdo->populateDummiTable();
         $databaseRepositoryPdo->createDummyTableTwo();
         $databaseRepositoryPdo->populateDummiTableTwo();
-
         // Creo e popolo DB2
         $databaseRepositoryPdo->createDatabase($this->dbNameTestingTwo);
         $databaseRepositoryPdo->grantPrivileges($this->dbNameTestingTwo, $this->dbNameUser);
@@ -84,14 +81,14 @@ class DatabaseDumpTest extends MyKernelTestCase
         $this->assertTrue($check['is_valid']);
         $backupFilename = $check['backup_filename'];
 
-        $checkRestore = $msdm->restoreBackup($sqlClient, $this->dbNameTestingTwo, $backupFilename);
+        $msdm->restoreBackup($sqlClient, $this->dbNameTestingTwo, $backupFilename);
 
         $databaseRepositoryPdo->useDbName($this->dbNameTestingTwo);
         $arrayTables = $databaseRepositoryPdo->showTables();
         $this->assertIsArray($arrayTables);
         $this->assertSame($this->dummyTableOne, $arrayTables[0]);
         $rowCount = $databaseRepositoryPdo->countTableRow($this->dummyTableOne);
-        $this->assertSame($rowCount, 4);
+        $this->assertSame(4, $rowCount);
     }
 
     public function testDumpDatabase(): void
@@ -125,10 +122,10 @@ class DatabaseDumpTest extends MyKernelTestCase
         $this->assertSame($this->dummyTableOne, $arrayTables[1]);
         $this->assertSame($this->dummyTableTwo, $arrayTables[0]);
         $rowCount = $databaseRepositoryPdo->countTableRow($this->dummyTableOne);
-        $this->assertSame($rowCount, 4);
+        $this->assertSame(4, $rowCount);
 
         $rowCount = $databaseRepositoryPdo->countTableRow($this->dummyTableTwo);
-        $this->assertSame($rowCount, 6);
+        $this->assertSame(6, $rowCount);
     }
 
     public function testDumpUsesThePortOfTheSqlClient(): void

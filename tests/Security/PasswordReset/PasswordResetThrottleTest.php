@@ -42,10 +42,10 @@ final class PasswordResetThrottleTest extends TestCase
         $throttle = new PasswordResetThrottle($this->inMemoryLimiter());
 
         for ($i = 1; $i <= PasswordResetThrottle::PER_IP_LIMIT; ++$i) {
-            $throttle->isAllowed(null, \sprintf('user%d@example.com', $i));
+            $throttle->isAllowed(clientIp: null, email: \sprintf('user%d@example.com', $i));
         }
 
-        $this->assertFalse($throttle->isAllowed(null, 'another@example.com'));
+        $this->assertFalse($throttle->isAllowed(clientIp: null, email: 'another@example.com'));
     }
 
     public function testClearResetsBothCounters(): void

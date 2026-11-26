@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\Integration;
 
 use App\Entity\SqlClient;
@@ -12,22 +14,18 @@ use App\Tests\MyKernelTestCase;
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
-class DatabaseBackupListTest extends MyKernelTestCase
+final class DatabaseBackupListTest extends MyKernelTestCase
 {
-    #[\Override]
     protected function setUp(): void
     {
         parent::setUp();
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
         $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
-
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
-
         // Dropp di tutti i possibili elementi esistenti per il testing
         $databaseRepositoryPdo->dropUser($this->dbNameUser);
         $databaseRepositoryPdo->dropDatabase($this->dbNameTestingOne);
         $databaseRepositoryPdo->dropDatabase($this->dbNameTestingTwo);
-
         // Creo e popolo DB1
         $databaseRepositoryPdo->createDatabase($this->dbNameTestingOne);
         $databaseRepositoryPdo->createUser($this->dbNameUser, $this->dbNamePassword);
@@ -38,7 +36,6 @@ class DatabaseBackupListTest extends MyKernelTestCase
         $databaseRepositoryPdo->populateDummiTable();
         $databaseRepositoryPdo->createDummyTableTwo();
         $databaseRepositoryPdo->populateDummiTableTwo();
-
         // Creo e popolo DB2
         $databaseRepositoryPdo->createDatabase($this->dbNameTestingTwo);
         $databaseRepositoryPdo->grantPrivileges($this->dbNameTestingTwo, $this->dbNameUser);
@@ -62,7 +59,7 @@ class DatabaseBackupListTest extends MyKernelTestCase
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
         $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
 
-        $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
+        new DatabaseSchemaRepository($sqlClient);
 
         $msdm = new MysqldumpManager();
         $check = $msdm->createBackup($sqlClient, $this->dbNameTestingOne);

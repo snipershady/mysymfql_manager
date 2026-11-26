@@ -76,7 +76,7 @@ final class SchemaCsrfListenerTest extends TestCase
         $response = $this->dispatch($request)->getResponse();
 
         $this->assertInstanceOf(Response::class, $response);
-        $this->assertSame(Response::HTTP_FORBIDDEN, $response->getStatusCode());
+        $this->assertSame(Response::HTTP_FORBIDDEN, $response->getStatusCode(), (string) $response->getContent());
         $this->assertStringContainsString('"is_valid":false', (string) $response->getContent());
     }
 

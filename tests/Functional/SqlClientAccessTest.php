@@ -65,7 +65,7 @@ final class SqlClientAccessTest extends FunctionalTestCase
 
         self::assertResponseStatusCodeSame(403);
         $this->entityManager()->clear();
-        self::assertInstanceOf(SqlClient::class, $this->entityManager()->find(SqlClient::class, $id));
+        $this->assertInstanceOf(SqlClient::class, $this->entityManager()->find(SqlClient::class, $id));
     }
 
     public function testAdminCanManageAnyServer(): void

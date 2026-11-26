@@ -29,7 +29,7 @@ abstract class FunctionalTestCase extends WebTestCase
     protected function loginAs(string $username): AppUser
     {
         $user = $this->entityManager()->getRepository(AppUser::class)->findOneBy(['username' => $username]);
-        self::assertInstanceOf(AppUser::class, $user, 'Fixture user ' . $username . ' is missing.');
+        $this->assertInstanceOf(AppUser::class, $user, 'Fixture user ' . $username . ' is missing.');
         $this->client->loginUser($user);
 
         return $user;
@@ -60,8 +60,8 @@ abstract class FunctionalTestCase extends WebTestCase
      */
     protected function json(): array
     {
-        $decoded = json_decode((string) $this->client->getResponse()->getContent(), true, flags: \JSON_THROW_ON_ERROR);
-        self::assertIsArray($decoded);
+        $decoded = json_decode((string) $this->client->getResponse()->getContent(), associative: true, flags: \JSON_THROW_ON_ERROR);
+        $this->assertIsArray($decoded);
 
         return $decoded;
     }
@@ -69,7 +69,7 @@ abstract class FunctionalTestCase extends WebTestCase
     protected function sqlClient(string $name): SqlClient
     {
         $sqlClient = $this->entityManager()->getRepository(SqlClient::class)->findOneBy(['name' => $name]);
-        self::assertInstanceOf(SqlClient::class, $sqlClient);
+        $this->assertInstanceOf(SqlClient::class, $sqlClient);
 
         return $sqlClient;
     }
@@ -77,7 +77,7 @@ abstract class FunctionalTestCase extends WebTestCase
     protected function entityManager(): EntityManagerInterface
     {
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);
-        self::assertInstanceOf(EntityManagerInterface::class, $entityManager);
+        $this->assertInstanceOf(EntityManagerInterface::class, $entityManager);
 
         return $entityManager;
     }

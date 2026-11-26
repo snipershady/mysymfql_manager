@@ -97,7 +97,7 @@ final class DatabaseProvisionerTest extends TestCase
             $this->assertNotInstanceOf(ProvisioningConflictException::class, $provisioningException);
             $this->assertSame([], $provisioningException->compensationFailures);
             $this->assertStringContainsString('All partial changes have been undone', $provisioningException->getMessage());
-            $this->assertNotNull($provisioningException->getPrevious());
+            $this->assertInstanceOf(\Throwable::class, $provisioningException->getPrevious());
         }
 
         $this->assertSame($expectedCalls, $this->calls);
