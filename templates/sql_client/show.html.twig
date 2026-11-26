@@ -60,12 +60,14 @@
                 <a href="{{ path('app_sql_client_index') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fa-solid fa-arrow-left me-1"></i>Torna all'elenco
                 </a>
+                {% if is_granted('SQLCLIENT_MANAGE', sql_client) %}
                 <a href="{{ path('app_sql_client_edit', {'id': sql_client.id}) }}" class="btn btn-primary btn-sm">
                     <i class="fa-solid fa-pen-to-square me-1"></i>Modifica
                 </a>
                 <div class="ms-auto">
                     {{ include('sql_client/_delete_form.html.twig') }}
                 </div>
+                {% endif %}
             </div>
         </div>
     </div>

@@ -9,6 +9,7 @@ use App\Entity\DatabaseOwner;
 use App\Entity\SqlClient;
 use App\Enum\CharsetEnum;
 use App\Enum\CollationEnum;
+use App\Enum\DatabasePrivilegeEnum;
 use App\Exception\RepositoryException;
 use App\Repository\DatabaseOwnerRepository;
 use App\Repository\SqlClientRepository;
@@ -107,8 +108,10 @@ final class DatabaseSchemaRepositoryController extends AbstractController
             return $this->json(['is_valid' => false, 'message' => 'Parameter user_host cannot be empty'], Response::HTTP_BAD_REQUEST);
         }
 
-        if ('' === $privileges) {
-            return $this->json(['is_valid' => false, 'message' => 'Parameter privileges cannot be empty'], Response::HTTP_BAD_REQUEST);
+        try {
+            $privileges = DatabasePrivilegeEnum::toGrantClause($privileges);
+        } catch (\InvalidArgumentException $invalidArgumentException) {
+            return $this->json(['is_valid' => false, 'message' => $invalidArgumentException->getMessage()], Response::HTTP_BAD_REQUEST);
         }
 
         $sqlClient = $sqlClientRepository->findOneByName($name);
@@ -466,6 +469,12 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $userHost = $epti->getStringValueFromPost(needle: 'user_host', trim: true, forceString: true, sanitizeHtml: false);
         $privileges = $epti->getStringValueFromPost(needle: 'privileges', trim: true, forceString: true, sanitizeHtml: false);
 
+        try {
+            $privileges = DatabasePrivilegeEnum::toGrantClause($privileges);
+        } catch (\InvalidArgumentException $invalidArgumentException) {
+            return $this->json(['is_valid' => false, 'message' => $invalidArgumentException->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
+
         $sqlClient = $sqlClientRepository->findOneByName($name);
         if (!$sqlClient instanceof SqlClient) {
             return $this->json(['is_valid' => false, 'message' => 'Server not found.'], Response::HTTP_NOT_FOUND);
@@ -524,6 +533,15 @@ final class DatabaseSchemaRepositoryController extends AbstractController
         $grants = json_decode($grantsRaw, associative: true) ?? [];
         /** @var list<string> $revokedDbs */
         $revokedDbs = json_decode($revokedRaw, associative: true) ?? [];
+
+        // Validate every privilege list up front: nothing is revoked/granted if one entry is invalid.
+        try {
+            foreach ($grants as $grant) {
+                DatabasePrivilegeEnum::toGrantClause((string) $grant['privileges']);
+            }
+        } catch (\InvalidArgumentException $invalidArgumentException) {
+            return $this->json(['is_valid' => false, 'message' => $invalidArgumentException->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
 
         $repo = new DatabaseSchemaRepository($sqlClient);
 

@@ -7,6 +7,7 @@ use App\Dto\MysqlUser;
 use App\Dto\ProcessList;
 use App\Enum\CharsetEnum;
 use App\Enum\CollationEnum;
+use App\Enum\DatabasePrivilegeEnum;
 use App\Exception\RepositoryException;
 
 /**
@@ -182,7 +183,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
 
     public function countTableRow(string $table): int
     {
-        $query = \sprintf('SELECT COUNT(*) as table_row FROM %s', $table);
+        $query = \sprintf('SELECT COUNT(*) as table_row FROM %s', $this->quoteIdentifier($table));
         try {
             $stmt = $this->pdo->prepare($query);
 
@@ -320,7 +321,7 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
     {
         $query = \sprintf(
             'DROP TABLE IF EXISTS %s',
-            $table
+            $this->quoteIdentifier($table)
         );
         try {
             $stmt = $this->pdo->prepare($query);
@@ -335,12 +336,12 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
     {
         $query = \sprintf(
             'DELETE FROM %s WHERE 1 = 1;',
-            $table
+            $this->quoteIdentifier($table)
         );
 
         $queryResetAutoIncrement = \sprintf(
             'ALTER TABLE %s AUTO_INCREMENT = 1',
-            $table
+            $this->quoteIdentifier($table)
         );
         try {
             $stmt = $this->pdo->prepare($query);
@@ -404,13 +405,19 @@ readonly class DatabaseSchemaRepository extends AbstractManagerRepositoryPDO
         }
     }
 
+    /**
+     * @param string $privileges comma-separated list of {@see DatabasePrivilegeEnum} values
+     *
+     * @throws \InvalidArgumentException when $privileges contains a non-whitelisted keyword
+     * @throws RepositoryException
+     */
     public function grantPrivileges(string $dbName, string $username, string $privileges = 'ALL PRIVILEGES', string $host = '%'): bool
     {
-        // Identifiers and account strings in DDL cannot use PDO placeholders.
-        // $privileges is a caller-controlled keyword string (e.g. 'ALL PRIVILEGES', 'SELECT,INSERT').
+        // Identifiers and account strings in DDL cannot use PDO placeholders:
+        // privileges are whitelisted through the enum, identifiers quoted.
         $query = \sprintf(
             'GRANT %s ON %s.* TO %s@%s',
-            $privileges,
+            DatabasePrivilegeEnum::toGrantClause($privileges),
             $this->quoteIdentifier($dbName),
             $this->pdo->quote($username),
             $this->pdo->quote($host)

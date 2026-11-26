@@ -14,9 +14,11 @@
             <i class="fa-solid fa-server text-primary me-1"></i>
             Elenco server SQL
         </span>
+        {% if is_granted('ROLE_ADMIN') %}
         <a href="{{ path('app_sql_client_new') }}" class="btn btn-sm btn-primary">
             <i class="fa-solid fa-plus me-1"></i>Nuovo server
         </a>
+        {% endif %}
     </div>
     <div class="card-body">
         <table id="table-sql-client" class="table table-hover align-middle w-100">
@@ -51,10 +53,12 @@
                            class="btn btn-sm btn-outline-secondary" title="Dettaglio">
                             <i class="fa-solid fa-eye"></i>
                         </a>
+                        {% if is_granted('SQLCLIENT_MANAGE', sql_client) %}
                         <a href="{{ path('app_sql_client_edit', {'id': sql_client.id}) }}"
                            class="btn btn-sm btn-outline-primary" title="Modifica">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </a>
+                        {% endif %}
                     </td>
                 </tr>
             {% else %}
