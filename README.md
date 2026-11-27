@@ -562,6 +562,30 @@ php bin/console app:backup-relocate Produzione            # review the plan
 php bin/console app:backup-relocate Produzione --force    # move the files
 ```
 
+### `app:backup-rotate` — Backup rotation
+
+Deletes the dumps older than a number of days. Meant to run from cron after the backups. It only reads
+`BACKUP_PATH` (no MySQL or catalog connection), so it is cheap even with thousands of files.
+
+```bash
+php bin/console app:backup-rotate <days> [--keep=<n>] [--force]
+```
+
+| Argument / option | Description |
+|---|---|
+| `days` | Retention period: dumps whose modification time is older than this are deleted |
+| `--keep` | Most recent dumps of every series always kept, whatever their age (default `1`, `0` = none) |
+| `--force` | Actually delete the files; without it the command only prints the plan |
+
+A *series* is one kind of dump of one database on one server (full dumps of `shop` on server 3, dumps of its
+`orders` table…): with the default `--keep=1` a database whose backups stopped keeps its last dump. Legacy flat dumps
+rotate too, grouped by file name. Incomplete `*.sql.part` files (left by a killed `mysqldump`) older than `days` are
+deleted as well. A file that cannot be deleted is reported and logged, and the exit code is `1`.
+
+```cron
+30 3 * * * /usr/bin/php /path/to/mysymfql_manager/bin/console app:backup-rotate 30 --force --no-interaction >> /var/log/mysymfql_backup.log 2>&1
+```
+
 ### `app:setup-sqlclient` — Register a MySQL server (SqlClient)
 
 Creates and persists a new SqlClient entry in the application database. The password is automatically encrypted at rest using XSalsa20-Poly1305 (via the `SQLCLIENT_ENCRYPTION_KEY` configured in `.env.local`).

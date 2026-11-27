@@ -494,6 +494,30 @@ php bin/console app:backup-relocate Produzione            # controllare il piano
 php bin/console app:backup-relocate Produzione --force    # spostare i file
 ```
 
+### `app:backup-rotate` — Rotazione dei backup
+
+Elimina i dump più vecchi di un certo numero di giorni. Pensato per il cron, dopo i backup. Legge solo `BACKUP_PATH`
+(nessuna connessione a MySQL o al catalogo), quindi è leggero anche con migliaia di file.
+
+```bash
+php bin/console app:backup-rotate <giorni> [--keep=<n>] [--force]
+```
+
+| Argomento / opzione | Descrizione |
+|---|---|
+| `days` | Periodo di conservazione: si eliminano i dump con data di modifica più vecchia |
+| `--keep` | Dump più recenti di ogni serie conservati sempre, qualunque sia l'età (default `1`, `0` = nessuno) |
+| `--force` | Elimina davvero i file; senza mostra solo il piano |
+
+Una *serie* è un tipo di dump di un database su un server (dump completi di `shop` sul server 3, dump della sua tabella
+`orders`…): con il default `--keep=1` un database i cui backup si sono fermati conserva l'ultimo dump. Ruotano anche i
+dump legacy, raggruppati per nome file. Vengono eliminati anche i file incompleti `*.sql.part` (lasciati da un
+`mysqldump` interrotto) più vecchi di `giorni`. Un file non eliminabile viene segnalato e loggato, e il codice d'uscita è `1`.
+
+```cron
+30 3 * * * /usr/bin/php /path/to/mysymfql_manager/bin/console app:backup-rotate 30 --force --no-interaction >> /var/log/mysymfql_backup.log 2>&1
+```
+
 ### `app:setup-sqlclient` — Registra un server MySQL (SqlClient)
 
 Crea e persiste un nuovo record SqlClient nel database applicativo. La password viene cifrata automaticamente a riposo usando XSalsa20-Poly1305 (tramite la `SQLCLIENT_ENCRYPTION_KEY` configurata in `.env.local`).

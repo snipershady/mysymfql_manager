@@ -201,6 +201,41 @@ final readonly class MysqldumpManager
     }
 
     /**
+     * Incomplete dumps ("bkp_*.sql.part", in the root or in a server/database folder). createBackup() removes
+     * its own on failure, so the ones left behind come from a killed process (OOM, reboot): never restorable.
+     *
+     * @return list<BackupDump>
+     */
+    public function listPartialDumps(): array
+    {
+        if (!is_dir($this->backupPath)) {
+            return [];
+        }
+
+        $partials = [];
+        foreach ([...glob($this->backupPath . '/bkp_*.sql.part') ?: [], ...glob($this->backupPath . '/*/*/bkp_*.sql.part') ?: []] as $file) {
+            $partials[] = $this->toBackupDump($file, substr($file, \strlen($this->backupPath) + 1), sqlClientId: null, dbName: null);
+        }
+
+        return $partials;
+    }
+
+    /**
+     * Deletes a dump returned by this class (listing paths are always under BACKUP_PATH).
+     * A file already gone (e.g. two rotations running at the same time) counts as deleted.
+     */
+    public function deleteBackup(BackupDump $dump): bool
+    {
+        if (!str_starts_with($dump->path, $this->backupPath . '/')) {
+            throw new \InvalidArgumentException(\sprintf('"%s" is not under BACKUP_PATH.', $dump->path));
+        }
+
+        clearstatcache(clear_realpath_cache: true, filename: $dump->path);
+
+        return !file_exists($dump->path) || unlink($dump->path) || !file_exists($dump->path);
+    }
+
+    /**
      * Legacy flat dumps (BACKUP_PATH/bkp_*.sql), not attributable to a server.
      *
      * @return list<BackupDump>
