@@ -36,7 +36,7 @@ class SqlClientType extends AbstractType
                     'always_empty' => true,
                     'help' => $options['require_password'] ? null : 'Lascia vuoto per mantenere la password attuale.',
                     'attr' => ['autocomplete' => 'new-password'],
-                    'constraints' => $options['require_password'] ? [new NotBlank(message: 'Please enter the password')] : [],
+                    'constraints' => $options['require_password'] ? [new NotBlank(message: 'Inserisci la password.')] : [],
                 ])
                 ->add('port', IntegerType::class, ['trim' => true])
                 ->add('owner', EntityType::class, [

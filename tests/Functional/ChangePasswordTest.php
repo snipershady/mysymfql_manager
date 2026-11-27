@@ -28,6 +28,6 @@ final class ChangePasswordTest extends FunctionalTestCase
         $this->client->submit($form);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertSelectorTextContains('body', 'the passwords do not match');
+        self::assertSelectorTextContains('body', 'Le password non coincidono');
     }
 }

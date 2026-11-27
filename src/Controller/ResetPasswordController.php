@@ -34,7 +34,7 @@ use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
  */
 final class ResetPasswordController extends AbstractController
 {
-    private const string GENERIC_MESSAGE = 'If the address belongs to an account, a reset link has been sent. It expires in 30 minutes.';
+    private const string GENERIC_MESSAGE = "Se l'indirizzo appartiene a un account, abbiamo inviato un link per reimpostare la password. Scade tra 30 minuti.";
 
     #[Route(path: '/reset-password', name: 'app_reset_password', methods: ['GET', 'POST'])]
     public function request(
@@ -63,15 +63,15 @@ final class ResetPasswordController extends AbstractController
             $prefix = $epti->getStringValueFromEnv(needle: 'SW_NAME', trim: true, forceString: true, sanitizeHtml: true);
             $safeUrl = htmlspecialchars($resetUrl);
             $msg = \sprintf(
-                '<p>%s - Click the link below to choose a new password. It expires in %d minutes and works only once.</p>'
+                '<p>%s - Clicca sul link qui sotto per scegliere una nuova password. Scade tra %d minuti e si può usare una sola volta.</p>'
                 . '<p><a href="%s">%s</a></p>'
-                . '<p>If you did not request it, ignore this e-mail: your password has not been changed.</p>',
+                . "<p>Se non l'hai richiesto tu, ignora questa email: la password non è stata modificata.</p>",
                 htmlspecialchars($prefix),
                 intdiv(PasswordResetTokenManager::TTL_SECONDS, 60),
                 $safeUrl,
                 $safeUrl,
             );
-            $result = $emailHubService->emailResetPassword(new Address($email, $user->getUserIdentifier()), $msg, $prefix . ' - Password reset request');
+            $result = $emailHubService->emailResetPassword(new Address($email, $user->getUserIdentifier()), $msg, $prefix . ' - Reimpostazione della password');
             if (!$result['is_valid']) {
                 $logger->error('Password reset e-mail could not be sent.', ['user_id' => $user->getId(), 'error' => $result['msg']]);
             }
@@ -98,7 +98,7 @@ final class ResetPasswordController extends AbstractController
         );
 
         if (!$user instanceof AppUser) {
-            $this->addFlash('error', 'The reset link is invalid, expired or already used. Request a new one.');
+            $this->addFlash('error', 'Il link non è valido, è scaduto o è già stato usato. Richiedine uno nuovo.');
 
             return $this->redirectToRoute('app_reset_password');
         }
@@ -112,7 +112,7 @@ final class ResetPasswordController extends AbstractController
             $user->setPassword($userPasswordHasher->hashPassword($user, $plainPassword));
             $entityManager->flush();
 
-            $this->addFlash('success', 'Password updated. You can now sign in.');
+            $this->addFlash('success', 'Password aggiornata. Ora puoi accedere.');
 
             return $this->redirectToRoute('app_login');
         }

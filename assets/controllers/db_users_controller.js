@@ -233,12 +233,23 @@ export default class extends Controller {
         const revoked = boxes.filter((cb) => !cb.checked && '1' === cb.dataset.previouslyGranted).map((cb) => cb.value);
 
         await withBusyButton(this.grantSubmitTarget, 'Salvataggio…', async () => {
-            const json = await this.post(this.urlsValue.grantSave, {
-                username: this.grantAccount.user,
-                user_host: this.grantAccount.host,
-                grants: JSON.stringify(grants),
-                revoked_dbs: JSON.stringify(revoked),
-            });
+            // JSON body: the server maps it to typed objects (GrantChanges with a list of GrantInput).
+            let json;
+            try {
+                json = await (await fetch(this.urlsValue.grantSave, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: this.nameValue,
+                        username: this.grantAccount.user,
+                        user_host: this.grantAccount.host,
+                        grants,
+                        revoked_dbs: revoked,
+                    }),
+                })).json();
+            } catch {
+                json = { is_valid: false, message: 'Errore di rete.' };
+            }
             if (json.is_valid) {
                 Modal.getInstance(this.grantModalTarget)?.hide();
                 this.reload();

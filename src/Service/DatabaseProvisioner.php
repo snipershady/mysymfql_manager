@@ -79,7 +79,7 @@ final readonly class DatabaseProvisioner
             $this->entityManager->persist(new DatabaseOwner()->setDbName($dbName)->setOwner($owner)->setSqlClient($sqlClient));
             $this->entityManager->flush();
         } catch (\Throwable $throwable) {
-            throw $this->compensate('Database creation failed.', $throwable, $undo, ['db' => $dbName]);
+            throw $this->compensate('Creazione del database non riuscita.', $throwable, $undo, ['db' => $dbName]);
         }
     }
 
@@ -110,7 +110,7 @@ final readonly class DatabaseProvisioner
             $this->step($repo->grantPrivileges($dbName, $username, $privileges, $host), 'grant privileges');
             $repo->flushPrivileges();
         } catch (\Throwable $throwable) {
-            throw $this->compensate('User creation failed.', $throwable, $undo, ['db' => $dbName]);
+            throw $this->compensate("Creazione dell'utente non riuscita.", $throwable, $undo, ['db' => $dbName]);
         }
     }
 
@@ -132,21 +132,21 @@ final readonly class DatabaseProvisioner
         } catch (\Throwable $throwable) {
             $this->logger->error('Database drop failed.', ['db' => $dbName, 'exception' => $throwable]);
 
-            throw new ProvisioningException('Database drop failed: the catalog is unchanged.', $throwable);
+            throw new ProvisioningException('Eliminazione del database non riuscita: il catalogo non è stato modificato.', $throwable);
         }
     }
 
     private function assertDatabaseIsNew(DatabaseSchemaRepository $repo, string $dbName): void
     {
         if (\in_array($dbName, $repo->showDatabases(), strict: true)) {
-            throw new ProvisioningConflictException(\sprintf('Database "%s" already exists.', $dbName));
+            throw new ProvisioningConflictException(\sprintf('Il database "%s" esiste già.', $dbName));
         }
     }
 
     private function assertAccountIsNew(DatabaseSchemaRepository $repo, string $username, string $host): void
     {
         if (\in_array($host, $repo->getHostByUser($username), strict: true)) {
-            throw new ProvisioningConflictException(\sprintf("MySQL user '%s'@'%s' already exists.", $username, $host));
+            throw new ProvisioningConflictException(\sprintf("L'utente MySQL '%s'@'%s' esiste già.", $username, $host));
         }
     }
 
@@ -182,8 +182,8 @@ final readonly class DatabaseProvisioner
 
         return new ProvisioningException(
             [] === $failures
-                ? $message . ' All partial changes have been undone.'
-                : $message . ' Cleanup incomplete, contact an administrator: ' . implode(', ', $failures) . '.',
+                ? $message . ' Tutte le modifiche parziali sono state annullate.'
+                : $message . ' Pulizia incompleta, contatta un amministratore: ' . implode(', ', $failures) . '.',
             $cause,
             $failures,
         );

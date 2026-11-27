@@ -55,7 +55,7 @@ final readonly class SchemaCsrfListener
         }
 
         $event->setResponse(new JsonResponse(
-            ['is_valid' => false, 'message' => 'Invalid or missing CSRF token. Reload the page and retry.'],
+            ['is_valid' => false, 'message' => 'Token CSRF mancante o non valido: ricarica la pagina e riprova.'],
             Response::HTTP_FORBIDDEN
         ));
     }

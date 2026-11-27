@@ -102,7 +102,7 @@ export default class extends Controller {
                     <i class="fa-solid fa-cloud-arrow-down me-1"></i>Backup
                 </button>
                 <button class="btn btn-sm btn-outline-info" data-action="databases#enqueue" data-db="${d}" title="Accoda backup database">
-                    <i class="fa-solid fa-list-check me-1"></i>Enqueue Backup
+                    <i class="fa-solid fa-list-check me-1"></i>Accoda backup
                 </button>
                 <button class="btn btn-sm btn-outline-danger" data-action="databases#drop" data-db="${d}" title="Elimina database">
                     <i class="fa-solid fa-trash me-1"></i>Elimina

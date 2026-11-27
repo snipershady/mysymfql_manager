@@ -42,11 +42,11 @@ final readonly class AltchaLoginSubscriber
         $altchaPayload = $request->request->all()['altcha'] ?? '';
 
         if ('' === $altchaPayload) {
-            throw new CustomUserMessageAuthenticationException('Please complete the CAPTCHA verification.');
+            throw new CustomUserMessageAuthenticationException('Completa la verifica CAPTCHA.');
         }
 
         if (!\is_string($altchaPayload) || !$this->captcha->verify($altchaPayload)) {
-            throw new CustomUserMessageAuthenticationException('CAPTCHA verification invalid or expired. Please try again.');
+            throw new CustomUserMessageAuthenticationException('Verifica CAPTCHA non valida o scaduta. Riprova.');
         }
     }
 }

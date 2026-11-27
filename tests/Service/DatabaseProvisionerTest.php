@@ -96,7 +96,7 @@ final class DatabaseProvisionerTest extends TestCase
         } catch (ProvisioningException $provisioningException) {
             $this->assertNotInstanceOf(ProvisioningConflictException::class, $provisioningException);
             $this->assertSame([], $provisioningException->compensationFailures);
-            $this->assertStringContainsString('All partial changes have been undone', $provisioningException->getMessage());
+            $this->assertStringContainsString('Tutte le modifiche parziali sono state annullate', $provisioningException->getMessage());
             $this->assertInstanceOf(\Throwable::class, $provisioningException->getPrevious());
         }
 
@@ -113,7 +113,7 @@ final class DatabaseProvisionerTest extends TestCase
             $this->fail('A ProvisioningException was expected.');
         } catch (ProvisioningException $provisioningException) {
             $this->assertSame(['drop user app_rw@%'], $provisioningException->compensationFailures);
-            $this->assertStringContainsString('Cleanup incomplete', $provisioningException->getMessage());
+            $this->assertStringContainsString('Pulizia incompleta', $provisioningException->getMessage());
         }
 
         // The remaining undo step still runs after a failed one.

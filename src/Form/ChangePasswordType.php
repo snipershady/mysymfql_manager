@@ -22,20 +22,20 @@ class ChangePasswordType extends AbstractType
     {
         $builder
                 ->add('oldPlainPassword', PasswordType::class, [
-                    'label' => 'Old Password',
+                    'label' => 'Password attuale',
                     'required' => true,
                     'trim' => true,
                 ])
                 ->add('newPlainPassword', RepeatedType::class, [
                     'type' => PasswordType::class,
-                    'invalid_message' => 'the passwords do not match',
+                    'invalid_message' => 'Le password non coincidono.',
                     'required' => true,
                     'trim' => true,
-                    'first_options' => ['label' => 'Password'],
-                    'second_options' => ['label' => 'Repeat Password'],
+                    'first_options' => ['label' => 'Nuova password'],
+                    'second_options' => ['label' => 'Ripeti password'],
                     'constraints' => [
-                        new NotBlank(message: 'Please enter a password'),
-                        new Length(min: 8, max: 4096, minMessage: 'Your password must be at least {{ limit }} characters long'),
+                        new NotBlank(message: 'Inserisci una password.'),
+                        new Length(min: 8, max: 4096, minMessage: 'La password deve avere almeno {{ limit }} caratteri.'),
                     ],
                 ]);
     }

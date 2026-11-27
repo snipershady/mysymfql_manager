@@ -37,21 +37,21 @@ final class ContentSecurityPolicyTest extends FunctionalTestCase
 
         $csp = (string) $this->client->getResponse()->headers->get('Content-Security-Policy');
         foreach (["default-src 'self'", "object-src 'none'", "frame-ancestors 'none'", "base-uri 'self'", "form-action 'self'"] as $directive) {
-            self::assertStringContainsString($directive, $csp);
+            $this->assertStringContainsString($directive, $csp);
         }
-        self::assertStringNotContainsString('unsafe-inline', $csp);
-        self::assertStringNotContainsString('unsafe-eval', $csp);
-        self::assertDoesNotMatchRegularExpression('#https?://#', $csp, 'No external host may be allowed.');
+        $this->assertStringNotContainsString('unsafe-inline', $csp);
+        $this->assertStringNotContainsString('unsafe-eval', $csp);
+        $this->assertDoesNotMatchRegularExpression('#https?://#', $csp, 'No external host may be allowed.');
 
-        self::assertMatchesRegularExpression("/script-src 'self' 'nonce-([^']+)'/", $csp);
+        $this->assertMatchesRegularExpression("/script-src 'self' 'nonce-([^']+)'/", $csp);
         preg_match("/script-src 'self' 'nonce-([^']+)'/", $csp, $matches);
-        self::assertSame($matches[1], $crawler->filter('script[type="importmap"]')->attr('nonce'));
-        self::assertSame($matches[1], $crawler->filter('meta[name="csp-nonce"]')->attr('content'));
+        $this->assertSame($matches[1], $crawler->filter('script[type="importmap"]')->attr('nonce'));
+        $this->assertSame($matches[1], $crawler->filter('meta[name="csp-nonce"]')->attr('content'));
 
         self::assertResponseHeaderSame('X-Frame-Options', 'DENY');
         self::assertResponseHeaderSame('X-Content-Type-Options', 'nosniff');
         // No inline script/style left in the rendered page, apart from the nonce-carrying import map.
-        self::assertCount(0, $crawler->filter('script:not([nonce])'));
-        self::assertCount(0, $crawler->filter('[style]'));
+        $this->assertCount(0, $crawler->filter('script:not([nonce])'));
+        $this->assertCount(0, $crawler->filter('[style]'));
     }
 }

@@ -54,6 +54,14 @@ final readonly class SqlClientAccessResolver
         return $sqlClient;
     }
 
+    /**
+     * Pages that work both per server and per database: database-level access when $dbName is given.
+     */
+    public function serverOrDatabase(string $name, ?string $dbName): ?SqlClient
+    {
+        return null === $dbName || '' === $dbName ? $this->server($name) : $this->database($name, $dbName);
+    }
+
     public function isAdmin(): bool
     {
         return $this->authorizationChecker->isGranted('ROLE_ADMIN');

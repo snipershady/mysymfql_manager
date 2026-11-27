@@ -60,7 +60,7 @@ final class ResetPasswordTest extends WebTestCase
         $this->assertResponseRedirects('/login');
         $this->assertEmailCount(0);
         $this->client->followRedirect();
-        $this->assertSelectorTextContains('body', 'If the address belongs to an account');
+        $this->assertSelectorTextContains('body', "Se l'indirizzo appartiene a un account");
     }
 
     public function testRequestForAnExistingAccountMailsALinkAndKeepsThePassword(): void

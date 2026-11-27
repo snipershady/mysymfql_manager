@@ -31,13 +31,13 @@ class RegistrationController extends AbstractController
             $altchaPayload = $request->request->all()['altcha'] ?? '';
 
             if ('' === $altchaPayload) {
-                $this->addFlash('error', 'Please complete the CAPTCHA verification.');
+                $this->addFlash('error', 'Completa la verifica CAPTCHA.');
 
                 return $this->redirectToRoute('app_register');
             }
 
             if (!\is_string($altchaPayload) || !$captcha->verify($altchaPayload)) {
-                $this->addFlash('error', 'CAPTCHA verification invalid or expired. Please try again.');
+                $this->addFlash('error', 'Verifica CAPTCHA non valida o scaduta. Riprova.');
 
                 return $this->redirectToRoute('app_register');
             }
@@ -79,7 +79,7 @@ class RegistrationController extends AbstractController
 
             // Verify whether the old password is correct
             if (!$userPasswordHasher->isPasswordValid($user, $oldPlainPassword)) {
-                $this->addFlash('error', 'The entered password does not match the current one');
+                $this->addFlash('error', 'La password attuale non è corretta.');
 
                 return $this->redirectToRoute('app_change_password');
             }
@@ -92,7 +92,7 @@ class RegistrationController extends AbstractController
             $entityManager->persist($user);
             $entityManager->flush();
 
-            $this->addFlash('success', 'Password updated successfully');
+            $this->addFlash('success', 'Password aggiornata.');
 
             return $this->redirectToRoute('app_default');
         }

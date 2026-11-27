@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Component\DatabaseClientConnection;
-use App\Controller\DatabaseSchemaRepositoryController;
+use App\Controller\Schema\DatabaseController;
+use App\Controller\Schema\MonitorController;
+use App\Controller\Schema\TableController;
 use App\Entity\DatabaseOwner;
 use App\RepositoryPDO\DatabaseSchemaRepository;
 use App\Security\SqlClientAccessResolver;
@@ -19,7 +21,9 @@ use PHPUnit\Framework\Attributes\CoversClass;
  * Denied requests must have no effect on the managed server; remote schemas are created in
  * setUp() and dropped in tearDown() (the catalog is rolled back by dama/doctrine-test-bundle).
  */
-#[CoversClass(DatabaseSchemaRepositoryController::class)]
+#[CoversClass(DatabaseController::class)]
+#[CoversClass(TableController::class)]
+#[CoversClass(MonitorController::class)]
 #[CoversClass(SqlClientAccessResolver::class)]
 #[CoversClass(DatabaseVoter::class)]
 #[CoversClass(DatabaseProvisioner::class)]

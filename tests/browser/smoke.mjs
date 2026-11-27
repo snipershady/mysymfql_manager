@@ -70,7 +70,7 @@ const scenarios = {
         form.querySelector('[name="change_password[newPlainPassword][first]"]').value = 'New-passw0rd-1';
         form.querySelector('[name="change_password[newPlainPassword][second]"]').value = 'Different-passw0rd';
         form.requestSubmit(); ${wait(2500)};
-        const error = document.body.innerText.includes('the passwords do not match');
+        const error = document.body.innerText.includes('Le password non coincidono');
         const noReload = window.__noReload === 'still-here';
         return { ok: error && noReload, error, noReload };
     })()`,
@@ -298,7 +298,7 @@ async function resetFlow() {
         form.querySelector('[name="reset_password_confirm[newPlainPassword][second]"]').value = 'Smoke-Reset-passw0rd';
         form.requestSubmit(); ${wait(2500)};
         const landed = location.pathname;
-        const flash = document.body.innerText.includes('Password updated');
+        const flash = document.body.innerText.includes('Password aggiornata');
         return { ok: landed === '/login' && flash, landed, flash };
     })()`);
     check('[anonymous] password reset link', b.events, result, result?.ok ? [] : [`reset: ${JSON.stringify(result)}`]);

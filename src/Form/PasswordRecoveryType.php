@@ -23,7 +23,7 @@ class PasswordRecoveryType extends AbstractType
                     'required' => true,
                     'trim' => true,
                     'constraints' => [
-                        new NotBlank(message: 'Please enter a valid email address'),
+                        new NotBlank(message: 'Inserisci un indirizzo email valido.'),
                     ],
                 ])
         ;

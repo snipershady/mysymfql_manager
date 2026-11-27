@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Component\DatabaseClientConnection;
-use App\Controller\DatabaseSchemaRepositoryController;
+use App\Controller\Schema\MonitorController;
 use App\Dto\InnodbTransaction;
 use App\RepositoryPDO\DatabaseSchemaRepository;
+use App\Security\SchemaVisibility;
 use App\Tests\Fixtures\TestCatalog;
 use App\Tests\Support\OpenTransaction;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -16,7 +17,8 @@ use PHPUnit\Framework\Attributes\CoversClass;
  * "Transaction" CTA: INNODB_TRX listing with the process-list visibility rules.
  * Two real transactions are opened: one on the owner's database, one on a database it does not own.
  */
-#[CoversClass(DatabaseSchemaRepositoryController::class)]
+#[CoversClass(MonitorController::class)]
+#[CoversClass(SchemaVisibility::class)]
 final class TransactionsTest extends FunctionalTestCase
 {
     private DatabaseSchemaRepository $remote;

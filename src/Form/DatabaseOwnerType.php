@@ -31,13 +31,13 @@ class DatabaseOwnerType extends AbstractType
                 'attr' => ['class' => 'form-select'],
             ])
             ->add('dbName', TextType::class, [
-                'label' => 'Database name',
+                'label' => 'Nome database',
                 'attr' => ['class' => 'form-control font-monospace'],
             ])
             ->add('owner', EntityType::class, [
                 'class' => AppUser::class,
                 'choice_label' => 'username',
-                'label' => 'Owner',
+                'label' => 'Proprietario',
                 'attr' => ['class' => 'form-select'],
             ])
         ;

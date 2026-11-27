@@ -51,7 +51,7 @@ enum DatabasePrivilegeEnum: string
 
             $privilege = self::tryFrom($normalized);
             if (!$privilege instanceof self) {
-                throw new \InvalidArgumentException(\sprintf('Unsupported privilege "%s".', trim($token)));
+                throw new \InvalidArgumentException(\sprintf('Privilegio non supportato: "%s".', trim($token)));
             }
 
             if (self::ALL_PRIVILEGES === $privilege) {
@@ -62,7 +62,7 @@ enum DatabasePrivilegeEnum: string
         }
 
         if ([] === $parsed) {
-            throw new \InvalidArgumentException('Privilege list cannot be empty.');
+            throw new \InvalidArgumentException('Seleziona almeno un privilegio.');
         }
 
         return implode(', ', $parsed);

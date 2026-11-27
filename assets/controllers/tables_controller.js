@@ -81,13 +81,13 @@ export default class extends Controller {
         return `
             <div class="d-flex gap-1 justify-content-end flex-wrap">
                 ${button('backup', 'btn-outline-primary', 'fa-cloud-arrow-down', 'Backup', 'Backup tabella')}
-                ${button('enqueue', 'btn-outline-info', 'fa-list-check', 'Enqueue Backup', 'Accoda backup tabella')}
+                ${button('enqueue', 'btn-outline-info', 'fa-list-check', 'Accoda backup', 'Accoda backup tabella')}
                 <a href="${escapeHtml(restoreUrl)}" class="btn btn-sm btn-outline-warning" title="Ripristina tabella">
                     <i class="fa-solid fa-cloud-arrow-up me-1"></i>Ripristina
                 </a>
                 ${button('empty', 'btn-outline-secondary', 'fa-eraser', 'Svuota', 'Svuota tabella')}
                 ${button('showCreate', 'btn-outline-info', 'fa-code', 'Show Create', 'Show Create Table')}
-                ${button('optimize', 'btn-outline-success', 'fa-bolt', 'Optimize', 'Ottimizza tabella')}
+                ${button('optimize', 'btn-outline-success', 'fa-bolt', 'Ottimizza', 'Ottimizza tabella')}
                 ${button('drop', 'btn-outline-danger', 'fa-trash', 'Elimina', 'Elimina tabella')}
             </div>`;
     }

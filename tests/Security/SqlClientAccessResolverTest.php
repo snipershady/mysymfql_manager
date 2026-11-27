@@ -52,6 +52,16 @@ final class SqlClientAccessResolverTest extends TestCase
         $this->assertNull($this->resolver(view: false, database: true)->database('srv', 'shop'));
     }
 
+    public function testServerOrDatabaseNeedsDatabaseAccessOnlyWhenADatabaseIsGiven(): void
+    {
+        $serverOnly = $this->resolver(view: true, database: false);
+
+        $this->assertSame($this->sqlClient, $serverOnly->serverOrDatabase('srv', dbName: null));
+        $this->assertSame($this->sqlClient, $serverOnly->serverOrDatabase('srv', ''));
+        $this->assertNull($serverOnly->serverOrDatabase('srv', 'shop'));
+        $this->assertSame($this->sqlClient, $this->resolver(view: true, database: true)->serverOrDatabase('srv', 'shop'));
+    }
+
     public function testIsAdminDelegatesToTheRoleCheck(): void
     {
         $this->assertTrue($this->resolver(view: false, database: false, admin: true)->isAdmin());
