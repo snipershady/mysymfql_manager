@@ -19,7 +19,8 @@
         </a>
     </div>
     <div class="card-body">
-        <table id="table-db-owners" class="table table-hover align-middle w-100">
+        <div {{ stimulus_controller('datatable', {options: {paging: true, pageLength: 25}}) }}>
+        <table id="table-db-owners" class="table table-hover align-middle w-100" {{ stimulus_target('datatable', 'table') }}>
             <thead class="table-light">
                 <tr>
                     <th>#</th>
@@ -41,54 +42,20 @@
                            class="btn btn-sm btn-outline-primary" title="Modifica">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </a>
-                        <button type="button" class="btn btn-sm btn-outline-danger btn-delete"
-                                data-id="{{ item.id }}"
-                                data-db="{{ item.dbName }}"
-                                data-token="{{ csrf_token('delete' ~ item.id) }}"
-                                title="Elimina">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
+                        <form method="post" action="{{ path('app_database_owner_delete', {'id': item.id}) }}" class="d-inline"
+                              {{ stimulus_controller('confirm', {message: 'Rimuovere l\'assegnazione del database ' ~ item.dbName ~ '?'}) }}
+                              {{ stimulus_action('confirm', 'ask', 'submit') }}>
+                            <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ item.id) }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Elimina">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </form>
                     </td>
                 </tr>
             {% endfor %}
             </tbody>
         </table>
+        </div>
     </div>
 </div>
-{% endblock %}
-
-{% block scripts_extra %}
-{{ parent() }}
-<script type="module">
-$('#table-db-owners').DataTable({
-    paging: true,
-    pageLength: 25,
-});
-
-document.addEventListener('click', async (e) => {
-    const btn = e.target.closest('.btn-delete');
-    if (!btn) return;
-
-    const result = await Swal.fire({
-        title: 'Elimina assegnazione',
-        html: `Rimuovere l'assegnazione del database <strong>${btn.dataset.db}</strong>?`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Elimina',
-        cancelButtonText: 'Annulla',
-        confirmButtonColor: '#dc3545',
-        cancelButtonColor: '#6c757d',
-    });
-    if (!result.isConfirmed) return;
-
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = `/admin/database-owner/${btn.dataset.id}`;
-    const token = document.createElement('input');
-    token.type = 'hidden'; token.name = '_token'; token.value = btn.dataset.token;
-    form.appendChild(token);
-    document.body.appendChild(form);
-    form.submit();
-});
-</script>
 {% endblock %}

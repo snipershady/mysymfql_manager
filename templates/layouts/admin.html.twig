@@ -97,7 +97,7 @@
 
 {# ── Top navbar ── #}
 <header id="topbar">
-    <button class="topbar-toggle" id="sidebarToggle" title="Espandi/Comprimi sidebar">
+    <button class="topbar-toggle" id="sidebarToggle" title="Espandi/Comprimi sidebar" {{ stimulus_controller('sidebar') }} {{ stimulus_action('sidebar', 'toggle') }}>
         <i class="fa-solid fa-bars"></i>
     </button>
     <span class="topbar-title">{% block page_title %}Dashboard{% endblock %}</span>
@@ -146,27 +146,6 @@
 
 {% endblock %}
 
-{% block scripts_extra %}
-<script type="module" src="{{ asset('legacy/admin.js') }}"></script>
-<script type="module">
-document.addEventListener('submit', async function (e) {
-    const form = e.target;
-    const msg = form.dataset.confirm;
-    if (!msg) return;
-    e.preventDefault();
-    const result = await Swal.fire({
-        title: 'Conferma',
-        text: msg,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Sì, procedi',
-        cancelButtonText: 'Annulla',
-        confirmButtonColor: '#dc3545',
-        cancelButtonColor: '#6c757d',
-    });
-    if (result.isConfirmed) form.submit();
-});
-</script>
-{% endblock %}
+{% block scripts_extra %}{% endblock %}
 
 {% block breadcrumb %}{% endblock %}

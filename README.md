@@ -266,6 +266,7 @@ TEST_SERVER_PASSWORD=...   # password of the account used to manage the local My
 composer test:unit          # no MySQL / Redis needed
 composer test:integration   # real MySQL server
 composer test:functional    # HTTP tests (MySQL + Redis)
+composer test:browser       # headless Chrome smoke test of every page (Node >= 22, Chrome)
 composer test               # everything
 composer quality-check      # Rector, PHP-CS-Fixer, PHPStan (as in CI)
 ```

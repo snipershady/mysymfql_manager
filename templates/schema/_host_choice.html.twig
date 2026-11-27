@@ -1,0 +1,18 @@
+{#
+    MySQL account host ("%", "localhost" or custom) for the host-choice Stimulus controller.
+    Params: prefix (unique id/name prefix), parent_controller (receives the "host" target).
+#}
+<div {{ stimulus_controller('host-choice') }} {{ stimulus_target(parent_controller, target|default('host')) }}>
+    <label class="form-label d-block">Host utente</label>
+    <div class="d-flex flex-wrap gap-3 pt-1">
+        {% for value, text in {'%': '% <span class="text-muted small">(qualsiasi)</span>', 'localhost': 'localhost', '__custom__': 'Personalizzato'} %}
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="{{ prefix }}-host" id="{{ prefix }}-host-{{ loop.index }}" value="{{ value }}"
+                       {{ loop.first ? 'checked' }} {{ stimulus_target('host-choice', 'option') }} {{ stimulus_action('host-choice', 'changed', 'change') }}>
+                <label class="form-check-label" for="{{ prefix }}-host-{{ loop.index }}">{{ text|raw }}</label>
+            </div>
+        {% endfor %}
+    </div>
+    <input type="text" id="{{ prefix }}-host-custom" class="form-control form-control-sm font-monospace mt-2"
+           placeholder="192.168.1.%" hidden {{ stimulus_target('host-choice', 'custom') }}>
+</div>

@@ -14,8 +14,8 @@
 {% endblock %}
 
 {% block content %}
+<div {{ stimulus_controller('query', {name: name, db: db_name, columnsUrl: path('app_schema_columns_get_data', {name: name, db_name: db_name}), executeUrl: path('app_schema_query_execute')}) }}>
 
-    <div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index:1100"></div>
 
     <div class="row g-3">
         <div class="col-lg-3">
@@ -23,7 +23,7 @@
                 <div class="card-header">
                     <i class="fa-solid fa-table text-primary me-1"></i>Tabelle
                 </div>
-                <div id="query-tables-list" class="list-group list-group-flush" style="max-height: 520px; overflow-y: auto;">
+                <div id="query-tables-list" class="list-group list-group-flush query-tables-list" {{ stimulus_target('query', 'tables') }}>
                     <div class="list-group-item text-muted small">
                         <i class="fa-solid fa-spinner fa-spin me-1"></i>Caricamento…
                     </div>
@@ -49,19 +49,19 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <textarea id="sql-editor" class="form-control" rows="10" spellcheck="false"
+                    <textarea id="sql-editor" {{ stimulus_target('query', 'editor') }} class="form-control" rows="10" spellcheck="false"
                               style="font-family: 'Courier New', monospace; font-size: .9rem;"
                               placeholder="SELECT * FROM ..."></textarea>
                     <div class="d-flex align-items-center justify-content-between mt-2">
                         <span class="text-muted small">Suggerimento: Ctrl+Invio (⌘+Invio su Mac) per eseguire.</span>
                         <div class="btn-group">
-                            <button type="button" id="btn-explain-query" class="btn btn-outline-secondary">
+                            <button type="button" id="btn-explain-query" class="btn btn-outline-secondary" data-prefix="EXPLAIN" {{ stimulus_target('query', 'button') }} {{ stimulus_action('query', 'explain') }}>
                                 <i class="fa-solid fa-diagram-project me-1"></i>Explain
                             </button>
-                            <button type="button" id="btn-explain-analyze-query" class="btn btn-outline-secondary">
+                            <button type="button" id="btn-explain-analyze-query" class="btn btn-outline-secondary" data-prefix="EXPLAIN ANALYZE" {{ stimulus_target('query', 'button') }} {{ stimulus_action('query', 'explainAnalyze') }}>
                                 <i class="fa-solid fa-magnifying-glass-chart me-1"></i>Explain Analyze
                             </button>
-                            <button type="button" id="btn-run-query" class="btn btn-primary">
+                            <button type="button" id="btn-run-query" class="btn btn-primary" data-prefix="" {{ stimulus_target('query', 'button') }} {{ stimulus_action('query', 'execute') }}>
                                 <i class="fa-solid fa-play me-1"></i>Esegui
                             </button>
                         </div>
@@ -71,307 +71,22 @@
         </div>
     </div>
 
-    <div id="query-result-alert" class="alert d-none mt-3" role="alert"></div>
+    <div id="query-result-alert" class="alert d-none mt-3" role="alert" {{ stimulus_target('query', 'alert') }}></div>
 
-    <div id="query-result-card" class="card d-none mt-3">
+    <div id="query-result-card" class="card d-none mt-3" {{ stimulus_target('query', 'card') }}>
         <div class="card-header d-flex align-items-center justify-content-between gap-2">
             <span><i class="fa-solid fa-table-list text-primary me-1"></i>Risultati</span>
-            <span id="query-result-count" class="badge bg-secondary"></span>
+            <span id="query-result-count" class="badge bg-secondary" {{ stimulus_target('query', 'count') }}></span>
         </div>
         <div class="card-body">
-            <div id="query-result-table-wrap" class="table-responsive">
-                <table id="query-result-table" class="table table-hover table-bordered align-middle w-100 mb-0">
+            <div id="query-result-table-wrap" class="table-responsive" {{ stimulus_target('query', 'tableWrap') }}>
+                <table id="query-result-table" class="table table-hover table-bordered align-middle w-100 mb-0" {{ stimulus_target('query', 'resultTable') }}>
                     <thead class="table-light"><tr></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
-            <pre id="query-result-pre" class="d-none bg-body-tertiary p-3 rounded mb-0" style="font-size: .85rem; white-space: pre-wrap;"></pre>
+            <pre id="query-result-pre" class="d-none bg-body-tertiary p-3 rounded mb-0 query-result-pre" {{ stimulus_target('query', 'pre') }}></pre>
         </div>
     </div>
-
-{% endblock %}
-
-{% block scripts_extra %}
-    {{ parent() }}
-    <script type="module">
-        import { createSqlEditor } from 'sql-editor';
-
-        const URL_QUERY_EXECUTE = '{{ path('app_schema_query_execute') }}';
-        const URL_COLUMNS_GET_DATA = '{{ path('app_schema_columns_get_data', {name: name, db_name: db_name})|e('js') }}';
-        const CURRENT_NAME = '{{ name|e('js') }}';
-        const CURRENT_DB = '{{ db_name|e('js') }}';
-
-        // Table name => column names, filled once the schema loads (list on the left + autocompletion).
-        const schemaTables = {};
-
-        // CodeMirror 6 (assets/sql-editor.js): Ctrl/Cmd+Enter runs the query, Ctrl+Space opens the
-        // completion, which also pops up by itself while typing identifiers or after "alias.".
-        const cmEditor = createSqlEditor(document.getElementById('sql-editor'), { onRun: () => runQuery() });
-
-        // Load table/column names for the current database and feed them to sql-hint,
-        // so `t1.` after `FROM tracking_user_auction_viewed t1` suggests that table's columns.
-        fetch(`${URL_COLUMNS_GET_DATA}`)
-            .then((res) => res.json())
-            .then((json) => {
-                Object.assign(schemaTables, json.tables || {});
-                cmEditor.setSchema(schemaTables);
-                renderTablesList();
-            })
-            .catch(() => {
-                // Autocomplete degrades to "no suggestions" if the schema can't be loaded; editing still works.
-                renderTablesListError();
-            });
-
-        function renderTablesList() {
-            const list = document.getElementById('query-tables-list');
-            const names = Object.keys(schemaTables).sort((a, b) => a.localeCompare(b));
-
-            if (names.length === 0) {
-                list.innerHTML = '<div class="list-group-item text-muted small">Nessuna tabella trovata.</div>';
-                return;
-            }
-
-            list.innerHTML = names.map((tableName) => `
-                <div class="list-group-item d-flex align-items-center justify-content-between gap-1 py-1 px-2">
-                    <button type="button" class="btn btn-link btn-sm p-0 text-start text-truncate table-name-btn" data-table="${escapeHtml(tableName)}" title="Inserisci nome tabella">
-                        <i class="fa-solid fa-table text-secondary me-1"></i>${escapeHtml(tableName)}
-                    </button>
-                    <div class="btn-group btn-group-sm flex-shrink-0" role="group">
-                        <button type="button" class="btn btn-outline-secondary btn-gen-query" data-action="select" data-table="${escapeHtml(tableName)}" title="Genera SELECT">
-                            <i class="fa-solid fa-magnifying-glass"></i>
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary btn-gen-query" data-action="insert" data-table="${escapeHtml(tableName)}" title="Genera INSERT">
-                            <i class="fa-solid fa-plus"></i>
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary btn-gen-query" data-action="update" data-table="${escapeHtml(tableName)}" title="Genera UPDATE">
-                            <i class="fa-solid fa-pen"></i>
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary btn-gen-query" data-action="delete" data-table="${escapeHtml(tableName)}" title="Genera DELETE">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-
-            list.querySelectorAll('.table-name-btn').forEach((btn) => {
-                btn.addEventListener('click', () => insertTableName(btn.dataset.table));
-            });
-
-            list.querySelectorAll('.btn-gen-query').forEach((btn) => {
-                btn.addEventListener('click', () => generateQuery(btn.dataset.action, btn.dataset.table));
-            });
-        }
-
-        function renderTablesListError() {
-            document.getElementById('query-tables-list').innerHTML =
-                '<div class="list-group-item text-danger small"><i class="fa-solid fa-circle-xmark me-1"></i>Impossibile caricare le tabelle.</div>';
-        }
-
-        function insertTableName(tableName) {
-            cmEditor.replaceSelection('`' + tableName + '`');
-            cmEditor.focus();
-        }
-
-        // Builds a ready-to-edit SQL skeleton for the table's full column list and
-        // writes it straight into the editor, replacing whatever was there.
-        function generateQuery(action, tableName) {
-            const columns = schemaTables[tableName] || [];
-            const quotedTable = '`' + tableName + '`';
-            const quotedCols = columns.map((col) => '`' + col + '`');
-            let sql = '';
-
-            switch (action) {
-                case 'select':
-                    sql = `SELECT ${quotedCols.length ? quotedCols.join(', ') : '*'}\nFROM ${quotedTable};`;
-                    break;
-                case 'insert':
-                    sql = `INSERT INTO ${quotedTable} (${quotedCols.join(', ')})\nVALUES (${columns.map(() => "''").join(', ')});`;
-                    break;
-                case 'update':
-                    sql = `UPDATE ${quotedTable}\nSET ${quotedCols.map((col) => `${col} = ''`).join(',\n    ')}\nWHERE ;`;
-                    break;
-                case 'delete':
-                    sql = `DELETE FROM ${quotedTable}\nWHERE ;`;
-                    break;
-            }
-
-            cmEditor.setValue(sql);
-            cmEditor.focus();
-        }
-
-        function showToast(message, success) {
-            const id = `toast-${Date.now()}`;
-            const bg = success ? 'text-bg-success' : 'text-bg-danger';
-            const icon = success ? 'fa-circle-check' : 'fa-circle-xmark';
-            const html = `
-            <div id="${id}" class="toast align-items-center ${bg} border-0" role="alert" aria-live="assertive" aria-atomic="true">
-                <div class="d-flex">
-                    <div class="toast-body">
-                        <i class="fa-solid ${icon} me-2"></i>${message}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-                </div>
-            </div>`;
-            document.getElementById('toast-container').insertAdjacentHTML('beforeend', html);
-            const toastEl = document.getElementById(id);
-            const toast = new bootstrap.Toast(toastEl, {delay: 4000});
-            toast.show();
-            toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
-        }
-
-        function escapeHtml(value) {
-            if (value === null || value === undefined)
-                return '<span class="text-muted">NULL</span>';
-            return String(value)
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/"/g, '&quot;')
-                    .replace(/'/g, '&#039;');
-        }
-
-        function showAlert(message, type) {
-            const alertBox = document.getElementById('query-result-alert');
-            alertBox.className = `alert alert-${type}`;
-            alertBox.innerHTML = message;
-            alertBox.classList.remove('d-none');
-        }
-
-        function hideAlert() {
-            document.getElementById('query-result-alert').classList.add('d-none');
-        }
-
-        function renderResultTable(columns, rows) {
-            const card = document.getElementById('query-result-card');
-            const tableWrap = document.getElementById('query-result-table-wrap');
-            const pre = document.getElementById('query-result-pre');
-            const table = document.getElementById('query-result-table');
-            const theadRow = table.querySelector('thead tr');
-            const tbody = table.querySelector('tbody');
-            const countBadge = document.getElementById('query-result-count');
-
-            pre.classList.add('d-none');
-            tableWrap.classList.remove('d-none');
-            theadRow.innerHTML = '';
-            tbody.innerHTML = '';
-
-            if (columns.length === 0) {
-                card.classList.add('d-none');
-                return;
-            }
-
-            columns.forEach((col) => {
-                const th = document.createElement('th');
-                th.textContent = col;
-                theadRow.appendChild(th);
-            });
-
-            rows.forEach((row) => {
-                const tr = document.createElement('tr');
-                columns.forEach((col) => {
-                    const td = document.createElement('td');
-                    td.innerHTML = escapeHtml(row[col]);
-                    tr.appendChild(td);
-                });
-                tbody.appendChild(tr);
-            });
-
-            countBadge.textContent = `${rows.length} righe`;
-            card.classList.remove('d-none');
-        }
-
-        // EXPLAIN ANALYZE (and EXPLAIN FORMAT=TREE/JSON) returns a single text
-        // column holding a multi-line, indented tree — render it as preformatted
-        // text instead of a table so the structure stays readable.
-        function isTreeShapedResult(columns, rows) {
-            if (columns.length !== 1 || rows.length === 0) {
-                return false;
-            }
-            return rows.some((row) => {
-                const value = row[columns[0]];
-                return typeof value === 'string' && value.includes('\n');
-            });
-        }
-
-        function renderExplainResult(columns, rows) {
-            if (isTreeShapedResult(columns, rows)) {
-                const card = document.getElementById('query-result-card');
-                const tableWrap = document.getElementById('query-result-table-wrap');
-                const pre = document.getElementById('query-result-pre');
-                const countBadge = document.getElementById('query-result-count');
-
-                tableWrap.classList.add('d-none');
-                pre.textContent = rows.map((row) => row[columns[0]]).join('\n\n');
-                pre.classList.remove('d-none');
-                countBadge.textContent = `${rows.length} righe`;
-                card.classList.remove('d-none');
-                return;
-            }
-
-            renderResultTable(columns, rows);
-        }
-
-        async function runQuery(prefix) {
-            const buttons = [
-                document.getElementById('btn-run-query'),
-                document.getElementById('btn-explain-query'),
-                document.getElementById('btn-explain-analyze-query'),
-            ];
-            const clickedBtn = prefix === 'EXPLAIN ANALYZE'
-                    ? buttons[2]
-                    : (prefix === 'EXPLAIN' ? buttons[1] : buttons[0]);
-            const rawSql = cmEditor.getValue().trim();
-
-            if (!rawSql) {
-                showToast('Inserisci una query da eseguire.', false);
-                return;
-            }
-
-            const sql = prefix ? `${prefix} ${rawSql}` : rawSql;
-
-            buttons.forEach((b) => b.disabled = true);
-            const original = clickedBtn.innerHTML;
-            clickedBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i>Eseguo…`;
-            hideAlert();
-            document.getElementById('query-result-card').classList.add('d-none');
-
-            try {
-                const formData = new FormData();
-                formData.append('name', CURRENT_NAME);
-                formData.append('db_name', CURRENT_DB);
-                formData.append('sql', sql);
-
-                const res = await fetch(URL_QUERY_EXECUTE, {method: 'POST', body: formData});
-                const json = await res.json();
-
-                if (!json.is_valid) {
-                    showAlert(`<i class="fa-solid fa-circle-xmark me-2"></i>${escapeHtml(json.message)}`, 'danger');
-                    return;
-                }
-
-                if (json.is_select) {
-                    if (json.rows.length === 0) {
-                        showAlert('<i class="fa-solid fa-circle-info me-2"></i>La query non ha restituito risultati.', 'info');
-                    }
-                    if (prefix) {
-                        renderExplainResult(json.columns, json.rows);
-                    } else {
-                        renderResultTable(json.columns, json.rows);
-                    }
-                } else {
-                    showAlert(`<i class="fa-solid fa-circle-check me-2"></i>Query eseguita con successo. Righe interessate: ${json.affected_rows}.`, 'success');
-                }
-            } catch (e) {
-                showAlert('<i class="fa-solid fa-circle-xmark me-2"></i>Errore di rete durante l\'esecuzione della query.', 'danger');
-            } finally {
-                buttons.forEach((b) => b.disabled = false);
-                clickedBtn.innerHTML = original;
-            }
-        }
-
-        document.getElementById('btn-run-query').addEventListener('click', () => runQuery());
-        document.getElementById('btn-explain-query').addEventListener('click', () => runQuery('EXPLAIN'));
-        document.getElementById('btn-explain-analyze-query').addEventListener('click', () => runQuery('EXPLAIN ANALYZE'));
-
-    </script>
+</div>
 {% endblock %}

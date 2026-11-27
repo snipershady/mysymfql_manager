@@ -1,0 +1,27 @@
+{#
+    Privilege checkboxes for the privileges Stimulus controller; the list is the server-side whitelist
+    (App\Enum\DatabasePrivilegeEnum). Params: prefix (unique id prefix), parent_controller and target (default "privileges") to expose the block to the page controller, label (optional heading).
+#}
+<div {{ stimulus_controller('privileges') }} {{ stimulus_target(parent_controller, target|default('privileges')) }}>
+    {% if label|default(true) %}<label class="form-label fw-semibold">Privilegi</label>{% endif %}
+    <div class="mb-2">
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="{{ prefix }}-priv-all" value="ALL PRIVILEGES"
+                   {{ stimulus_target('privileges', 'all') }} {{ stimulus_action('privileges', 'allChanged', 'change') }}>
+            <label class="form-check-label fw-semibold text-danger" for="{{ prefix }}-priv-all">ALL PRIVILEGES</label>
+        </div>
+    </div>
+    <div class="row g-1">
+        {% for privilege in enum_cases('App\\Enum\\DatabasePrivilegeEnum') %}
+            {% if privilege.value != 'ALL PRIVILEGES' %}
+                {% set id = prefix ~ '-priv-' ~ privilege.value|lower|replace({' ': '-'}) %}
+                <div class="col-6 col-md-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="{{ id }}" value="{{ privilege.value }}" {{ stimulus_target('privileges', 'single') }}>
+                        <label class="form-check-label small" for="{{ id }}">{{ privilege.value }}</label>
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+</div>

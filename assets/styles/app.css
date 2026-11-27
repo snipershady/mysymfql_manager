@@ -17,3 +17,40 @@
 .cm-editor .cm-scroller {
     overflow: auto;
 }
+
+/* Toasts above modals and the sidebar (was an inline style="z-index:1100" on every page). */
+.toast-container-front {
+    z-index: 1100;
+}
+
+/* Dense data tables (process list, transactions…), was style="font-size:.85rem". */
+.table-compact {
+    font-size: .85rem;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* Query page */
+.query-tables-list {
+    max-height: 520px;
+    overflow-y: auto;
+}
+.query-result-pre {
+    font-size: .85rem;
+    white-space: pre-wrap;
+}
+
+/* Tables page: SHOW CREATE TABLE output */
+.ddl-pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: .85rem;
+}
+
+/* MySQL users page: database list in the grant modal */
+.grant-db-list {
+    max-height: 220px;
+    overflow-y: auto;
+}

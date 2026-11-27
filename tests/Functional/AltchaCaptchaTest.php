@@ -28,10 +28,10 @@ final class AltchaCaptchaTest extends WebTestCase
         self::assertResponseIsSuccessful();
         $challenge = Challenge::fromArray($client->getInternalResponse()->toArray());
         $solution = (new Altcha())->solveChallenge(new SolveChallengeOptions($challenge, new Pbkdf2()));
-        self::assertInstanceOf(Solution::class, $solution);
+        $this->assertInstanceOf(Solution::class, $solution);
 
         $captcha = self::getContainer()->get(AltchaCaptcha::class);
-        self::assertTrue($captcha->verify(new Payload($challenge, $solution)->toBase64()));
-        self::assertFalse($captcha->verify('malformed'));
+        $this->assertTrue($captcha->verify(new Payload($challenge, $solution)->toBase64()));
+        $this->assertFalse($captcha->verify('malformed'));
     }
 }

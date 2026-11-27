@@ -4,6 +4,7 @@
 {% block page_title %}Dashboard{% endblock %}
 
 {% block content %}
+<div {{ stimulus_controller('dashboard', {statsUrl: path('app_schema_dashboard_stats'), databasesUrl: path('app_schema_databases')}) }}>
 
 {# ── Server selector ── #}
 <div class="row mb-4">
@@ -21,7 +22,7 @@
                 </a>
             </div>
         {% else %}
-            <select id="server-select" class="form-select">
+            <select id="server-select" class="form-select" {{ stimulus_target('dashboard', 'select') }} {{ stimulus_action('dashboard', 'load', 'change') }}>
                 {% for client in sql_clients %}
                     <option value="{{ client.name }}" {% if loop.first %}selected{% endif %}>
                         {{ client.name }} — {{ client.host }}:{{ client.port }}
@@ -43,7 +44,7 @@
                 </div>
                 <div>
                     <div class="text-muted small">Database assegnati</div>
-                    <div class="fw-bold fs-4" id="stat-db-count">—</div>
+                    <div class="fw-bold fs-4" id="stat-db-count" {{ stimulus_target('dashboard', 'dbCount') }}>—</div>
                 </div>
             </div>
         </div>
@@ -58,7 +59,7 @@
                 </div>
                 <div>
                     <div class="text-muted small">Connessioni attive</div>
-                    <div class="fw-bold fs-4" id="stat-connections">—</div>
+                    <div class="fw-bold fs-4" id="stat-connections" {{ stimulus_target('dashboard', 'connections') }}>—</div>
                 </div>
             </div>
         </div>
@@ -73,7 +74,7 @@
                 </div>
                 <div>
                     <div class="text-muted small">Processi in esecuzione</div>
-                    <div class="fw-bold fs-4" id="stat-running">—</div>
+                    <div class="fw-bold fs-4" id="stat-running" {{ stimulus_target('dashboard', 'running') }}>—</div>
                 </div>
             </div>
         </div>
@@ -88,7 +89,7 @@
                 </div>
                 <div>
                     <div class="text-muted small">Processi bloccati</div>
-                    <div class="fw-bold fs-4" id="stat-blocked">—</div>
+                    <div class="fw-bold fs-4" id="stat-blocked" {{ stimulus_target('dashboard', 'blocked') }}>—</div>
                 </div>
             </div>
         </div>
@@ -113,7 +114,7 @@
                             <th>Azioni</th>
                         </tr>
                     </thead>
-                    <tbody id="table-databases-body">
+                    <tbody id="table-databases-body" {{ stimulus_target('dashboard', 'tableBody') }}>
                         {% if sql_clients is empty %}
                         <tr>
                             <td colspan="4" class="text-center text-muted py-4">
@@ -148,12 +149,5 @@
         </div>
     </div>
 </div>
-
-{% endblock %}
-
-{% block scripts_extra %}
-{{ parent() }}
-{% if sql_clients is not empty %}
-<script type="module" src="{{ asset('legacy/dashboard.js') }}"></script>
-{% endif %}
+</div>
 {% endblock %}

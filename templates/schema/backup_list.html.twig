@@ -9,8 +9,8 @@
 {% endblock %}
 
 {% block content %}
+<div {{ stimulus_controller('backup-list', {deleteUrl: path('app_schema_backup_delete')}) }}>
 
-<div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index:1100"></div>
 
 <div class="card">
     <div class="card-header d-flex align-items-center justify-content-between gap-2">
@@ -30,7 +30,7 @@
                 <p class="mb-0">Nessun file di backup presente.</p>
             </div>
         {% else %}
-            <table id="table-backups" class="table table-hover align-middle w-100" style="font-size:.875rem">
+            <table id="table-backups" class="table table-hover align-middle w-100 table-compact" {{ stimulus_target('backup-list', 'table') }}>
                 <thead class="table-light">
                     <tr>
                         <th>File</th>
@@ -41,7 +41,7 @@
                 </thead>
                 <tbody>
                     {% for backup in backups %}
-                    <tr class="backup-row" style="cursor:pointer"
+                    <tr class="backup-row cursor-pointer" {{ stimulus_action('backup-list', 'open') }}
                         data-filename="{{ backup.id }}"
                         data-view-url="{{ path('app_schema_backup_view') }}?filename={{ backup.id|url_encode }}">
                         <td>
@@ -64,7 +64,7 @@
                                title="Scarica backup">
                                 <i class="fa-solid fa-download"></i>
                             </a>
-                            <button class="btn btn-sm btn-outline-danger btn-delete"
+                            <button class="btn btn-sm btn-outline-danger btn-delete" {{ stimulus_action('backup-list', 'delete') }}
                                     data-filename="{{ backup.id }}"
                                     title="Elimina backup">
                                 <i class="fa-solid fa-trash-can"></i>
@@ -77,89 +77,5 @@
         {% endif %}
     </div>
 </div>
-
-{% endblock %}
-
-{% block scripts_extra %}
-{{ parent() }}
-<script type="module">
-
-const URL_DELETE = '{{ path('app_schema_backup_delete') }}';
-
-function showToast(message, success) {
-    const id  = `toast-${Date.now()}`;
-    const bg  = success ? 'text-bg-success' : 'text-bg-danger';
-    const ico = success ? 'fa-circle-check' : 'fa-circle-xmark';
-    document.getElementById('toast-container').insertAdjacentHTML('beforeend', `
-        <div id="${id}" class="toast align-items-center ${bg} border-0" role="alert" aria-atomic="true">
-            <div class="d-flex">
-                <div class="toast-body"><i class="fa-solid ${ico} me-2"></i>${message}</div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-            </div>
-        </div>`);
-    const el = document.getElementById(id);
-    const t  = new bootstrap.Toast(el, { delay: 4000 });
-    t.show();
-    el.addEventListener('hidden.bs.toast', () => el.remove());
-}
-
-/* ── DataTables ── */
-const dt = $('#table-backups').DataTable({
-    order: [[2, 'desc']],
-    pageLength: 25,
-    columnDefs: [{ orderable: false, targets: 3 }],
-});
-
-/* ── Apri file in nuova scheda cliccando sulla riga ── */
-$('#table-backups').on('click', 'tr.backup-row', (e) => {
-    if (e.target.closest('.btn-delete, .btn-download')) return;
-    const row = e.currentTarget;
-    window.open(row.dataset.viewUrl, '_blank', 'noopener');
-});
-
-/* ── Elimina backup ── */
-$('#table-backups').on('click', '.btn-delete', async (e) => {
-    e.stopPropagation();
-    const btn = e.currentTarget;
-    const filename = btn.dataset.filename;
-
-    const result = await Swal.fire({
-        title: 'Elimina backup',
-        text: `Vuoi eliminare definitivamente il file "${filename}"?`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Elimina',
-        cancelButtonText: 'Annulla',
-        confirmButtonColor: '#dc3545',
-        cancelButtonColor: '#6c757d',
-    });
-
-    if (!result.isConfirmed) return;
-
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-
-    try {
-        const fd = new FormData();
-        fd.append('filename', filename);
-        const res  = await fetch(URL_DELETE, { method: 'POST', body: fd });
-        const json = await res.json();
-        showToast(json.message, json.is_valid);
-        if (json.is_valid) {
-            dt.row(btn.closest('tr')).remove().draw();
-        }
-    } catch {
-        showToast('Errore di rete.', false);
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
-    }
-});
-
-/* ── Blocca propagazione sul pulsante download ── */
-$('#table-backups').on('click', '.btn-download', (e) => {
-    e.stopPropagation();
-});
-
-</script>
+</div>
 {% endblock %}

@@ -43,6 +43,7 @@
         "symfony/security-bundle": "8.1.*",
         "symfony/serializer": "8.1.*",
         "symfony/slack-notifier": "8.1.*",
+        "symfony/stimulus-bundle": "^3.8",
         "symfony/string": "8.1.*",
         "symfony/translation": "8.1.*",
         "symfony/twig-bundle": "8.1.*",
@@ -88,6 +89,10 @@
         "test:unit": "vendor/bin/phpunit --testsuite unit",
         "test:integration": "vendor/bin/phpunit --testsuite integration",
         "test:functional": "vendor/bin/phpunit --testsuite functional",
+        "test:browser": [
+            "Composer\\Config::disableProcessTimeout",
+            "tests/browser/run.sh"
+        ],
         "rector": "vendor/bin/rector process",
         "rector-dry": "vendor/bin/rector process --dry-run",
         "cs-fix": "vendor/bin/php-cs-fixer fix",

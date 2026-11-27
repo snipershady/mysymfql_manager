@@ -77,16 +77,6 @@
 {% block scripts_extra %}
     {{ parent() }}
     {% if app.request.query.get('disabled') %}
-        <script type="module">
-            document.addEventListener('DOMContentLoaded', () => {
-                Swal.fire({
-                    title: 'Accesso non consentito',
-                    text: 'Attendi che un amministratore ti abiliti il profilo.',
-                    icon: 'warning',
-                    confirmButtonText: 'OK',
-                    confirmButtonColor: '#6c757d',
-                });
-            });
-        </script>
+        <div {{ stimulus_controller('swal-alert', {title: 'Accesso non consentito', text: 'Attendi che un amministratore ti abiliti il profilo.', icon: 'warning'}) }}></div>
     {% endif %}
 {% endblock %}

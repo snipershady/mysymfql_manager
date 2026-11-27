@@ -24,7 +24,6 @@
  */
 return [
     'app' => ['path' => './assets/app.js', 'entrypoint' => true],
-    'sql-editor' => ['path' => './assets/sql-editor.js'],
     '@hotwired/stimulus' => ['version' => '3.2.2'],
     'bootstrap' => ['version' => '5.3.9'],
     'bootstrap/dist/css/bootstrap.min.css' => ['version' => '5.3.9', 'type' => 'css'],
@@ -56,4 +55,5 @@ return [
     '@marijn/find-cluster-break' => ['version' => '1.0.4'],
     '@lezer/common' => ['version' => '1.5.7'],
     '@codemirror/streamparser' => ['version' => '6.0.0'],
+    '@symfony/stimulus-bundle' => ['path' => './vendor/symfony/stimulus-bundle/assets/dist/loader.js'],
 ];

@@ -123,3 +123,14 @@ jobs:
 
       - name: PHPUnit (functional)
         run: composer test:functional
+
+      # Headless Chrome (preinstalled on the runner) + Node >= 22 for tests/browser/smoke.mjs:
+      # every page without JS errors, without requests to other hosts, with its interactions working.
+      - uses: actions/setup-node@v4
+        if: matrix.php == '8.5'
+        with:
+          node-version: '24'
+
+      - name: Browser smoke test
+        if: matrix.php == '8.5'
+        run: composer test:browser

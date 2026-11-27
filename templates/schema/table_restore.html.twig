@@ -12,8 +12,8 @@
 {% endblock %}
 
 {% block content %}
+<div {{ stimulus_controller('table-restore', {name: name, db: db_name, table: table, restoreUrl: path('app_schema_table_restore_exec')}) }}>
 
-<div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index:1100"></div>
 
 <div class="card">
     <div class="card-header d-flex align-items-center justify-content-between gap-2">
@@ -48,7 +48,7 @@
                     Un dump completo ripristinerà tutte le tabelle contenute nel backup.
                 {% endif %}
             </p>
-            <table id="table-backups" class="table table-hover align-middle w-100">
+            <table id="table-backups" class="table table-hover align-middle w-100" {{ stimulus_target('table-restore', 'table') }}>
                 <thead class="table-light">
                     <tr>
                         <th>File backup</th>
@@ -76,7 +76,7 @@
                         </td>
                         <td class="text-muted small">{{ backup.mtime|date('d/m/Y H:i:s') }}</td>
                         <td class="text-end">
-                            <button class="btn btn-sm btn-warning btn-restore"
+                            <button class="btn btn-sm btn-warning btn-restore" {{ stimulus_action('table-restore', 'restore') }}
                                     data-filename="{{ backup.id }}"
                                     title="Ripristina questo backup">
                                 <i class="fa-solid fa-cloud-arrow-up me-1"></i>Ripristina
@@ -90,87 +90,5 @@
 
     </div>
 </div>
-
-{% endblock %}
-
-{% block scripts_extra %}
-{{ parent() }}
-<script type="module">
-
-const URL_RESTORE_EXEC = '{{ path('app_schema_table_restore_exec') }}';
-const CURRENT_NAME     = '{{ name|e('js') }}';
-const CURRENT_DB       = '{{ db_name|e('js') }}';
-const CURRENT_TABLE    = '{{ table|e('js') }}';
-
-{% if backups is not empty %}
-$('#table-backups').DataTable({
-    paging: true,
-    pageLength: 25,
-    order: [],
-});
-{% endif %}
-
-function showToast(message, success) {
-    const id = `toast-${Date.now()}`;
-    const bg = success ? 'text-bg-success' : 'text-bg-danger';
-    const icon = success ? 'fa-circle-check' : 'fa-circle-xmark';
-    const html = `
-        <div id="${id}" class="toast align-items-center ${bg} border-0" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="d-flex">
-                <div class="toast-body">
-                    <i class="fa-solid ${icon} me-2"></i>${message}
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-            </div>
-        </div>`;
-    document.getElementById('toast-container').insertAdjacentHTML('beforeend', html);
-    const toastEl = document.getElementById(id);
-    const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
-    toast.show();
-    toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
-}
-
-async function doRestore(backupFilename, btn) {
-    const target = CURRENT_TABLE
-        ? `nella tabella <strong>${CURRENT_TABLE}</strong> del database <strong>${CURRENT_DB}</strong>`
-        : `nel database <strong>${CURRENT_DB}</strong>`;
-    const result = await Swal.fire({
-        title: 'Conferma ripristino',
-        html: `Ripristino del backup:<br><code class="text-break">${backupFilename}</code><br><br>${target}.<br><br>I dati esistenti verranno sovrascritti.`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Ripristina',
-        cancelButtonText: 'Annulla',
-        confirmButtonColor: '#ffc107',
-        cancelButtonColor: '#6c757d',
-    });
-    if (!result.isConfirmed) return;
-
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Ripristino…';
-
-    try {
-        const formData = new FormData();
-        formData.append('name', CURRENT_NAME);
-        formData.append('db_name', CURRENT_DB);
-        formData.append('backup_filename', backupFilename);
-
-        const res = await fetch(URL_RESTORE_EXEC, { method: 'POST', body: formData });
-        const json = await res.json();
-        showToast(json.message, json.is_valid);
-    } catch (e) {
-        showToast('Errore di rete durante il ripristino.', false);
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up me-1"></i>Ripristina';
-    }
-}
-
-document.addEventListener('click', (e) => {
-    const btn = e.target.closest('.btn-restore');
-    if (!btn) return;
-    doRestore(btn.dataset.filename, btn);
-});
-
-</script>
+</div>
 {% endblock %}

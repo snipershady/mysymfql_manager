@@ -3,9 +3,10 @@
  * same-origin state-changing request made with fetch() or jQuery.ajax().
  * Server side: App\EventListener\SchemaCsrfListener.
  *
- * Imported by assets/app.js before any page script runs (module order), so jQuery is not
- * available yet: jQuery requests are covered with ajaxPrefilter once window.jQuery exists.
+ * Imported by assets/app.js before the Stimulus controllers start.
  */
+import jQuery from 'jquery';
+
 (function () {
     const meta = document.querySelector('meta[name="csrf-token"]');
     if (!meta) return;
@@ -30,14 +31,10 @@
         return originalFetch(input, init);
     };
 
-    // jQuery is published on window by app.js after this module runs: install the prefilter then.
-    queueMicrotask(() => {
-        if (window.jQuery) {
-            window.jQuery.ajaxPrefilter(function (options, originalOptions, jqXHR) {
-                if (needsToken(options.type, options.url)) {
-                    jqXHR.setRequestHeader(HEADER, token);
-                }
-            });
+    // jQuery requests (none at the moment: pages use fetch()) get the header too.
+    jQuery.ajaxPrefilter(function (options, originalOptions, jqXHR) {
+        if (needsToken(options.type, options.url)) {
+            jqXHR.setRequestHeader(HEADER, token);
         }
     });
 })();
