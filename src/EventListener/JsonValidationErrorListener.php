@@ -47,7 +47,7 @@ final class JsonValidationErrorListener
             return;
         }
 
-        if (!$this->returnsJson($event->getRequest()->attributes->get('_controller'))) {
+        if (!JsonAction::returnsJson($event->getRequest()->attributes->get('_controller'))) {
             return;
         }
 
@@ -73,21 +73,5 @@ final class JsonValidationErrorListener
         $label = self::LABELS[$root] ?? $root;
 
         return '' === $label ? $error['message'] : \sprintf('%s: %s', $label, $error['message']);
-    }
-
-    private function returnsJson(mixed $controller): bool
-    {
-        if (!\is_string($controller) || !str_contains($controller, '::')) {
-            return false;
-        }
-
-        [$class, $method] = explode('::', $controller, 2);
-        if (!method_exists($class, $method)) {
-            return false;
-        }
-
-        $type = new \ReflectionMethod($class, $method)->getReturnType();
-
-        return $type instanceof \ReflectionNamedType && is_a($type->getName(), JsonResponse::class, allow_string: true);
     }
 }

@@ -10,6 +10,7 @@ use App\Entity\AppUser;
 use App\Entity\SqlClient;
 use App\Kernel;
 use App\RepositoryPDO\DatabaseSchemaRepository;
+use App\RepositoryPDO\DemoDataRepository;
 use App\Security\PasswordReset\PasswordResetTokenManager;
 use App\Tests\Fixtures\TestCatalog;
 use Doctrine\ORM\EntityManagerInterface;
@@ -35,6 +36,7 @@ assert($entityManager instanceof EntityManagerInterface);
 $sqlClient = $entityManager->getRepository(SqlClient::class)->findOneBy(['name' => $_ENV['TEST_SERVER_NAME']]);
 assert($sqlClient instanceof SqlClient);
 $remote = new DatabaseSchemaRepository($sqlClient);
+$demoData = new DemoDataRepository($sqlClient);
 $dbName = (string) $_ENV['TEST_DB_NAME_ONE'];
 
 if ('up' === $action) {
@@ -48,8 +50,8 @@ if ('up' === $action) {
     $remote->dropDatabase($dbName);
     $remote->createDatabase($dbName);
     $remote->useDbName($dbName);
-    $remote->createDummyTable();
-    $remote->populateDummiTable();
+    $demoData->createDummyTable();
+    $demoData->populateDummiTable();
 } else {
     $remote->dropDatabase($dbName);
 }

@@ -15,11 +15,11 @@ use App\Entity\AppUser;
 use App\Entity\SqlClient;
 use App\Exception\ProvisioningConflictException;
 use App\Exception\ProvisioningException;
-use App\Repository\DatabaseOwnerRepository;
-use App\RepositoryPDO\DatabaseSchemaRepository;
+use App\RepositoryPDO\ManagedServerRepositoryFactory;
 use App\Security\SchemaVisibility;
 use App\Security\SqlClientAccessResolver;
 use App\Service\DatabaseProvisioner;
+use App\Service\MysqlAccountManager;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -40,6 +40,8 @@ final class MysqlUserController extends AbstractController
     public function __construct(
         private readonly SqlClientAccessResolver $access,
         private readonly SchemaVisibility $visibility,
+        private readonly ManagedServerRepositoryFactory $repositories,
+        private readonly MysqlAccountManager $accountManager,
     ) {
     }
 
@@ -72,17 +74,7 @@ final class MysqlUserController extends AbstractController
             return $this->json(['data' => []]);
         }
 
-        $repo = new DatabaseSchemaRepository($sqlClient);
-        $users = $repo->listUsers($dbName);
-        if (!$this->access->isAdmin()) {
-            // Database view: accounts granted on that database; server view: accounts the user may manage.
-            $users = array_values(array_filter(
-                $users,
-                fn (MysqlUser $u): bool => '' !== $dbName
-                    ? $u->hasDbGrant
-                    : $this->visibility->canManageAccount($user, $sqlClient, $repo, $u->user, $u->host)
-            ));
-        }
+        $users = $this->visibility->accounts($user, $sqlClient, $this->repositories->accounts($sqlClient), $dbName);
 
         $data = array_map(static fn (MysqlUser $u): array => [
             'user' => $u->user,
@@ -108,15 +100,12 @@ final class MysqlUserController extends AbstractController
             return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $repo = new DatabaseSchemaRepository($sqlClient);
-        if (!$this->visibility->canManageAccount($user, $sqlClient, $repo, $username, $userHost)) {
+        $accounts = $this->repositories->accounts($sqlClient);
+        if (!$this->visibility->canManageAccount($user, $sqlClient, $accounts, $username, $userHost)) {
             return $this->json(['is_valid' => false, 'message' => 'Utente MySQL non trovato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $ok = $repo->dropUser($username, $userHost);
-        if ($ok) {
-            $repo->flushPrivileges();
-        }
+        $ok = $this->accountManager->drop($accounts, $username, $userHost);
 
         return $this->json([
             'is_valid' => $ok,
@@ -139,12 +128,12 @@ final class MysqlUserController extends AbstractController
             return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $repo = new DatabaseSchemaRepository($sqlClient);
-        if (!$this->visibility->canManageAccount($user, $sqlClient, $repo, $username, $userHost)) {
+        $accounts = $this->repositories->accounts($sqlClient);
+        if (!$this->visibility->canManageAccount($user, $sqlClient, $accounts, $username, $userHost)) {
             return $this->json(['is_valid' => false, 'message' => 'Utente MySQL non trovato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $ok = $repo->changeUserPassword($username, $newPassword, $userHost);
+        $ok = $accounts->changeUserPassword($username, $newPassword, $userHost);
 
         return $this->json([
             'is_valid' => $ok,
@@ -171,7 +160,7 @@ final class MysqlUserController extends AbstractController
         }
 
         try {
-            $provisioner->createUserWithGrant(new DatabaseSchemaRepository($sqlClient), $dbName, $username, $password, $userHost, $privileges);
+            $provisioner->createUserWithGrant($this->repositories->accounts($sqlClient), $dbName, $username, $password, $userHost, $privileges);
         } catch (ProvisioningConflictException $conflict) {
             return $this->json(['is_valid' => false, 'message' => $conflict->getMessage()], Response::HTTP_CONFLICT);
         } catch (ProvisioningException $provisioningException) {
@@ -185,7 +174,6 @@ final class MysqlUserController extends AbstractController
     public function dbUserGrantsData(
         #[MapQueryString(validationFailedStatusCode: Response::HTTP_UNPROCESSABLE_ENTITY)] AccountTarget $input,
         #[CurrentUser] AppUser $user,
-        DatabaseOwnerRepository $databaseOwnerRepository
     ): JsonResponse {
         $name = $input->name;
         $username = $input->username;
@@ -196,26 +184,16 @@ final class MysqlUserController extends AbstractController
             return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $repo = new DatabaseSchemaRepository($sqlClient);
-        $databases = $this->visibility->databasesWithStats($user, $sqlClient);
-
-        $grants = $repo->getUserGrantsByDb($username, $userHost);
-        if (!$this->access->isAdmin()) {
-            $ownedDbs = $databaseOwnerRepository->findDbNamesOwnedOn($user, $sqlClient);
-            $grants = array_values(array_filter($grants, static fn (array $g): bool => \in_array($g['db'], $ownedDbs, strict: true)));
-        }
-
         return $this->json([
-            'databases' => $databases,
-            'grants' => $grants,
+            'databases' => $this->visibility->databasesWithStats($user, $sqlClient, $this->repositories->schema($sqlClient)),
+            'grants' => $this->visibility->grants($user, $sqlClient, $this->repositories->accounts($sqlClient), $username, $userHost),
         ]);
     }
 
     #[Route(path: '/db-user-grant-save', name: 'app_schema_db_user_grant_save', methods: ['POST'])]
     public function dbUserGrantSave(
         #[MapRequestPayload] GrantChanges $input,
-        #[CurrentUser] AppUser $user,
-        DatabaseOwnerRepository $databaseOwnerRepository): JsonResponse
+        #[CurrentUser] AppUser $user): JsonResponse
     {
         $name = $input->name;
         $username = $input->username;
@@ -230,32 +208,17 @@ final class MysqlUserController extends AbstractController
             return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $repo = new DatabaseSchemaRepository($sqlClient);
-
-        if (!$this->access->isAdmin()) {
-            $ownedDbs = $databaseOwnerRepository->findDbNamesOwnedOn($user, $sqlClient);
-            $touchedDbs = [...array_map(static fn (GrantInput $g): string => $g->db, $grants), ...$revokedDbs];
-            if (!array_all($touchedDbs, static fn (string $db): bool => \in_array($db, $ownedDbs, strict: true))
-                || !$this->visibility->canManageAccount($user, $sqlClient, $repo, $username, $userHost)) {
-                return $this->json(['is_valid' => false, 'message' => 'Utente MySQL o database non trovato.'], Response::HTTP_NOT_FOUND);
-            }
+        $accounts = $this->repositories->accounts($sqlClient);
+        $touchedDbs = [...array_map(static fn (GrantInput $g): string => $g->db, $grants), ...$revokedDbs];
+        if (!$this->visibility->canEditGrants($user, $sqlClient, $accounts, $username, $userHost, $touchedDbs)) {
+            return $this->json(['is_valid' => false, 'message' => 'Utente MySQL o database non trovato.'], Response::HTTP_NOT_FOUND);
         }
 
-        foreach ($revokedDbs as $dbName) {
-            $repo->revokeAllPrivilegesOnDb($dbName, $username, $userHost);
-        }
-
-        // The grants of a selected database are replaced, not added to (as the modal states): revoke the
-        // existing ones first. Only where some exist: REVOKE fails on a database without grants.
-        $alreadyGranted = array_column($repo->getUserGrantsByDb($username, $userHost), 'db');
-        foreach ($grants as $grant) {
-            if (\in_array($grant->db, $alreadyGranted, strict: true)) {
-                $repo->revokeAllPrivilegesOnDb($grant->db, $username, $userHost);
-            }
-            $repo->grantPrivileges(dbName: $grant->db, username: $username, privileges: $grant->privileges, host: $userHost);
-        }
-
-        $repo->flushPrivileges();
+        $this->accountManager->replaceGrants(
+            $accounts, $username, $userHost,
+            array_map(static fn (GrantInput $g): array => [$g->db, $g->privileges], $grants),
+            $revokedDbs,
+        );
 
         return $this->json(['is_valid' => true, 'message' => 'Permessi aggiornati.']);
     }

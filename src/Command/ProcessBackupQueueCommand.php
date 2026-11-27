@@ -17,7 +17,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * Processes one queue entry per run (newest first).
+ * Processes one queue entry per run, oldest first (FIFO).
  *
  * Entry states (no schema change): pending = !isDequeued; done = isDequeued && completedDate;
  * failed or interrupted = isDequeued && completedDate === null (logged, never retried automatically).
@@ -44,7 +44,7 @@ class ProcessBackupQueueCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
 
-        $entry = $this->backupQueueRepository->findLastOneDequeable();
+        $entry = $this->backupQueueRepository->findOldestPending();
 
         if (!$entry instanceof BackupQueue) {
             $io->writeln('No pending backup in queue.');

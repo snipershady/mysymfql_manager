@@ -6,7 +6,7 @@ namespace App\Command;
 
 use App\Entity\SqlClient;
 use App\Repository\SqlClientRepository;
-use App\RepositoryPDO\DatabaseSchemaRepository;
+use App\RepositoryPDO\ManagedServerRepositoryFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -31,8 +31,10 @@ class DummyFixturesCommand extends Command
     private const string DB_NAME_PASSWORD = 'unit_testing_password';
     private const string SERVER_NAME = 'server_locale';
 
-    public function __construct(private readonly EntityManagerInterface $entityManager)
-    {
+    public function __construct(
+        private readonly EntityManagerInterface $entityManager,
+        private readonly ManagedServerRepositoryFactory $repositories,
+    ) {
         parent::__construct();
     }
 
@@ -59,28 +61,32 @@ class DummyFixturesCommand extends Command
             return Command::FAILURE;
         }
 
-        $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
+        $schema = $this->repositories->schema($sqlClient);
+        $accounts = $this->repositories->accounts($sqlClient);
+        $demoData = $this->repositories->demoData($sqlClient);
 
         // Drop all possible existing elements for testing
-        $databaseRepositoryPdo->dropUser(self::DB_NAME_USER);
-        $databaseRepositoryPdo->dropDatabase(self::DB_NAME_TESTING_ONE);
-        $databaseRepositoryPdo->dropDatabase(self::DB_NAME_TESTING_TWO);
+        $accounts->dropUser(self::DB_NAME_USER);
+        $schema->dropDatabase(self::DB_NAME_TESTING_ONE);
+        $schema->dropDatabase(self::DB_NAME_TESTING_TWO);
 
         // Create and populate DB1
-        $databaseRepositoryPdo->createDatabase(self::DB_NAME_TESTING_ONE);
-        $databaseRepositoryPdo->createUser(self::DB_NAME_USER, self::DB_NAME_PASSWORD);
-        $databaseRepositoryPdo->grantPrivileges(self::DB_NAME_TESTING_ONE, self::DB_NAME_USER);
-        $databaseRepositoryPdo->flushPrivileges();
-        $databaseRepositoryPdo->useDbName(self::DB_NAME_TESTING_ONE);
-        $databaseRepositoryPdo->createDummyTable();
-        $databaseRepositoryPdo->populateDummiTable();
-        $databaseRepositoryPdo->createDummyTableTwo();
-        $databaseRepositoryPdo->populateDummiTableTwo();
+        $schema->createDatabase(self::DB_NAME_TESTING_ONE);
+
+        $accounts->createUser(self::DB_NAME_USER, self::DB_NAME_PASSWORD);
+        $accounts->grantPrivileges(self::DB_NAME_TESTING_ONE, self::DB_NAME_USER);
+        $accounts->flushPrivileges();
+
+        $schema->useDbName(self::DB_NAME_TESTING_ONE);
+        $demoData->createDummyTable();
+        $demoData->populateDummiTable();
+        $demoData->createDummyTableTwo();
+        $demoData->populateDummiTableTwo();
 
         // Create and populate DB2
-        $databaseRepositoryPdo->createDatabase(self::DB_NAME_TESTING_TWO);
-        $databaseRepositoryPdo->grantPrivileges(self::DB_NAME_TESTING_TWO, self::DB_NAME_USER);
-        $databaseRepositoryPdo->flushPrivileges();
+        $schema->createDatabase(self::DB_NAME_TESTING_TWO);
+        $accounts->grantPrivileges(self::DB_NAME_TESTING_TWO, self::DB_NAME_USER);
+        $accounts->flushPrivileges();
 
         $io->success('Dummy databases created successfully');
 

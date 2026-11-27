@@ -7,7 +7,7 @@ namespace App\Controller\Schema;
 use App\Dto\Input\DatabaseTarget;
 use App\Dto\Input\TableTarget;
 use App\Entity\SqlClient;
-use App\RepositoryPDO\DatabaseSchemaRepository;
+use App\RepositoryPDO\ManagedServerRepositoryFactory;
 use App\Security\SqlClientAccessResolver;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -27,6 +27,7 @@ final class TableController extends AbstractController
 {
     public function __construct(
         private readonly SqlClientAccessResolver $access,
+        private readonly ManagedServerRepositoryFactory $repositories,
     ) {
     }
 
@@ -46,8 +47,8 @@ final class TableController extends AbstractController
             ]);
         }
 
-        $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
-        $versionRow = $databaseRepositoryPdo->getVersion();
+        $schema = $this->repositories->schema($sqlClient);
+        $versionRow = $schema->getVersion();
         $dbVersion = $versionRow['@@version'] ?? null;
 
         return $this->render('schema/tables.html.twig', [
@@ -68,10 +69,10 @@ final class TableController extends AbstractController
             return $this->json(['error' => 'Server non trovato o accesso negato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
-        $databaseRepositoryPdo->useDbName($dbName);
+        $schema = $this->repositories->schema($sqlClient);
+        $schema->useDbName($dbName);
 
-        return $this->json(['data' => $databaseRepositoryPdo->showTablesWithStats()]);
+        return $this->json(['data' => $schema->showTablesWithStats()]);
     }
 
     #[Route(path: '/table-empty', name: 'app_schema_table_empty', methods: ['POST'])]
@@ -87,10 +88,10 @@ final class TableController extends AbstractController
             return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
-        $databaseRepositoryPdo->useDbName($dbName);
+        $schema = $this->repositories->schema($sqlClient);
+        $schema->useDbName($dbName);
 
-        $ok = $databaseRepositoryPdo->emptyTable($table);
+        $ok = $schema->emptyTable($table);
 
         return $this->json([
             'is_valid' => $ok,
@@ -111,10 +112,10 @@ final class TableController extends AbstractController
             return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
-        $databaseRepositoryPdo->useDbName($dbName);
+        $schema = $this->repositories->schema($sqlClient);
+        $schema->useDbName($dbName);
 
-        $ok = $databaseRepositoryPdo->dropTable($table);
+        $ok = $schema->dropTable($table);
 
         return $this->json([
             'is_valid' => $ok,
@@ -134,12 +135,12 @@ final class TableController extends AbstractController
             return $this->json(['error' => 'Server non trovato o accesso negato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
-        $databaseRepositoryPdo->useDbName($dbName);
+        $schema = $this->repositories->schema($sqlClient);
+        $schema->useDbName($dbName);
 
-        $optimize = $databaseRepositoryPdo->optimizeTable($table);
-        $optimizeAlter = $databaseRepositoryPdo->optimizeWithAlterTable($table);
-        $analyze = $databaseRepositoryPdo->analyzeTable($table);
+        $optimize = $schema->optimizeTable($table);
+        $optimizeAlter = $schema->optimizeWithAlterTable($table);
+        $analyze = $schema->analyzeTable($table);
 
         return $this->json(['is_valid' => $optimize && $optimizeAlter && $analyze]);
     }
@@ -156,10 +157,10 @@ final class TableController extends AbstractController
             return $this->json(['error' => 'Server non trovato o accesso negato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
-        $databaseRepositoryPdo->useDbName($dbName);
+        $schema = $this->repositories->schema($sqlClient);
+        $schema->useDbName($dbName);
 
-        $createTable = $databaseRepositoryPdo->showCreateTable($table);
+        $createTable = $schema->showCreateTable($table);
 
         return $this->json(['is_valid' => true, 'data' => $createTable]);
     }

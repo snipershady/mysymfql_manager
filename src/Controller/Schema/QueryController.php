@@ -8,7 +8,7 @@ use App\Dto\Input\DatabaseTarget;
 use App\Dto\Input\SqlStatement;
 use App\Entity\SqlClient;
 use App\Exception\RepositoryException;
-use App\RepositoryPDO\DatabaseSchemaRepository;
+use App\RepositoryPDO\ManagedServerRepositoryFactory;
 use App\Security\SqlClientAccessResolver;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -28,6 +28,7 @@ final class QueryController extends AbstractController
 {
     public function __construct(
         private readonly SqlClientAccessResolver $access,
+        private readonly ManagedServerRepositoryFactory $repositories,
     ) {
     }
 
@@ -65,9 +66,9 @@ final class QueryController extends AbstractController
             return $this->json(['error' => 'Server non trovato o accesso negato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $repo = new DatabaseSchemaRepository($sqlClient);
+        $schema = $this->repositories->schema($sqlClient);
 
-        return $this->json(['tables' => $repo->getColumnsBySchema($dbName)]);
+        return $this->json(['tables' => $schema->getColumnsBySchema($dbName)]);
     }
 
     #[Route(path: '/query-execute', name: 'app_schema_query_execute', methods: ['POST'])]
@@ -83,13 +84,14 @@ final class QueryController extends AbstractController
             return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $repo = new DatabaseSchemaRepository($sqlClient);
-        $repo->useDbName($dbName);
+        $schema = $this->repositories->schema($sqlClient);
+        $schema->useDbName($dbName);
 
         try {
-            $result = $repo->runQuery($sql);
+            $result = $schema->runQuery($sql);
         } catch (RepositoryException $repositoryException) {
-            return $this->json(['is_valid' => false, 'message' => $repositoryException->getMessage()], Response::HTTP_BAD_REQUEST);
+            // The statement typed by the user failed: MySQL's own message, as the mysql client shows it.
+            return $this->json(['is_valid' => false, 'message' => $repositoryException->mysqlError()], Response::HTTP_BAD_REQUEST);
         }
 
         return $this->json([

@@ -9,13 +9,9 @@ use App\Dto\Input\BackupFile;
 use App\Dto\Input\BackupTarget;
 use App\Dto\Input\RestoreBackup;
 use App\Entity\AppUser;
-use App\Entity\BackupQueue;
 use App\Entity\SqlClient;
-use App\Repository\DatabaseOwnerRepository;
 use App\Security\SqlClientAccessResolver;
-use App\Service\MysqldumpManager;
-use Doctrine\ORM\EntityManagerInterface;
-use Psr\Log\LoggerInterface;
+use App\Service\BackupService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -37,62 +33,41 @@ final class BackupController extends AbstractController
 {
     public function __construct(
         private readonly SqlClientAccessResolver $access,
+        private readonly BackupService $backups,
     ) {
     }
 
     #[Route(path: '/table-backup', name: 'app_schema_table_backup', methods: ['POST'])]
-    public function tableBackup(
-        #[MapRequestPayload] BackupTarget $input,
-        MysqldumpManager $mysqldumpManager,
-        LoggerInterface $logger): JsonResponse
+    public function tableBackup(#[MapRequestPayload] BackupTarget $input): JsonResponse
     {
-        $name = $input->name;
-        $dbName = $input->dbName;
-        $table = $input->table;
-
-        $sqlClient = $this->access->database($name, $dbName);
+        $sqlClient = $this->access->database($input->name, $input->dbName);
         if (!$sqlClient instanceof SqlClient) {
             return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $result = $mysqldumpManager->createBackup($sqlClient, $dbName, $table);
-        if (!$result['is_valid']) {
-            // mysqldump's error output names hosts and accounts: logged, never sent to the browser.
-            $logger->error('Backup failed: {error}', ['error' => $result['msg'], 'server' => $name, 'db' => $dbName, 'table' => $table]);
-        }
+        $outcome = $this->backups->backupNow($sqlClient, $input->dbName, $input->table);
 
         return $this->json([
-            'is_valid' => $result['is_valid'],
-            'message' => $result['is_valid'] ? 'Backup completato.' : "Errore durante il backup: dettagli nel log dell'applicazione.",
-            'backup_filename' => basename($result['backup_filename']),
+            'is_valid' => $outcome->ok,
+            'message' => $outcome->ok ? 'Backup completato.' : 'Errore durante il backup: ' . $outcome->error,
+            'backup_filename' => $outcome->filename,
         ]);
     }
 
     #[Route(path: '/enqueue-backup', name: 'app_schema_enqueue_backup', methods: ['POST'])]
     public function enqueueBackup(
         #[MapRequestPayload] BackupTarget $input,
-        #[CurrentUser] AppUser $user,
-        MysqldumpManager $mysqldumpManager,
-        EntityManagerInterface $entityManagerInterface): JsonResponse
+        #[CurrentUser] AppUser $user): JsonResponse
     {
-        $name = $input->name;
         $dbName = $input->dbName;
-        $table = $input->table;
 
-        $sqlClient = $this->access->database($name, $dbName);
+        $sqlClient = $this->access->database($input->name, $dbName);
         if (!$sqlClient instanceof SqlClient) {
             return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $databaseQueue = new BackupQueue();
-        $databaseQueue
-                ->setDbName($dbName)
-                ->setOwner($user)
-                ->setSqlClient($sqlClient)
-                ->setTable($table);
         try {
-            $entityManagerInterface->persist($databaseQueue);
-            $entityManagerInterface->flush();
+            $this->backups->enqueue($user, $sqlClient, $dbName, $input->table);
         } catch (\Exception $exception) {
             return $this->json([
                 'is_valid' => false,
@@ -109,37 +84,22 @@ final class BackupController extends AbstractController
     }
 
     #[Route(path: '/backup-list', name: 'app_schema_backup_list', methods: ['GET'])]
-    public function backupList(#[CurrentUser] AppUser $user, MysqldumpManager $mysqldumpManager, DatabaseOwnerRepository $databaseOwnerRepository): Response
+    public function backupList(#[CurrentUser] AppUser $user): Response
     {
-        $allOwnedDatabased = $databaseOwnerRepository->findAllByOwner($user);
-
         return $this->render('schema/backup_list.html.twig', [
-            'backups' => $mysqldumpManager->listBackups($user, $allOwnedDatabased),
+            'backups' => $this->backups->visibleBackups($user),
         ]);
     }
 
     #[Route(path: '/backup-view', name: 'app_schema_backup_view', methods: ['GET'])]
     public function backupView(
         #[MapQueryString(validationFailedStatusCode: Response::HTTP_UNPROCESSABLE_ENTITY)] BackupFile $input,
-        #[CurrentUser] AppUser $user, MysqldumpManager $mysqldumpManager, DatabaseOwnerRepository $databaseOwnerRepository): Response
+        #[CurrentUser] AppUser $user): Response
     {
-        $filename = $input->filename;
+        $backup = $this->backups->findVisible($user, $input->filename)
+            ?? throw $this->createNotFoundException('File di backup non trovato.');
 
-        $allOwnedDatabased = $databaseOwnerRepository->findAllByOwner($user);
-
-        $backups = $mysqldumpManager->listBackups($user, $allOwnedDatabased);
-        $backup = array_find($backups, static fn (BackupDump $b): bool => $b->id === $filename);
-
-        if (!$backup) {
-            throw $this->createNotFoundException('File di backup non trovato.');
-        }
-
-        $content = file_get_contents($backup->path);
-        if (false === $content) {
-            throw new \RuntimeException('Unable to read the backup file.');
-        }
-
-        return new Response($content, Response::HTTP_OK, [
+        return new Response($this->backups->contents($backup), Response::HTTP_OK, [
             'Content-Type' => 'text/plain; charset=UTF-8',
             'X-Content-Type-Options' => 'nosniff',
         ]);
@@ -148,20 +108,10 @@ final class BackupController extends AbstractController
     #[Route(path: '/backup-download', name: 'app_schema_backup_download', methods: ['GET'])]
     public function backupDownload(
         #[MapQueryString(validationFailedStatusCode: Response::HTTP_UNPROCESSABLE_ENTITY)] BackupFile $input,
-        #[CurrentUser] AppUser $user,
-        MysqldumpManager $mysqldumpManager,
-        DatabaseOwnerRepository $allOwnedDatabased,
-        DatabaseOwnerRepository $databaseOwnerRepository): BinaryFileResponse
+        #[CurrentUser] AppUser $user): BinaryFileResponse
     {
-        $filename = $input->filename;
-
-        $allOwnedDatabased = $databaseOwnerRepository->findAllByOwner($user);
-        $backups = $mysqldumpManager->listBackups($user, $allOwnedDatabased);
-        $backup = array_find($backups, static fn (BackupDump $b): bool => $b->id === $filename);
-
-        if (!$backup) {
-            throw $this->createNotFoundException('File di backup non trovato.');
-        }
+        $backup = $this->backups->findVisible($user, $input->filename)
+            ?? throw $this->createNotFoundException('File di backup non trovato.');
 
         $response = new BinaryFileResponse($backup->path);
         $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $backup->filename);
@@ -172,20 +122,15 @@ final class BackupController extends AbstractController
     #[Route(path: '/backup-delete', name: 'app_schema_backup_delete', methods: ['POST'])]
     public function backupDelete(
         #[MapRequestPayload] BackupFile $input,
-        #[CurrentUser] AppUser $user, MysqldumpManager $mysqldumpManager, DatabaseOwnerRepository $databaseOwnerRepository): JsonResponse
+        #[CurrentUser] AppUser $user): JsonResponse
     {
-        $filename = $input->filename;
-
-        $allOwnedDatabased = $databaseOwnerRepository->findAllByOwner($user);
-        $backups = $mysqldumpManager->listBackups($user, $allOwnedDatabased);
-        $backup = array_find($backups, static fn (BackupDump $b): bool => $b->id === $filename);
-
-        if (!$backup) {
+        $backup = $this->backups->findVisible($user, $input->filename);
+        if (!$backup instanceof BackupDump) {
             return $this->json(['is_valid' => false, 'message' => 'File di backup non trovato.'], Response::HTTP_NOT_FOUND);
         }
 
-        if (!unlink($backup->path)) {
-            return $this->json(['is_valid' => false, 'message' => 'Impossibile eliminare il file.'], 500);
+        if (!$this->backups->delete($backup)) {
+            return $this->json(['is_valid' => false, 'message' => 'Impossibile eliminare il file: controlla i permessi di BACKUP_PATH.'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
         return $this->json(['is_valid' => true, 'message' => 'Backup eliminato.']);
@@ -195,60 +140,39 @@ final class BackupController extends AbstractController
     public function tableRestorePage(
         #[MapQueryString(validationFailedStatusCode: Response::HTTP_UNPROCESSABLE_ENTITY)] BackupTarget $input,
         #[CurrentUser] AppUser $user,
-        MysqldumpManager $mysqldumpManager,
-        DatabaseOwnerRepository $databaseOwnerRepository
     ): Response {
-        $name = $input->name;
-        $dbName = $input->dbName;
-        $table = $input->table ?? '';
-        if (!$this->access->database($name, $dbName) instanceof SqlClient) {
+        if (!$this->access->database($input->name, $input->dbName) instanceof SqlClient) {
             throw $this->createNotFoundException('Database non trovato.');
         }
 
-        $allOwnedDatabased = $databaseOwnerRepository->findAllByOwner($user);
-        $backups = $mysqldumpManager->listBackups($user, $allOwnedDatabased);
-
         return $this->render('schema/table_restore.html.twig', [
-            'name' => $name,
-            'db_name' => $dbName,
-            'table' => $table,
-            'backups' => $backups,
+            'name' => $input->name,
+            'db_name' => $input->dbName,
+            'table' => $input->table ?? '',
+            'backups' => $this->backups->visibleBackups($user),
         ]);
     }
 
     #[Route(path: '/table-restore-exec', name: 'app_schema_table_restore_exec', methods: ['POST'])]
     public function tableRestoreExec(
         #[MapRequestPayload] RestoreBackup $input,
-        #[CurrentUser] AppUser $user,
-        MysqldumpManager $mysqldumpManager,
-        DatabaseOwnerRepository $databaseOwnerRepository,
-        LoggerInterface $logger): JsonResponse
+        #[CurrentUser] AppUser $user): JsonResponse
     {
-        $name = $input->name;
-        $dbName = $input->dbName;
-        $backupFilename = $input->backupFilename;
-
-        $sqlClient = $this->access->database($name, $dbName);
+        $sqlClient = $this->access->database($input->name, $input->dbName);
         if (!$sqlClient instanceof SqlClient) {
             return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $allOwnedDatabased = $databaseOwnerRepository->findAllByOwner($user);
-        $backups = $mysqldumpManager->listBackups($user, $allOwnedDatabased);
-        $selectedBackup = array_find($backups, static fn (BackupDump $backup): bool => $backup->id === $backupFilename);
-
-        if (!$selectedBackup) {
+        $backup = $this->backups->findVisible($user, $input->backupFilename);
+        if (!$backup instanceof BackupDump) {
             return $this->json(['is_valid' => false, 'message' => 'File di backup non trovato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $result = $mysqldumpManager->restoreBackup($sqlClient, $dbName, $selectedBackup->path);
-        if (!$result['is_valid']) {
-            $logger->error('Restore failed: {error}', ['error' => $result['msg'], 'server' => $name, 'db' => $dbName, 'backup' => $selectedBackup->id]);
-        }
+        $outcome = $this->backups->restore($sqlClient, $input->dbName, $backup);
 
         return $this->json([
-            'is_valid' => $result['is_valid'],
-            'message' => $result['is_valid'] ? 'Ripristino completato.' : "Errore durante il ripristino: dettagli nel log dell'applicazione.",
+            'is_valid' => $outcome->ok,
+            'message' => $outcome->ok ? 'Ripristino completato.' : 'Errore durante il ripristino: ' . $outcome->error,
         ]);
     }
 }

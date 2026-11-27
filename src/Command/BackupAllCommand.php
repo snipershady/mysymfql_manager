@@ -6,7 +6,7 @@ namespace App\Command;
 
 use App\Entity\SqlClient;
 use App\Repository\SqlClientRepository;
-use App\RepositoryPDO\DatabaseSchemaRepository;
+use App\RepositoryPDO\ManagedServerRepositoryFactory;
 use App\Service\MysqldumpManager;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -24,6 +24,7 @@ class BackupAllCommand extends Command
     public function __construct(
         private readonly SqlClientRepository $sqlClientRepository,
         private readonly MysqldumpManager $mysqldumpManager,
+        private readonly ManagedServerRepositoryFactory $repositories,
     ) {
         parent::__construct();
     }
@@ -48,8 +49,8 @@ class BackupAllCommand extends Command
             return Command::FAILURE;
         }
 
-        $repo = new DatabaseSchemaRepository($sqlClient);
-        $databases = $repo->getDatabasesWithStats();
+        $schema = $this->repositories->schema($sqlClient);
+        $databases = $schema->getDatabasesWithStats();
 
         if ([] === $databases) {
             $io->warning('No databases found on the server.');

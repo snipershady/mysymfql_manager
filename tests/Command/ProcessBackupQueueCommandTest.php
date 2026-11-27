@@ -26,14 +26,6 @@ final class ProcessBackupQueueCommandTest extends TestCase
     /** @var list<string> */
     private array $logged = [];
 
-    #[\Override]
-    protected function setUp(): void
-    {
-        if (!shell_exec('which mysqldump 2>/dev/null')) {
-            self::markTestSkipped('mysqldump is not installed (required by MysqldumpManager).');
-        }
-    }
-
     public function testEmptyQueueIsASuccess(): void
     {
         $tester = $this->tester(entry: null, claimed: false);
@@ -74,7 +66,7 @@ final class ProcessBackupQueueCommandTest extends TestCase
     private function tester(?BackupQueue $entry, bool $claimed): CommandTester
     {
         $repository = $this->createStub(BackupQueueRepository::class);
-        $repository->method('findLastOneDequeable')->willReturn($entry);
+        $repository->method('findOldestPending')->willReturn($entry);
         $repository->method('claim')->willReturnCallback(static function (BackupQueue $e) use ($claimed): bool {
             if ($claimed) {
                 $e->setIsDequeued(isDequeued: true);
@@ -98,7 +90,7 @@ final class ProcessBackupQueueCommandTest extends TestCase
 
         return new CommandTester(new ProcessBackupQueueCommand(
             $repository,
-            new MysqldumpManager(),
+            new MysqldumpManager(sys_get_temp_dir() . '/process_backup_queue_test'), // never written: the dump fails before
             $this->createStub(EntityManagerInterface::class),
             $logger,
         ));

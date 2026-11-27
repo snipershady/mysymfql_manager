@@ -11,6 +11,7 @@ use App\Enum\CollationEnum;
 use App\Exception\ProvisioningConflictException;
 use App\Exception\ProvisioningException;
 use App\RepositoryPDO\DatabaseSchemaRepository;
+use App\RepositoryPDO\MysqlAccountRepository;
 use App\Service\DatabaseProvisioner;
 use App\Tests\MyKernelTestCase;
 
@@ -22,6 +23,8 @@ final class DatabaseProvisionerIntegrationTest extends MyKernelTestCase
 {
     private DatabaseSchemaRepository $repo;
 
+    private MysqlAccountRepository $repoAccounts;
+
     private string $dbName;
 
     private string $username;
@@ -32,6 +35,7 @@ final class DatabaseProvisionerIntegrationTest extends MyKernelTestCase
         $sqlClient = $this->entityManager->getRepository(SqlClient::class)->findOneByName($this->serverName);
         $this->assertInstanceOf(SqlClient::class, $sqlClient);
         $this->repo = new DatabaseSchemaRepository($sqlClient);
+        $this->repoAccounts = new MysqlAccountRepository($sqlClient);
         $suffix = bin2hex(random_bytes(4));
         $this->dbName = 'unit_testing_prov_' . $suffix;
         $this->username = 'ut_prov_' . $suffix;
@@ -39,7 +43,7 @@ final class DatabaseProvisionerIntegrationTest extends MyKernelTestCase
 
     protected function tearDown(): void
     {
-        $this->repo->dropUser($this->username);
+        $this->repoAccounts->dropUser($this->username);
         $this->repo->dropDatabase($this->dbName);
         parent::tearDown();
     }
@@ -52,7 +56,7 @@ final class DatabaseProvisionerIntegrationTest extends MyKernelTestCase
         try {
             // A privilege outside the whitelist makes grantPrivileges() throw after the database and the user exist.
             $this->provisioner()->createDatabaseWithOwner(
-                $this->repo, $sqlClient, new AppUser(), $this->dbName,
+                $this->repo, $this->repoAccounts, $sqlClient, new AppUser(), $this->dbName,
                 CharsetEnum::UTF8MB4, CollationEnum::UTF8MB4_0900_AI_CI,
                 $this->username, 'Str0ng-' . bin2hex(random_bytes(6)), '%', 'NOT_A_PRIVILEGE',
             );
@@ -62,7 +66,7 @@ final class DatabaseProvisionerIntegrationTest extends MyKernelTestCase
         }
 
         $this->assertNotContains($this->dbName, $this->repo->showDatabases());
-        $this->assertSame([], $this->repo->getHostByUser($this->username));
+        $this->assertSame([], $this->repoAccounts->getHostByUser($this->username));
     }
 
     public function testExistingDatabaseIsNeverDroppedByACompensation(): void
@@ -73,7 +77,7 @@ final class DatabaseProvisionerIntegrationTest extends MyKernelTestCase
 
         try {
             $this->provisioner()->createDatabaseWithOwner(
-                $this->repo, $sqlClient, new AppUser(), $this->dbName,
+                $this->repo, $this->repoAccounts, $sqlClient, new AppUser(), $this->dbName,
                 CharsetEnum::UTF8MB4, CollationEnum::UTF8MB4_0900_AI_CI,
                 $this->username, 'Str0ng-' . bin2hex(random_bytes(6)), '%', 'SELECT',
             );
@@ -82,7 +86,7 @@ final class DatabaseProvisionerIntegrationTest extends MyKernelTestCase
         }
 
         $this->assertContains($this->dbName, $this->repo->showDatabases());
-        $this->assertSame([], $this->repo->getHostByUser($this->username));
+        $this->assertSame([], $this->repoAccounts->getHostByUser($this->username));
     }
 
     private function provisioner(): DatabaseProvisioner

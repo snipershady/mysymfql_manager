@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests;
 
+use App\Service\MysqldumpManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -59,5 +60,16 @@ class MyKernelTestCase extends KernelTestCase
         $input = new ArgvInput();
         $output = new ConsoleOutput();
         $this->io = new SymfonyStyle($input, $output);
+    }
+
+    /**
+     * The container's service, configured with the test BACKUP_PATH (.env.test).
+     */
+    protected function mysqldumpManager(): MysqldumpManager
+    {
+        $manager = self::getContainer()->get(MysqldumpManager::class);
+        $this->assertInstanceOf(MysqldumpManager::class, $manager);
+
+        return $manager;
     }
 }

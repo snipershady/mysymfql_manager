@@ -15,7 +15,7 @@ use App\Enum\CollationEnum;
 use App\Exception\ProvisioningConflictException;
 use App\Exception\ProvisioningException;
 use App\Repository\SqlClientRepository;
-use App\RepositoryPDO\DatabaseSchemaRepository;
+use App\RepositoryPDO\ManagedServerRepositoryFactory;
 use App\Security\SchemaVisibility;
 use App\Security\SqlClientAccessResolver;
 use App\Service\DatabaseProvisioner;
@@ -39,6 +39,7 @@ final class DatabaseController extends AbstractController
     public function __construct(
         private readonly SqlClientAccessResolver $access,
         private readonly SchemaVisibility $visibility,
+        private readonly ManagedServerRepositoryFactory $repositories,
     ) {
     }
 
@@ -69,11 +70,11 @@ final class DatabaseController extends AbstractController
             return $this->json(['error' => 'Server non trovato o accesso negato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
-        $versionRow = $databaseRepositoryPdo->getVersion();
+        $schema = $this->repositories->schema($sqlClient);
+        $versionRow = $schema->getVersion();
 
         return $this->json([
-            'data' => $this->visibility->databasesWithStats($user, $sqlClient),
+            'data' => $this->visibility->databasesWithStats($user, $sqlClient, $schema),
             'version' => $versionRow['@@version'] ?? null,
         ]);
     }
@@ -93,7 +94,7 @@ final class DatabaseController extends AbstractController
 
         try {
             $provisioner->createDatabaseWithOwner(
-                new DatabaseSchemaRepository($sqlClient), $sqlClient, $user,
+                $this->repositories->schema($sqlClient), $this->repositories->accounts($sqlClient), $sqlClient, $user,
                 $input->dbName, $input->charset, $input->collation, $input->username, $input->password, $input->userHost, $input->grantClause(),
             );
         } catch (ProvisioningConflictException $conflict) {
@@ -119,7 +120,7 @@ final class DatabaseController extends AbstractController
         }
 
         try {
-            $provisioner->dropDatabaseAndOwnerships(new DatabaseSchemaRepository($sqlClient), $sqlClient, $dbName);
+            $provisioner->dropDatabaseAndOwnerships($this->repositories->schema($sqlClient), $sqlClient, $dbName);
         } catch (ProvisioningException $provisioningException) {
             return $this->json(['is_valid' => false, 'message' => $provisioningException->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
         }

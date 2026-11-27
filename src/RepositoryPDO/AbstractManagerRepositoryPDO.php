@@ -7,23 +7,35 @@ namespace App\RepositoryPDO;
 use App\Component\DatabaseClientConnection;
 use App\Entity\SqlClient;
 use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
+use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierServiceInterface;
 
 /**
- * Description of AbstractManagerRepositoryPDO.
+ * Base of the repositories working on a managed MySQL server through native PDO.
+ *
+ * They depend on a runtime SqlClient, so they are not services: the application gets them from
+ * {@see ManagedServerRepositoryFactory}. Every repository of the same SqlClient shares one PDO connection
+ * ({@see DatabaseClientConnection}), and with it the schema selected by USE.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
 abstract readonly class AbstractManagerRepositoryPDO
 {
     protected \PDO $pdo;
-    protected EffectivePrimitiveTypeIdentifierService $epti;
+    protected EffectivePrimitiveTypeIdentifierServiceInterface $epti;
 
-    public function __construct(SqlClient $sqlClient)
+    public function __construct(SqlClient $sqlClient, ?EffectivePrimitiveTypeIdentifierServiceInterface $epti = null)
     {
         $this->pdo = DatabaseClientConnection::getInstance($sqlClient);
-        // The repository is instantiated with `new` (it depends on a runtime SqlClient),
-        // so it cannot be autowired; the helper is stateless.
-        $this->epti = new EffectivePrimitiveTypeIdentifierService();
+        $this->epti = $epti ?? new EffectivePrimitiveTypeIdentifierService();
+    }
+
+    /**
+     * Escapes a MySQL identifier (database name, table name, etc.) by wrapping
+     * it in backticks and doubling any backtick present in the value.
+     */
+    protected function quoteIdentifier(string $identifier): string
+    {
+        return '`' . str_replace('`', '``', $identifier) . '`';
     }
 
     /**

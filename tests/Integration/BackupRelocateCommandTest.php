@@ -7,6 +7,7 @@ namespace App\Tests\Integration;
 use App\Command\BackupRelocateCommand;
 use App\Entity\SqlClient;
 use App\RepositoryPDO\DatabaseSchemaRepository;
+use App\RepositoryPDO\DemoDataRepository;
 use App\Tests\MyKernelTestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -47,10 +48,12 @@ final class BackupRelocateCommandTest extends MyKernelTestCase
         $this->assertInstanceOf(SqlClient::class, $sqlClient);
         $this->sqlClient = $sqlClient;
         $this->remote = new DatabaseSchemaRepository($sqlClient);
+        $remoteDemoData = new DemoDataRepository($sqlClient);
         $this->remote->dropDatabase($this->dbNameTestingOne);
         $this->remote->createDatabase($this->dbNameTestingOne);
         $this->remote->useDbName($this->dbNameTestingOne);
-        $this->remote->createDummyTable();
+
+        $remoteDemoData->createDummyTable();
 
         $this->legacyFiles = [
             \sprintf(self::FULL, $this->dbNameTestingOne),

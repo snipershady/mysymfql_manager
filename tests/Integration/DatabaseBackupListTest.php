@@ -6,7 +6,8 @@ namespace App\Tests\Integration;
 
 use App\Entity\SqlClient;
 use App\RepositoryPDO\DatabaseSchemaRepository;
-use App\Service\MysqldumpManager;
+use App\RepositoryPDO\DemoDataRepository;
+use App\RepositoryPDO\MysqlAccountRepository;
 use App\Tests\MyKernelTestCase;
 
 /**
@@ -22,24 +23,28 @@ final class DatabaseBackupListTest extends MyKernelTestCase
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
         $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
+        $accounts = new MysqlAccountRepository($sqlClient);
+        $demoData = new DemoDataRepository($sqlClient);
         // Dropp di tutti i possibili elementi esistenti per il testing
-        $databaseRepositoryPdo->dropUser($this->dbNameUser);
+        $accounts->dropUser($this->dbNameUser);
         $databaseRepositoryPdo->dropDatabase($this->dbNameTestingOne);
         $databaseRepositoryPdo->dropDatabase($this->dbNameTestingTwo);
         // Creo e popolo DB1
         $databaseRepositoryPdo->createDatabase($this->dbNameTestingOne);
-        $databaseRepositoryPdo->createUser($this->dbNameUser, $this->dbNamePassword);
-        $databaseRepositoryPdo->grantPrivileges($this->dbNameTestingOne, $this->dbNameUser);
-        $databaseRepositoryPdo->flushPrivileges();
+
+        $accounts->createUser($this->dbNameUser, $this->dbNamePassword);
+        $accounts->grantPrivileges($this->dbNameTestingOne, $this->dbNameUser);
+        $accounts->flushPrivileges();
+
         $databaseRepositoryPdo->useDbName($this->dbNameTestingOne);
-        $databaseRepositoryPdo->createDummyTable();
-        $databaseRepositoryPdo->populateDummiTable();
-        $databaseRepositoryPdo->createDummyTableTwo();
-        $databaseRepositoryPdo->populateDummiTableTwo();
+        $demoData->createDummyTable();
+        $demoData->populateDummiTable();
+        $demoData->createDummyTableTwo();
+        $demoData->populateDummiTableTwo();
         // Creo e popolo DB2
         $databaseRepositoryPdo->createDatabase($this->dbNameTestingTwo);
-        $databaseRepositoryPdo->grantPrivileges($this->dbNameTestingTwo, $this->dbNameUser);
-        $databaseRepositoryPdo->flushPrivileges();
+        $accounts->grantPrivileges($this->dbNameTestingTwo, $this->dbNameUser);
+        $accounts->flushPrivileges();
     }
 
     #[\Override]
@@ -49,7 +54,9 @@ final class DatabaseBackupListTest extends MyKernelTestCase
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
         $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
-        $databaseRepositoryPdo->dropUser($this->dbNameUser);
+        $accounts = new MysqlAccountRepository($sqlClient);
+        $accounts->dropUser($this->dbNameUser);
+
         $databaseRepositoryPdo->dropDatabase($this->dbNameTestingOne);
         $databaseRepositoryPdo->dropDatabase($this->dbNameTestingTwo);
     }
@@ -61,7 +68,7 @@ final class DatabaseBackupListTest extends MyKernelTestCase
 
         new DatabaseSchemaRepository($sqlClient);
 
-        $msdm = new MysqldumpManager();
+        $msdm = $this->mysqldumpManager();
         $check = $msdm->createBackup($sqlClient, $this->dbNameTestingOne);
         $this->assertTrue($check['is_valid']);
 

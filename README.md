@@ -271,7 +271,7 @@ composer test               # everything
 composer quality-check      # Rector, PHP-CS-Fixer, PHPStan (as in CI)
 ```
 
-The same checks run on GitHub Actions (`.github/workflows/ci.yml`) on PHP 8.4 and 8.5.
+The same checks run on GitHub Actions (`.github/workflows/ci.yml`) on PHP 8.5.
 
 ## Adding a managed MySQL server — creating a remote manager account
 
@@ -495,11 +495,12 @@ php bin/console app:process-backup-queue
 
 **What it does**
 
-1. Calls `BackupQueueRepository::findLastOneDequeable()` to fetch the newest pending entry.
+1. Calls `BackupQueueRepository::findOldestPending()` to fetch the **oldest** pending entry (FIFO: backups run in the order they were requested).
 2. If the queue is empty, prints a message and exits with `SUCCESS`.
-3. Runs `mysqldump` via `MysqldumpManager::createBackup()` using the server, database, and optional table stored in the entry.
-4. On success: sets `isDequeued = true` and `completedDate = now()` on the entry and flushes to the database.
-5. On failure: exits with `FAILURE` without updating the entry, leaving it available for a subsequent run.
+3. Claims the entry atomically (`BackupQueueRepository::claim()`, a conditional `UPDATE`): if an overlapping cron run already took it, exits with `SUCCESS` without doing anything.
+4. Runs `mysqldump` via `MysqldumpManager::createBackup()` using the server, database, and optional table stored in the entry.
+5. On success: sets `completedDate = now()` on the entry and flushes to the database.
+6. On failure: logs the error and exits with `FAILURE`. The entry stays out of the queue with an empty `completedDate` (failed), so a broken entry never blocks the ones behind it; it is not retried automatically.
 
 **Output format**
 

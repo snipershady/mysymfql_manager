@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace App\Controller\Schema;
 
-use App\Dto\InnodbTransaction;
 use App\Dto\Input\KillProcess;
 use App\Dto\Input\ServerTarget;
 use App\Dto\ProcessList;
 use App\Entity\AppUser;
 use App\Entity\SqlClient;
 use App\Repository\SqlClientRepository;
-use App\RepositoryPDO\DatabaseSchemaRepository;
+use App\RepositoryPDO\ManagedServerRepositoryFactory;
 use App\Security\SchemaVisibility;
 use App\Security\SqlClientAccessResolver;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -35,6 +34,7 @@ final class MonitorController extends AbstractController
     public function __construct(
         private readonly SqlClientAccessResolver $access,
         private readonly SchemaVisibility $visibility,
+        private readonly ManagedServerRepositoryFactory $repositories,
     ) {
     }
 
@@ -52,15 +52,15 @@ final class MonitorController extends AbstractController
         if (null === $sqlClient) {
             return $this->json(['error' => 'Server non trovato o accesso negato.'], Response::HTTP_NOT_FOUND);
         }
-        $repo = new DatabaseSchemaRepository($sqlClient);
+        $monitor = $this->repositories->monitor($sqlClient);
 
-        $databases = $this->visibility->databasesWithStats($user, $sqlClient);
+        $databases = $this->visibility->databasesWithStats($user, $sqlClient, $this->repositories->schema($sqlClient));
 
         return $this->json([
             'db_count' => \count($databases),
-            'active_connections' => $repo->getActiveConnections(),
-            'running_processes' => $repo->getRunningProcesses(),
-            'blocked_processes' => $repo->getBlockedProcesses(),
+            'active_connections' => $monitor->getActiveConnections(),
+            'running_processes' => $monitor->getRunningProcesses(),
+            'blocked_processes' => $monitor->getBlockedProcesses(),
             'databases' => $databases,
         ]);
     }
@@ -76,9 +76,7 @@ final class MonitorController extends AbstractController
             return $this->json(['error' => 'Server non trovato o accesso negato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
-
-        return $this->json(['data' => $databaseRepositoryPdo->showEngineInnodbStatus()]);
+        return $this->json(['data' => $this->repositories->monitor($sqlClient)->showEngineInnodbStatus()]);
     }
 
     #[Route(path: '/engine-status', name: 'app_schema_engine_status', methods: ['GET'])]
@@ -91,11 +89,10 @@ final class MonitorController extends AbstractController
         if (!$sqlClient instanceof SqlClient) {
             throw $this->createNotFoundException('Server non trovato.');
         }
-        $repo = new DatabaseSchemaRepository($sqlClient);
 
         return $this->render('schema/engine_status.html.twig', [
             'name' => $name,
-            'status' => $repo->showEngineInnodbStatus(),
+            'status' => $this->repositories->monitor($sqlClient)->showEngineInnodbStatus(),
         ]);
     }
 
@@ -111,9 +108,7 @@ final class MonitorController extends AbstractController
             return $this->json(['error' => 'Server non trovato o accesso negato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
-
-        return $this->json(['data' => $this->visibility->processes($user, $sqlClient, $databaseRepositoryPdo)]);
+        return $this->json(['data' => $this->visibility->processes($user, $sqlClient, $this->repositories->monitor($sqlClient))]);
     }
 
     #[Route(path: '/process-list', name: 'app_schema_process_list', methods: ['GET'])]
@@ -143,13 +138,13 @@ final class MonitorController extends AbstractController
             return $this->json(['is_valid' => false, 'message' => 'Server non trovato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $repo = new DatabaseSchemaRepository($sqlClient);
-        $visible = $this->visibility->processes($user, $sqlClient, $repo);
+        $monitor = $this->repositories->monitor($sqlClient);
+        $visible = $this->visibility->processes($user, $sqlClient, $monitor);
         if (!array_any($visible, static fn (ProcessList $process): bool => $process->id === $pid)) {
             return $this->json(['is_valid' => false, 'message' => 'Processo non trovato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $ok = $repo->killProcessById($pid);
+        $ok = $monitor->killProcessById($pid);
 
         return $this->json([
             'is_valid' => $ok,
@@ -175,17 +170,7 @@ final class MonitorController extends AbstractController
             return $this->json(['error' => 'Server non trovato o accesso negato.'], Response::HTTP_NOT_FOUND);
         }
 
-        $repo = new DatabaseSchemaRepository($sqlClient);
-        $transactions = $repo->showInnodbTransactions();
-        if (!$this->access->isAdmin()) {
-            $visibleThreads = array_map(static fn (ProcessList $p): int => $p->id, $this->visibility->processes($user, $sqlClient, $repo));
-            $transactions = array_values(array_filter(
-                $transactions,
-                static fn (InnodbTransaction $t): bool => \in_array($t->threadId, $visibleThreads, strict: true)
-            ));
-        }
-
-        return $this->json(['data' => $transactions]);
+        return $this->json(['data' => $this->visibility->transactions($user, $sqlClient, $this->repositories->monitor($sqlClient))]);
     }
 
     #[Route(path: '/transactions', name: 'app_schema_transactions', methods: ['GET'])]

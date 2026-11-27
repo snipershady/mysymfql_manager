@@ -11,8 +11,10 @@ use App\Enum\CharsetEnum;
 use App\Enum\CollationEnum;
 use App\Exception\ProvisioningConflictException;
 use App\Exception\ProvisioningException;
+use App\Exception\RepositoryException;
 use App\Repository\DatabaseOwnerRepository;
 use App\RepositoryPDO\DatabaseSchemaRepository;
+use App\RepositoryPDO\MysqlAccountRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 
@@ -50,7 +52,8 @@ final readonly class DatabaseProvisioner
      * @throws ProvisioningException         when a step fails (completed steps are compensated)
      */
     public function createDatabaseWithOwner(
-        DatabaseSchemaRepository $repo,
+        DatabaseSchemaRepository $schema,
+        MysqlAccountRepository $accounts,
         SqlClient $sqlClient,
         AppUser $owner,
         string $dbName,
@@ -61,20 +64,20 @@ final readonly class DatabaseProvisioner
         string $host,
         string $privileges,
     ): void {
-        $this->assertDatabaseIsNew($repo, $dbName);
-        $this->assertAccountIsNew($repo, $username, $host);
+        $this->assertDatabaseIsNew($schema, $dbName);
+        $this->assertAccountIsNew($accounts, $username, $host);
 
         /** @var list<array{string, callable(): mixed}> $undo */
         $undo = [];
         try {
-            $this->step($repo->createDatabase($dbName, $charset, $collation, ifNotExists: false), 'create database');
-            $undo[] = ['drop database ' . $dbName, static fn (): bool => $repo->dropDatabase($dbName)];
+            $this->step($schema->createDatabase($dbName, $charset, $collation, ifNotExists: false), 'create database');
+            $undo[] = ['drop database ' . $dbName, static fn (): bool => $schema->dropDatabase($dbName)];
 
-            $this->step($repo->createUser($username, $password, $host), 'create user');
-            $undo[] = ['drop user ' . $username . '@' . $host, static fn (): bool => $repo->dropUser($username, $host)];
+            $this->step($accounts->createUser($username, $password, $host), 'create user');
+            $undo[] = ['drop user ' . $username . '@' . $host, static fn (): bool => $accounts->dropUser($username, $host)];
 
-            $this->step($repo->grantPrivileges($dbName, $username, $privileges, $host), 'grant privileges');
-            $repo->flushPrivileges();
+            $this->step($accounts->grantPrivileges($dbName, $username, $privileges, $host), 'grant privileges');
+            $accounts->flushPrivileges();
 
             $this->entityManager->persist(new DatabaseOwner()->setDbName($dbName)->setOwner($owner)->setSqlClient($sqlClient));
             $this->entityManager->flush();
@@ -92,23 +95,23 @@ final readonly class DatabaseProvisioner
      * @throws ProvisioningException         when a step fails (completed steps are compensated)
      */
     public function createUserWithGrant(
-        DatabaseSchemaRepository $repo,
+        MysqlAccountRepository $accounts,
         string $dbName,
         string $username,
         #[\SensitiveParameter] string $password,
         string $host,
         string $privileges,
     ): void {
-        $this->assertAccountIsNew($repo, $username, $host);
+        $this->assertAccountIsNew($accounts, $username, $host);
 
         /** @var list<array{string, callable(): mixed}> $undo */
         $undo = [];
         try {
-            $this->step($repo->createUser($username, $password, $host), 'create user');
-            $undo[] = ['drop user ' . $username . '@' . $host, static fn (): bool => $repo->dropUser($username, $host)];
+            $this->step($accounts->createUser($username, $password, $host), 'create user');
+            $undo[] = ['drop user ' . $username . '@' . $host, static fn (): bool => $accounts->dropUser($username, $host)];
 
-            $this->step($repo->grantPrivileges($dbName, $username, $privileges, $host), 'grant privileges');
-            $repo->flushPrivileges();
+            $this->step($accounts->grantPrivileges($dbName, $username, $privileges, $host), 'grant privileges');
+            $accounts->flushPrivileges();
         } catch (\Throwable $throwable) {
             throw $this->compensate("Creazione dell'utente non riuscita.", $throwable, $undo, ['db' => $dbName]);
         }
@@ -122,30 +125,30 @@ final readonly class DatabaseProvisioner
      *
      * @throws ProvisioningException when the DROP or the catalog update fails
      */
-    public function dropDatabaseAndOwnerships(DatabaseSchemaRepository $repo, SqlClient $sqlClient, string $dbName): void
+    public function dropDatabaseAndOwnerships(DatabaseSchemaRepository $schema, SqlClient $sqlClient, string $dbName): void
     {
         try {
-            $this->entityManager->wrapInTransaction(function () use ($repo, $sqlClient, $dbName): void {
+            $this->entityManager->wrapInTransaction(function () use ($schema, $sqlClient, $dbName): void {
                 $this->databaseOwnerRepository->removeAllFor($sqlClient, $dbName);
-                $this->step($repo->dropDatabase($dbName), 'drop database');
+                $this->step($schema->dropDatabase($dbName), 'drop database');
             });
         } catch (\Throwable $throwable) {
             $this->logger->error('Database drop failed.', ['db' => $dbName, 'exception' => $throwable]);
 
-            throw new ProvisioningException('Eliminazione del database non riuscita: il catalogo non è stato modificato.', $throwable);
+            throw new ProvisioningException('Eliminazione del database non riuscita: il catalogo non è stato modificato.' . $this->mysqlDetail($throwable), $throwable);
         }
     }
 
-    private function assertDatabaseIsNew(DatabaseSchemaRepository $repo, string $dbName): void
+    private function assertDatabaseIsNew(DatabaseSchemaRepository $schema, string $dbName): void
     {
-        if (\in_array($dbName, $repo->showDatabases(), strict: true)) {
+        if (\in_array($dbName, $schema->showDatabases(), strict: true)) {
             throw new ProvisioningConflictException(\sprintf('Il database "%s" esiste già.', $dbName));
         }
     }
 
-    private function assertAccountIsNew(DatabaseSchemaRepository $repo, string $username, string $host): void
+    private function assertAccountIsNew(MysqlAccountRepository $accounts, string $username, string $host): void
     {
-        if (\in_array($host, $repo->getHostByUser($username), strict: true)) {
+        if (\in_array($host, $accounts->getHostByUser($username), strict: true)) {
             throw new ProvisioningConflictException(\sprintf("L'utente MySQL '%s'@'%s' esiste già.", $username, $host));
         }
     }
@@ -181,11 +184,19 @@ final readonly class DatabaseProvisioner
         $this->logger->error($message, $context + ['exception' => $cause, 'compensation_failures' => $failures]);
 
         return new ProvisioningException(
-            [] === $failures
-                ? $message . ' Tutte le modifiche parziali sono state annullate.'
-                : $message . ' Pulizia incompleta, contatta un amministratore: ' . implode(', ', $failures) . '.',
+            $message . $this->mysqlDetail($cause) . ([] === $failures
+                ? ' Tutte le modifiche parziali sono state annullate.'
+                : ' Pulizia incompleta, contatta un amministratore: ' . implode(', ', $failures) . '.'),
             $cause,
             $failures,
         );
+    }
+
+    /**
+     * MySQL's native error of a failed remote step, shown to the panel user (a system administrator).
+     */
+    private function mysqlDetail(\Throwable $cause): string
+    {
+        return $cause instanceof RepositoryException ? ' ' . rtrim($cause->mysqlError(), '.') . '.' : '';
     }
 }

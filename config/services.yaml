@@ -47,3 +47,5 @@ services:
     # Register the vendor class as an autowired service so it can be
     # injected (constructor / controller action) instead of instantiated with `new`.
     TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService: ~
+    TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierServiceInterface:
+        alias: TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService

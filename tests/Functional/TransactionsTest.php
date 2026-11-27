@@ -8,6 +8,7 @@ use App\Component\DatabaseClientConnection;
 use App\Controller\Schema\MonitorController;
 use App\Dto\InnodbTransaction;
 use App\RepositoryPDO\DatabaseSchemaRepository;
+use App\RepositoryPDO\ServerMonitorRepository;
 use App\Security\SchemaVisibility;
 use App\Tests\Fixtures\TestCatalog;
 use App\Tests\Support\OpenTransaction;
@@ -32,6 +33,7 @@ final class TransactionsTest extends FunctionalTestCase
         parent::setUp();
         $sqlClient = $this->sqlClient(self::env('TEST_SERVER_NAME'));
         $this->remote = new DatabaseSchemaRepository($sqlClient);
+        $remoteMonitor = new ServerMonitorRepository($sqlClient);
         $this->remote->createDatabase(self::env('TEST_DB_NAME_ONE'));
         $this->remote->createDatabase(self::env('TEST_DB_NAME_TWO'));
 
@@ -39,9 +41,9 @@ final class TransactionsTest extends FunctionalTestCase
         $this->foreignTrx = new OpenTransaction($sqlClient, self::env('TEST_DB_NAME_TWO'));
         // INNODB_TRX is a cache refreshed at most every 0.1 s: wait until both transactions are in it.
         $threads = [$this->ownedTrx->threadId, $this->foreignTrx->threadId];
-        $this->assertTrue(OpenTransaction::eventually(fn (): bool => [] === array_diff(
+        $this->assertTrue(OpenTransaction::eventually(static fn (): bool => [] === array_diff(
             $threads,
-            array_map(static fn (InnodbTransaction $t): int => $t->threadId, $this->remote->showInnodbTransactions())
+            array_map(static fn (InnodbTransaction $t): int => $t->threadId, $remoteMonitor->showInnodbTransactions())
         )));
     }
 

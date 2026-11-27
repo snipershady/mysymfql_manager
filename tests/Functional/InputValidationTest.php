@@ -7,6 +7,7 @@ namespace App\Tests\Functional;
 use App\Component\DatabaseClientConnection;
 use App\EventListener\JsonValidationErrorListener;
 use App\RepositoryPDO\DatabaseSchemaRepository;
+use App\RepositoryPDO\MysqlAccountRepository;
 use App\Tests\Fixtures\TestCatalog;
 use PHPUnit\Framework\Attributes\CoversClass;
 
@@ -18,6 +19,8 @@ use PHPUnit\Framework\Attributes\CoversClass;
 final class InputValidationTest extends FunctionalTestCase
 {
     private DatabaseSchemaRepository $remote;
+
+    private MysqlAccountRepository $remoteAccounts;
 
     private string $server;
 
@@ -32,12 +35,13 @@ final class InputValidationTest extends FunctionalTestCase
         $this->db = self::env('TEST_DB_NAME_ONE');
         $this->account = 'ut_grant_' . bin2hex(random_bytes(3));
         $this->remote = new DatabaseSchemaRepository($this->sqlClient($this->server));
+        $this->remoteAccounts = new MysqlAccountRepository($this->sqlClient($this->server));
         $this->remote->createDatabase($this->db);
     }
 
     protected function tearDown(): void
     {
-        $this->remote->dropUser($this->account);
+        $this->remoteAccounts->dropUser($this->account);
         $this->remote->dropDatabase($this->db);
         $this->remote->dropDatabase('unit_testing_bad_charset');
         DatabaseClientConnection::reset();
@@ -77,7 +81,7 @@ final class InputValidationTest extends FunctionalTestCase
         self::assertResponseStatusCodeSame(422);
         $this->assertStringStartsWith('Charset: ', $this->json()['message']);
         $this->assertNotContains('unit_testing_bad_charset', $this->remote->showDatabases());
-        $this->assertSame([], $this->remote->getHostByUser($this->account));
+        $this->assertSame([], $this->remoteAccounts->getHostByUser($this->account));
     }
 
     public function testInvalidTableNameIsRejectedInsteadOfBeingRewritten(): void
@@ -100,8 +104,8 @@ final class InputValidationTest extends FunctionalTestCase
 
     public function testGrantsAreSavedFromATypedJsonBody(): void
     {
-        $this->remote->createUser($this->account, 'Str0ng-pw', '%');
-        $this->remote->grantPrivileges($this->db, $this->account, 'ALL PRIVILEGES', '%');
+        $this->remoteAccounts->createUser($this->account, 'Str0ng-pw', '%');
+        $this->remoteAccounts->grantPrivileges($this->db, $this->account, 'ALL PRIVILEGES', '%');
         $this->loginAs(TestCatalog::OWNER);
 
         $this->postJson('/schema/db-user-grant-save', [
@@ -111,14 +115,14 @@ final class InputValidationTest extends FunctionalTestCase
 
         self::assertResponseIsSuccessful();
         $this->assertTrue($this->json()['is_valid']);
-        $grants = $this->remote->getUserGrantsByDb($this->account, '%');
+        $grants = $this->remoteAccounts->getUserGrantsByDb($this->account, '%');
         $this->assertSame([['db' => $this->db, 'privileges' => ['SELECT', 'INSERT'], 'all_privileges' => false]], $grants);
     }
 
     public function testInvalidPrivilegeInJsonBodyChangesNothing(): void
     {
-        $this->remote->createUser($this->account, 'Str0ng-pw', '%');
-        $this->remote->grantPrivileges($this->db, $this->account, 'SELECT', '%');
+        $this->remoteAccounts->createUser($this->account, 'Str0ng-pw', '%');
+        $this->remoteAccounts->grantPrivileges($this->db, $this->account, 'SELECT', '%');
         $this->loginAs(TestCatalog::OWNER);
 
         $this->postJson('/schema/db-user-grant-save', [
@@ -128,7 +132,7 @@ final class InputValidationTest extends FunctionalTestCase
 
         self::assertResponseStatusCodeSame(422);
         $this->assertSame('Grant: Privilegio non supportato: "SUPER".', $this->json()['message']);
-        $this->assertSame(['SELECT'], $this->remote->getUserGrantsByDb($this->account, '%')[0]['privileges']);
+        $this->assertSame(['SELECT'], $this->remoteAccounts->getUserGrantsByDb($this->account, '%')[0]['privileges']);
     }
 
     /**

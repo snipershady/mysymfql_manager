@@ -259,7 +259,7 @@ composer test               # tutto
 composer quality-check      # Rector, PHP-CS-Fixer, PHPStan (come in CI)
 ```
 
-Gli stessi controlli girano su GitHub Actions (`.github/workflows/ci.yml`) con PHP 8.4 e 8.5.
+Gli stessi controlli girano su GitHub Actions (`.github/workflows/ci.yml`) con PHP 8.5.
 
 ## Aggiungere un server MySQL gestito — creazione di un account manager remoto
 

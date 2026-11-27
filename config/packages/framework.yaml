@@ -2,6 +2,13 @@
 framework:
     secret: '%env(APP_SECRET)%'
 
+    # Request::getClientIp() (password-reset throttle, logs) trusts forwarding headers only when the request
+    # comes from one of these proxies. Empty by default: the client IP is REMOTE_ADDR and headers such as
+    # X-Forwarded-For or CF-Connecting-IP sent by the client are ignored. Behind a reverse proxy or a CDN set
+    # SYMFONY_TRUSTED_PROXIES in .env.local (e.g. "127.0.0.1,REMOTE_ADDR" or the CDN ranges).
+    trusted_proxies: '%env(default::SYMFONY_TRUSTED_PROXIES)%'
+    trusted_headers: ['x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-port', 'x-forwarded-host']
+
     # Note that the session will be started ONLY if you read or write from it.
     session: 
         handler_id: Symfony\Component\HttpFoundation\Session\Storage\Handler\RedisSessionHandler

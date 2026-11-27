@@ -17,8 +17,8 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 
 /**
- * Runs the command on a temporary BACKUP_PATH with real files (MysqldumpManager needs the mysqldump
- * binary in the PATH, but no MySQL server: rotation only reads the listing).
+ * Runs the command on a temporary BACKUP_PATH with real files (no MySQL server nor client binaries:
+ * rotation only reads the listing).
  */
 #[CoversClass(BackupRotateCommand::class)]
 #[UsesClass(BackupRotationPolicy::class)]
@@ -30,25 +30,11 @@ final class BackupRotateCommandTest extends TestCase
 
     private string $backupDir;
 
-    /** @var array{env: mixed, server: mixed, getenv: string|false} */
-    private array $previousBackupPath;
-
     #[\Override]
     protected function setUp(): void
     {
-        if (!shell_exec('which mysqldump 2>/dev/null')) {
-            self::markTestSkipped('mysqldump is not installed (required by MysqldumpManager).');
-        }
-
-        $this->previousBackupPath = [
-            'env' => $_ENV['BACKUP_PATH'] ?? null,
-            'server' => $_SERVER['BACKUP_PATH'] ?? null,
-            'getenv' => getenv('BACKUP_PATH'),
-        ];
         $this->backupDir = sys_get_temp_dir() . '/backup_rotate_test_' . bin2hex(random_bytes(6));
         mkdir($this->backupDir);
-        $_ENV['BACKUP_PATH'] = $_SERVER['BACKUP_PATH'] = $this->backupDir;
-        putenv('BACKUP_PATH=' . $this->backupDir);
     }
 
     #[\Override]
@@ -64,14 +50,6 @@ final class BackupRotateCommandTest extends TestCase
         }
         rmdir($this->backupDir);
 
-        unset($_ENV['BACKUP_PATH'], $_SERVER['BACKUP_PATH']);
-        if (null !== $this->previousBackupPath['env']) {
-            $_ENV['BACKUP_PATH'] = $this->previousBackupPath['env'];
-        }
-        if (null !== $this->previousBackupPath['server']) {
-            $_SERVER['BACKUP_PATH'] = $this->previousBackupPath['server'];
-        }
-        putenv(false === $this->previousBackupPath['getenv'] ? 'BACKUP_PATH' : 'BACKUP_PATH=' . $this->previousBackupPath['getenv']);
     }
 
     public function testWithoutForceNothingIsDeleted(): void
@@ -169,7 +147,7 @@ final class BackupRotateCommandTest extends TestCase
      */
     private function rotate(array $input): CommandTester
     {
-        $command = new BackupRotateCommand(new MysqldumpManager(), new BackupRotationPolicy(), new MockClock(self::NOW), new NullLogger());
+        $command = new BackupRotateCommand(new MysqldumpManager($this->backupDir), new BackupRotationPolicy(), new MockClock(self::NOW), new NullLogger());
         $tester = new CommandTester($command);
         $tester->execute($input);
 

@@ -6,7 +6,7 @@ namespace App\Command;
 
 use App\Entity\SqlClient;
 use App\Repository\SqlClientRepository;
-use App\RepositoryPDO\DatabaseSchemaRepository;
+use App\RepositoryPDO\ManagedServerRepositoryFactory;
 use App\Service\LegacyBackupNameResolver;
 use App\Service\MysqldumpManager;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -39,6 +39,7 @@ final class BackupRelocateCommand extends Command
     public function __construct(
         private readonly SqlClientRepository $sqlClientRepository,
         private readonly MysqldumpManager $mysqldumpManager,
+        private readonly ManagedServerRepositoryFactory $repositories,
     ) {
         parent::__construct();
     }
@@ -71,19 +72,19 @@ final class BackupRelocateCommand extends Command
             return Command::SUCCESS;
         }
 
-        $remote = new DatabaseSchemaRepository($sqlClient);
+        $schema = $this->repositories->schema($sqlClient);
         $extraDbs = $input->getOption('db');
-        $existingDbs = $remote->showDatabases();
+        $existingDbs = $schema->showDatabases();
         $knownDbs = [...$existingDbs, ...array_values($extraDbs)];
         /** @var array<string, list<string>> $tablesByDb */
         $tablesByDb = [];
-        $tableExists = static function (string $db, string $table) use ($remote, $existingDbs, &$tablesByDb): bool {
+        $tableExists = static function (string $db, string $table) use ($schema, $existingDbs, &$tablesByDb): bool {
             if (!\in_array($db, $existingDbs, strict: true)) {
                 return false;
             }
             if (!isset($tablesByDb[$db])) {
-                $remote->useDbName($db);
-                $tablesByDb[$db] = $remote->showTables();
+                $schema->useDbName($db);
+                $tablesByDb[$db] = $schema->showTables();
             }
 
             return \in_array($table, $tablesByDb[$db], strict: true);

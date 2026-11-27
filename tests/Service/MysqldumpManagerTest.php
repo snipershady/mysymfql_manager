@@ -10,6 +10,7 @@ use App\Entity\DatabaseOwner;
 use App\Entity\SqlClient;
 use App\Service\MysqldumpManager;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Process\ExecutableFinder;
 
 /**
  * Unit tests for {@see MysqldumpManager} that do not require a live MySQL
@@ -20,31 +21,25 @@ final class MysqldumpManagerTest extends TestCase
 {
     private string $backupDir;
 
-    /**
-     * @var array{env: mixed, server: mixed, getenv: string|false}
-     */
-    private array $previousBackupPath;
-
     #[\Override]
     protected function setUp(): void
     {
+        $this->backupDir = sys_get_temp_dir() . '/mysqldump_manager_test_' . bin2hex(random_bytes(6));
+    }
+
+    /**
+     * For the tests that actually run mysqldump: the others (validation, listing, relocation) need neither
+     * the binary nor proc_open().
+     */
+    private function requireMysqldump(): void
+    {
         $disabled = array_map(trim(...), explode(',', (string) \ini_get('disable_functions')));
-        if (\in_array('exec', $disabled, strict: true) || \in_array('shell_exec', $disabled, strict: true)) {
-            self::markTestSkipped('exec()/shell_exec() are disabled in this environment.');
+        if (\in_array('proc_open', $disabled, strict: true)) {
+            self::markTestSkipped('proc_open() is disabled in this environment (required by Symfony Process).');
         }
-        if (!shell_exec('which mysqldump 2>/dev/null')) {
+        if (null === new ExecutableFinder()->find('mysqldump')) {
             self::markTestSkipped('mysqldump is not installed.');
         }
-
-        $this->previousBackupPath = [
-            'env' => $_ENV['BACKUP_PATH'] ?? null,
-            'server' => $_SERVER['BACKUP_PATH'] ?? null,
-            'getenv' => getenv('BACKUP_PATH'),
-        ];
-        $this->backupDir = sys_get_temp_dir() . '/mysqldump_manager_test_' . bin2hex(random_bytes(6));
-        $_ENV['BACKUP_PATH'] = $this->backupDir;
-        $_SERVER['BACKUP_PATH'] = $this->backupDir;
-        putenv('BACKUP_PATH=' . $this->backupDir);
     }
 
     #[\Override]
@@ -61,21 +56,11 @@ final class MysqldumpManagerTest extends TestCase
             }
             rmdir($this->backupDir);
         }
-
-        // Restore the previous values: other test classes (integration dumps) read BACKUP_PATH too.
-        unset($_ENV['BACKUP_PATH'], $_SERVER['BACKUP_PATH']);
-        if (null !== $this->previousBackupPath['env']) {
-            $_ENV['BACKUP_PATH'] = $this->previousBackupPath['env'];
-        }
-        if (null !== $this->previousBackupPath['server']) {
-            $_SERVER['BACKUP_PATH'] = $this->previousBackupPath['server'];
-        }
-        putenv(false === $this->previousBackupPath['getenv'] ? 'BACKUP_PATH' : 'BACKUP_PATH=' . $this->previousBackupPath['getenv']);
     }
 
     private function manager(): MysqldumpManager
     {
-        return new MysqldumpManager();
+        return new MysqldumpManager($this->backupDir);
     }
 
     private function sqlClient(): SqlClient
@@ -200,6 +185,7 @@ final class MysqldumpManagerTest extends TestCase
 
     public function testBackupDirectoriesInheritThePermissionsOfTheBackupRoot(): void
     {
+        $this->requireMysqldump();
         mkdir($this->backupDir, 0777, recursive: true);
         chmod($this->backupDir, 0o751);
 
@@ -214,6 +200,7 @@ final class MysqldumpManagerTest extends TestCase
 
     public function testFailedDumpLeavesNoFileBehind(): void
     {
+        $this->requireMysqldump();
         mkdir($this->backupDir, 0777, recursive: true);
 
         // Connection refused: mysqldump fails after the shell has created the output file.
@@ -226,6 +213,7 @@ final class MysqldumpManagerTest extends TestCase
 
     public function testFailedDumpReportsTheMysqldumpErrorOutput(): void
     {
+        $this->requireMysqldump();
         $result = $this->manager()->createBackup($this->persistedSqlClient(7)->setHost('127.0.0.1')->setPort(1), 'shop');
 
         $this->assertFalse($result['is_valid']);

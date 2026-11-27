@@ -10,6 +10,7 @@ use App\Controller\Schema\MonitorController;
 use App\Controller\Schema\TableController;
 use App\Entity\DatabaseOwner;
 use App\RepositoryPDO\DatabaseSchemaRepository;
+use App\RepositoryPDO\MysqlAccountRepository;
 use App\Security\SqlClientAccessResolver;
 use App\Security\Voter\DatabaseVoter;
 use App\Service\DatabaseProvisioner;
@@ -31,6 +32,8 @@ final class SchemaAuthorizationTest extends FunctionalTestCase
 {
     private DatabaseSchemaRepository $remote;
 
+    private MysqlAccountRepository $remoteAccounts;
+
     private string $server;
 
     private string $ownedDb;
@@ -51,13 +54,14 @@ final class SchemaAuthorizationTest extends FunctionalTestCase
         $this->newDb = 'unit_testing_http_' . $suffix;
         $this->newUser = 'ut_http_' . $suffix;
         $this->remote = new DatabaseSchemaRepository($this->sqlClient($this->server));
+        $this->remoteAccounts = new MysqlAccountRepository($this->sqlClient($this->server));
         $this->remote->createDatabase($this->ownedDb);
         $this->remote->createDatabase($this->foreignDb);
     }
 
     protected function tearDown(): void
     {
-        $this->remote->dropUser($this->newUser);
+        $this->remoteAccounts->dropUser($this->newUser);
         foreach ([$this->ownedDb, $this->foreignDb, $this->newDb] as $db) {
             $this->remote->dropDatabase($db);
         }
@@ -171,7 +175,7 @@ final class SchemaAuthorizationTest extends FunctionalTestCase
         $this->schemaPost('/schema/create-database', $this->createPayload($this->foreignDb));
 
         self::assertResponseStatusCodeSame(409);
-        $this->assertSame([], $this->remote->getHostByUser($this->newUser));
+        $this->assertSame([], $this->remoteAccounts->getHostByUser($this->newUser));
         $this->assertSame(0, $this->entityManager()->getRepository(DatabaseOwner::class)->count(['dbName' => $this->foreignDb, 'owner' => $this->loginAs(TestCatalog::OWNER)]));
     }
 

@@ -19,14 +19,16 @@ class BackupQueueRepository extends ServiceEntityRepository
     }
 
     /**
-     * Returns the most recently queued entry that has not been dequeued yet, or null if the queue is empty.
+     * Returns the oldest entry that has not been dequeued yet (FIFO: backups run in the order they were
+     * requested; the id breaks ties between requests in the same second), or null if the queue is empty.
      */
-    public function findLastOneDequeable(): ?BackupQueue
+    public function findOldestPending(): ?BackupQueue
     {
         $result = $this->createQueryBuilder('b')
             ->andWhere('b.isDequeued = :dequeued')
             ->setParameter('dequeued', value: false)
-            ->orderBy('b.requestDate', \SortDirection::Descending)
+            ->orderBy('b.requestDate', \SortDirection::Ascending)
+            ->addOrderBy('b.id', \SortDirection::Ascending)
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult()

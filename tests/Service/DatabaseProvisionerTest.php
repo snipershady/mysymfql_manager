@@ -11,8 +11,10 @@ use App\Enum\CharsetEnum;
 use App\Enum\CollationEnum;
 use App\Exception\ProvisioningConflictException;
 use App\Exception\ProvisioningException;
+use App\Exception\RepositoryException;
 use App\Repository\DatabaseOwnerRepository;
 use App\RepositoryPDO\DatabaseSchemaRepository;
+use App\RepositoryPDO\MysqlAccountRepository;
 use App\Service\DatabaseProvisioner;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -25,6 +27,7 @@ use Psr\Log\NullLogger;
 #[CoversClass(DatabaseProvisioner::class)]
 #[UsesClass(ProvisioningException::class)]
 #[UsesClass(ProvisioningConflictException::class)]
+#[UsesClass(RepositoryException::class)]
 final class DatabaseProvisionerTest extends TestCase
 {
     /** @var list<string> remote and catalog calls, in order */
@@ -120,13 +123,40 @@ final class DatabaseProvisionerTest extends TestCase
         $this->assertSame(['createDatabase:strict', 'createUser', 'grantPrivileges', 'dropUser', 'dropDatabase'], $this->calls);
     }
 
+    public function testTheNativeMysqlErrorIsPartOfTheMessage(): void
+    {
+        $pdoException = new \PDOException('SQLSTATE[42000]: Syntax error or access violation: 1044 Access denied');
+        $pdoException->errorInfo = ['42000', 1044, "Access denied for user 'panel'@'%' to database 'shop'"];
+        $this->failures['createDatabase'] = new RepositoryException('createDatabase', 0, $pdoException);
+
+        try {
+            $this->provisioner()->createDatabaseWithOwner(...$this->createArgs());
+            $this->fail('A ProvisioningException was expected.');
+        } catch (ProvisioningException $provisioningException) {
+            $this->assertSame(
+                "Creazione del database non riuscita. ERROR 1044 (42000): Access denied for user 'panel'@'%' to database 'shop'. Tutte le modifiche parziali sono state annullate.",
+                $provisioningException->getMessage(),
+            );
+        }
+    }
+
+    public function testFailedDropReportsTheNativeMysqlError(): void
+    {
+        $pdoException = new \PDOException('SQLSTATE[HY000]: General error: 1010');
+        $pdoException->errorInfo = ['HY000', 1010, "Error dropping database (can't rmdir './shop')"];
+        $this->failures['dropDatabase'] = new RepositoryException('dropDatabase', 0, $pdoException);
+
+        $this->expectExceptionMessageIsOrContains("Eliminazione del database non riuscita: il catalogo non è stato modificato. ERROR 1010 (HY000): Error dropping database (can't rmdir './shop').");
+        $this->provisioner()->dropDatabaseAndOwnerships($this->schema(), new SqlClient(), 'shop');
+    }
+
     public function testCreateUserWithGrantDropsTheUserWhenTheGrantFails(): void
     {
         $this->failures['grantPrivileges'] = new \RuntimeException('boom');
 
         $this->expectException(ProvisioningException::class);
         try {
-            $this->provisioner()->createUserWithGrant($this->repository(), 'shop', 'app_rw', 'secret', '%', 'SELECT');
+            $this->provisioner()->createUserWithGrant($this->accounts(), 'shop', 'app_rw', 'secret', '%', 'SELECT');
         } finally {
             $this->assertSame(['createUser', 'grantPrivileges', 'dropUser'], $this->calls);
         }
@@ -137,19 +167,19 @@ final class DatabaseProvisionerTest extends TestCase
         $this->existingHosts = ['%'];
 
         $this->expectException(ProvisioningConflictException::class);
-        $this->provisioner()->createUserWithGrant($this->repository(), 'shop', 'app_rw', 'secret', '%', 'SELECT');
+        $this->provisioner()->createUserWithGrant($this->accounts(), 'shop', 'app_rw', 'secret', '%', 'SELECT');
     }
 
     public function testCreateUserWithGrantHappyPath(): void
     {
-        $this->provisioner()->createUserWithGrant($this->repository(), 'shop', 'app_rw', 'secret', '%', 'SELECT');
+        $this->provisioner()->createUserWithGrant($this->accounts(), 'shop', 'app_rw', 'secret', '%', 'SELECT');
 
         $this->assertSame(['createUser', 'grantPrivileges', 'flushPrivileges'], $this->calls);
     }
 
     public function testDropRemovesOwnershipsThenDropsInsideOneTransaction(): void
     {
-        $this->provisioner()->dropDatabaseAndOwnerships($this->repository(), new SqlClient(), 'shop');
+        $this->provisioner()->dropDatabaseAndOwnerships($this->schema(), new SqlClient(), 'shop');
 
         $this->assertSame(['begin', 'removeAllFor', 'dropDatabase', 'commit'], $this->calls);
     }
@@ -160,18 +190,18 @@ final class DatabaseProvisionerTest extends TestCase
 
         $this->expectException(ProvisioningException::class);
         try {
-            $this->provisioner()->dropDatabaseAndOwnerships($this->repository(), new SqlClient(), 'shop');
+            $this->provisioner()->dropDatabaseAndOwnerships($this->schema(), new SqlClient(), 'shop');
         } finally {
             $this->assertSame(['begin', 'removeAllFor', 'dropDatabase', 'rollback'], $this->calls);
         }
     }
 
     /**
-     * @return array{DatabaseSchemaRepository, SqlClient, AppUser, string, CharsetEnum, CollationEnum, string, string, string, string}
+     * @return array{DatabaseSchemaRepository, MysqlAccountRepository, SqlClient, AppUser, string, CharsetEnum, CollationEnum, string, string, string, string}
      */
     private function createArgs(): array
     {
-        return [$this->repository(), new SqlClient(), new AppUser(), 'shop', CharsetEnum::UTF8MB4, CollationEnum::UTF8MB4_0900_AI_CI, 'app_rw', 'secret', '%', 'SELECT'];
+        return [$this->schema(), $this->accounts(), new SqlClient(), new AppUser(), 'shop', CharsetEnum::UTF8MB4, CollationEnum::UTF8MB4_0900_AI_CI, 'app_rw', 'secret', '%', 'SELECT'];
     }
 
     private function provisioner(): DatabaseProvisioner
@@ -204,19 +234,27 @@ final class DatabaseProvisionerTest extends TestCase
         return new DatabaseProvisioner($entityManager, $owners, new NullLogger());
     }
 
-    private function repository(): DatabaseSchemaRepository&Stub
+    private function schema(): DatabaseSchemaRepository&Stub
     {
-        $repo = $this->createStub(DatabaseSchemaRepository::class);
-        $repo->method('showDatabases')->willReturnCallback(fn (): array => $this->existingDatabases);
-        $repo->method('getHostByUser')->willReturnCallback(fn (): array => $this->existingHosts);
-        $repo->method('createDatabase')->willReturnCallback(
+        $schema = $this->createStub(DatabaseSchemaRepository::class);
+        $schema->method('showDatabases')->willReturnCallback(fn (): array => $this->existingDatabases);
+        $schema->method('createDatabase')->willReturnCallback(
             fn (string $db, CharsetEnum $c, CollationEnum $col, bool $ifNotExists = true): bool => $this->record($ifNotExists ? 'createDatabase:if-not-exists' : 'createDatabase:strict', 'createDatabase')
         );
-        foreach (['createUser', 'grantPrivileges', 'flushPrivileges', 'dropUser', 'dropDatabase'] as $method) {
-            $repo->method($method)->willReturnCallback(fn (): bool => $this->record($method));
+        $schema->method('dropDatabase')->willReturnCallback(fn (): bool => $this->record('dropDatabase'));
+
+        return $schema;
+    }
+
+    private function accounts(): MysqlAccountRepository&Stub
+    {
+        $accounts = $this->createStub(MysqlAccountRepository::class);
+        $accounts->method('getHostByUser')->willReturnCallback(fn (): array => $this->existingHosts);
+        foreach (['createUser', 'grantPrivileges', 'flushPrivileges', 'dropUser'] as $method) {
+            $accounts->method($method)->willReturnCallback(fn (): bool => $this->record($method));
         }
 
-        return $repo;
+        return $accounts;
     }
 
     /**

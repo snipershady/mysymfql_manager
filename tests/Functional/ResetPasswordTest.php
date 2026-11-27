@@ -95,6 +95,33 @@ final class ResetPasswordTest extends WebTestCase
         }
     }
 
+    /**
+     * Without SYMFONY_TRUSTED_PROXIES the client IP is REMOTE_ADDR: forwarding headers sent by the client
+     * (X-Forwarded-For, CF-Connecting-IP) cannot spread the requests over fake addresses to dodge the
+     * per-IP limit.
+     */
+    public function testForgedForwardingHeadersDoNotBypassThePerIpLimit(): void
+    {
+        for ($i = 0; $i < PasswordResetThrottle::PER_IP_LIMIT; ++$i) {
+            $forgedIp = '203.0.113.' . ($i + 1);
+            $this->submitRequest(
+                $this->client->request('GET', '/reset-password'),
+                'nobody-' . bin2hex(random_bytes(4)) . '@example.invalid',
+                ['HTTP_X_FORWARDED_FOR' => $forgedIp, 'HTTP_CF_CONNECTING_IP' => $forgedIp],
+            );
+        }
+
+        // Sixth request from the same REMOTE_ADDR, for an account that exists: the IP limit applies.
+        $this->submitRequest(
+            $this->client->request('GET', '/reset-password'),
+            (string) $this->existingUser()->getEmail(),
+            ['HTTP_X_FORWARDED_FOR' => '198.51.100.7', 'HTTP_CF_CONNECTING_IP' => '198.51.100.7'],
+        );
+
+        $this->assertResponseRedirects('/login');
+        $this->assertEmailCount(0);
+    }
+
     public function testInvalidTokenIsRejected(): void
     {
         $this->client->request('GET', '/reset-password/confirm', ['id' => 1, 'expires' => time() + 600, 'hash' => 'forged']);
@@ -176,12 +203,15 @@ final class ResetPasswordTest extends WebTestCase
         $this->assertSame($passwordBefore, $entityManager->getRepository(AppUser::class)->find($user->getId())?->getPassword());
     }
 
-    private function submitRequest(Crawler $crawler, string $email): void
+    /**
+     * @param array<string, string> $server extra server parameters (headers as HTTP_*)
+     */
+    private function submitRequest(Crawler $crawler, string $email, array $server = []): void
     {
         $this->requestedEmails[] = $email;
         $form = $crawler->filter('form')->form();
         $form['password_recovery[email]'] = $email;
-        $this->client->submit($form, [], ['REMOTE_ADDR' => self::CLIENT_IP]);
+        $this->client->submit($form, [], ['REMOTE_ADDR' => self::CLIENT_IP] + $server);
     }
 
     private function existingUser(): AppUser

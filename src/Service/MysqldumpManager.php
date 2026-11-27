@@ -8,9 +8,9 @@ use App\Dto\BackupDump;
 use App\Entity\AppUser;
 use App\Entity\DatabaseOwner;
 use App\Entity\SqlClient;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
-use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
 
 /**
  * Description of MysqldumpManager.
@@ -21,20 +21,15 @@ use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
  */
 final readonly class MysqldumpManager
 {
-    private string $backupPath;
-
     /**
      * No system checks here: listing, rotation and relocation work without the MySQL client binaries,
      * and a missing binary must not break the container (every command and page depending on this class).
      * createBackup()/restoreBackup() report it instead.
      */
-    public function __construct(?EffectivePrimitiveTypeIdentifierService $epti = null)
-    {
-        $epti ??= new EffectivePrimitiveTypeIdentifierService();
-
-        $this->backupPath = $epti->getStringValueFromEnv(
-            needle: 'BACKUP_PATH', trim: true, forceString: true, sanitizeHtml: false
-        );
+    public function __construct(
+        #[Autowire(env: 'BACKUP_PATH')]
+        private string $backupPath,
+    ) {
     }
 
     /**

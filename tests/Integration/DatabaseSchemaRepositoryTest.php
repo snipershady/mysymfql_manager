@@ -7,6 +7,9 @@ namespace App\Tests\Integration;
 use App\Dto\InnodbTransaction;
 use App\Entity\SqlClient;
 use App\RepositoryPDO\DatabaseSchemaRepository;
+use App\RepositoryPDO\DemoDataRepository;
+use App\RepositoryPDO\MysqlAccountRepository;
+use App\RepositoryPDO\ServerMonitorRepository;
 use App\Tests\MyKernelTestCase;
 use App\Tests\Support\OpenTransaction;
 
@@ -23,24 +26,28 @@ final class DatabaseSchemaRepositoryTest extends MyKernelTestCase
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
         $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
+        $accounts = new MysqlAccountRepository($sqlClient);
+        $demoData = new DemoDataRepository($sqlClient);
         // Dropp di tutti i possibili elementi esistenti per il testing
-        $databaseRepositoryPdo->dropUser($this->dbNameUser);
+        $accounts->dropUser($this->dbNameUser);
         $databaseRepositoryPdo->dropDatabase($this->dbNameTestingOne);
         $databaseRepositoryPdo->dropDatabase($this->dbNameTestingTwo);
         // Creo e popolo DB1
         $databaseRepositoryPdo->createDatabase($this->dbNameTestingOne);
-        $databaseRepositoryPdo->createUser($this->dbNameUser, $this->dbNamePassword);
-        $databaseRepositoryPdo->grantPrivileges($this->dbNameTestingOne, $this->dbNameUser);
-        $databaseRepositoryPdo->flushPrivileges();
+
+        $accounts->createUser($this->dbNameUser, $this->dbNamePassword);
+        $accounts->grantPrivileges($this->dbNameTestingOne, $this->dbNameUser);
+        $accounts->flushPrivileges();
+
         $databaseRepositoryPdo->useDbName($this->dbNameTestingOne);
-        $databaseRepositoryPdo->createDummyTable();
-        $databaseRepositoryPdo->populateDummiTable();
-        $databaseRepositoryPdo->createDummyTableTwo();
-        $databaseRepositoryPdo->populateDummiTableTwo();
+        $demoData->createDummyTable();
+        $demoData->populateDummiTable();
+        $demoData->createDummyTableTwo();
+        $demoData->populateDummiTableTwo();
         // Creo e popolo DB2
         $databaseRepositoryPdo->createDatabase($this->dbNameTestingTwo);
-        $databaseRepositoryPdo->grantPrivileges($this->dbNameTestingTwo, $this->dbNameUser);
-        $databaseRepositoryPdo->flushPrivileges();
+        $accounts->grantPrivileges($this->dbNameTestingTwo, $this->dbNameUser);
+        $accounts->flushPrivileges();
     }
 
     #[\Override]
@@ -50,7 +57,9 @@ final class DatabaseSchemaRepositoryTest extends MyKernelTestCase
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
         $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
-        $databaseRepositoryPdo->dropUser($this->dbNameUser);
+        $accounts = new MysqlAccountRepository($sqlClient);
+        $accounts->dropUser($this->dbNameUser);
+
         $databaseRepositoryPdo->dropDatabase($this->dbNameTestingOne);
         $databaseRepositoryPdo->dropDatabase($this->dbNameTestingTwo);
     }
@@ -98,68 +107,69 @@ final class DatabaseSchemaRepositoryTest extends MyKernelTestCase
         $password = $this->dbNamePassword;
 
         $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
+        $accounts = new MysqlAccountRepository($sqlClient);
         $setupDropDatabase = $databaseRepositoryPdo->dropDatabase($dbName);
         $this->assertTrue($setupDropDatabase);
-        $setupDropUsername = $databaseRepositoryPdo->dropUser($username);
+        $setupDropUsername = $accounts->dropUser($username);
         $this->assertTrue($setupDropUsername);
 
         $create = $databaseRepositoryPdo->createDatabase($dbName);
         $this->assertTrue($create);
-        $createUser = $databaseRepositoryPdo->createUser($username, $password);
+        $createUser = $accounts->createUser($username, $password);
         $this->assertTrue($createUser);
-        $grant = $databaseRepositoryPdo->grantPrivileges($dbName, $username);
+        $grant = $accounts->grantPrivileges($dbName, $username);
         $this->assertTrue($grant);
-        $flushPrivileges = $databaseRepositoryPdo->flushPrivileges();
+        $flushPrivileges = $accounts->flushPrivileges();
         $this->assertTrue($flushPrivileges);
         $dropDatabase = $databaseRepositoryPdo->dropDatabase($dbName);
         $this->assertTrue($dropDatabase);
-        $dropUsername = $databaseRepositoryPdo->dropUser($username);
+        $dropUsername = $accounts->dropUser($username);
         $this->assertTrue($dropUsername);
     }
 
     public function testHasGlobalPrivilegesIsFalseForAnAccountWithOnlyDatabaseGrants(): void
     {
         $sqlClient = $this->entityManager->getRepository(SqlClient::class)->findOneByName($this->serverName);
-        $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
+        $accounts = new MysqlAccountRepository($sqlClient);
 
-        $this->assertFalse($databaseRepositoryPdo->hasGlobalPrivileges($this->dbNameUser, '%'));
+        $this->assertFalse($accounts->hasGlobalPrivileges($this->dbNameUser, '%'));
         $this->assertSame(
             [$this->dbNameTestingOne, $this->dbNameTestingTwo],
-            array_column($databaseRepositoryPdo->getUserGrantsByDb($this->dbNameUser, '%'), 'db')
+            array_column($accounts->getUserGrantsByDb($this->dbNameUser, '%'), 'db')
         );
     }
 
     public function testHasGlobalPrivilegesIsTrueForThePanelAccount(): void
     {
         $sqlClient = $this->entityManager->getRepository(SqlClient::class)->findOneByName($this->serverName);
-        $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
+        $accounts = new MysqlAccountRepository($sqlClient);
         $panelAccount = (string) $sqlClient->getUsername();
-        $hosts = $databaseRepositoryPdo->getHostByUser($panelAccount);
+        $hosts = $accounts->getHostByUser($panelAccount);
         $this->assertNotEmpty($hosts);
 
         // The panel account may exist on several hosts (the suite itself creates TEST_DB_USER@'%'):
         // at least one of them carries the global privileges the panel needs.
         $this->assertTrue(array_any(
             $hosts,
-            static fn (string $host): bool => $databaseRepositoryPdo->hasGlobalPrivileges($panelAccount, $host)
+            static fn (string $host): bool => $accounts->hasGlobalPrivileges($panelAccount, $host)
         ));
     }
 
     public function testHasGlobalPrivilegesFailsClosedForAMissingAccount(): void
     {
         $sqlClient = $this->entityManager->getRepository(SqlClient::class)->findOneByName($this->serverName);
-        $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
+        $accounts = new MysqlAccountRepository($sqlClient);
 
-        $this->assertTrue($databaseRepositoryPdo->hasGlobalPrivileges('no_such_account_' . bin2hex(random_bytes(4)), '%'));
+        $this->assertTrue($accounts->hasGlobalPrivileges('no_such_account_' . bin2hex(random_bytes(4)), '%'));
     }
 
     public function testShowInnodbTransactionsListsAnOpenTransaction(): void
     {
         $sqlClient = $this->entityManager->getRepository(SqlClient::class)->findOneByName($this->serverName);
-        $repo = new DatabaseSchemaRepository($sqlClient);
+        $monitor = new ServerMonitorRepository($sqlClient);
         $trx = new OpenTransaction($sqlClient, $this->dbNameTestingOne);
 
-        $find = static fn (): ?InnodbTransaction => array_find($repo->showInnodbTransactions(), static fn (InnodbTransaction $t): bool => $t->threadId === $trx->threadId);
+        $find = static fn (): ?InnodbTransaction => array_find($monitor->showInnodbTransactions(), static fn (InnodbTransaction $t): bool => $t->threadId === $trx->threadId);
 
         try {
             $this->assertTrue(OpenTransaction::eventually(static fn (): bool => $find() instanceof InnodbTransaction));
@@ -180,8 +190,8 @@ final class DatabaseSchemaRepositoryTest extends MyKernelTestCase
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
         $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
 
-        $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
-        $databaseRepositoryPdo->showEngineInnodbStatus();
+        $monitor = new ServerMonitorRepository($sqlClient);
+        $monitor->showEngineInnodbStatus();
         $this->assertTrue(true);
     }
 
@@ -189,8 +199,8 @@ final class DatabaseSchemaRepositoryTest extends MyKernelTestCase
     {
         $sqlClientRepository = $this->entityManager->getRepository(SqlClient::class);
         $sqlClient = $sqlClientRepository->findOneByName($this->serverName);
-        $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
-        $processListArray = $databaseRepositoryPdo->showProcessList();
+        $monitor = new ServerMonitorRepository($sqlClient);
+        $processListArray = $monitor->showProcessList();
 
         $this->assertIsArray($processListArray);
     }
