@@ -117,10 +117,8 @@ final class ResetPasswordController extends AbstractController
             return $this->redirectToRoute('app_login');
         }
 
-        $response = $this->render('registration/reset_password_confirm.html.twig', ['form' => $form]);
-        // The token is in the URL: never leak it to third-party CDNs through the Referer header.
-        $response->headers->set('Referrer-Policy', 'no-referrer');
-
-        return $response;
+        // The token is in the URL: the template sets <meta name="referrer" content="no-referrer"> (an HTTP
+        // header would be overwritten by NelmioSecurityBundle's global Referrer-Policy).
+        return $this->render('registration/reset_password_confirm.html.twig', ['form' => $form]);
     }
 }

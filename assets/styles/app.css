@@ -54,3 +54,24 @@
     max-height: 220px;
     overflow-y: auto;
 }
+
+/* Utility classes replacing inline style="" attributes (forbidden by the Content-Security-Policy). */
+.cw-35p { width: 35%; }
+.cw-70 { width: 70px; }
+.cw-90 { width: 90px; }
+.cw-100 { width: 100px; }
+.cw-110 { width: 110px; }
+.cw-120 { width: 120px; }
+.cw-130 { width: 130px; }
+.cw-140 { width: 140px; }
+.cw-160 { width: 160px; }
+.cw-190 { width: 190px; }
+.cw-230 { width: 230px; }
+.cw-240 { width: 240px; }
+.mw-360 { max-width: 360px; }
+.mw-540 { max-width: 540px; }
+.fs-small-08 { font-size: .8rem; }
+.fs-small-09 { font-size: .9rem; }
+.pre-wrap-sm { font-size: .8rem; white-space: pre-wrap; word-break: break-word; }
+.pre-wrap-xs { font-size: .75rem; white-space: pre-wrap; word-break: break-word; }
+.stat-icon { width: 48px; height: 48px; flex-shrink: 0; font-size: 1.25rem; }

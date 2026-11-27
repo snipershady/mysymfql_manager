@@ -4,13 +4,9 @@
  * Page behaviour lives in Stimulus controllers (assets/controllers/), started by stimulus_bootstrap.js.
  */
 
-// Styles: vendor first, then the application ones (order matters for overrides).
-import 'bootstrap/dist/css/bootstrap.min.css';
-import '@fortawesome/fontawesome-free/css/all.min.css';
-import 'datatables.net-bs5/css/dataTables.bootstrap5.min.css';
-import 'sweetalert2/dist/sweetalert2.min.css';
-import './styles/app.css';
+// Styles are linked in templates/base.html.twig (not imported here: see the comment there).
 
+import './lib/csp-nonce.js';
 // Bootstrap's data-api (data-bs-toggle="modal", dropdowns, dismiss buttons…).
 import 'bootstrap';
 import './lib/csrf-fetch.js';

@@ -49,8 +49,8 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <textarea id="sql-editor" {{ stimulus_target('query', 'editor') }} class="form-control" rows="10" spellcheck="false"
-                              style="font-family: 'Courier New', monospace; font-size: .9rem;"
+                    <textarea id="sql-editor" {{ stimulus_target('query', 'editor') }} class="form-control font-monospace fs-small-09" rows="10" spellcheck="false"
+                             
                               placeholder="SELECT * FROM ..."></textarea>
                     <div class="d-flex align-items-center justify-content-between mt-2">
                         <span class="text-muted small">Suggerimento: Ctrl+Invio (⌘+Invio su Mac) per eseguire.</span>

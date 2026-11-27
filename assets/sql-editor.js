@@ -23,6 +23,8 @@ export function createSqlEditor(textarea, { onRun }) {
         extensions: [
             basicSetup,
             EditorView.lineWrapping,
+            // Content-Security-Policy: nonce for the <style> CodeMirror injects where adoptedStyleSheets is unavailable.
+            EditorView.cspNonce.of(document.querySelector('meta[name="csp-nonce"]')?.content ?? ''),
             language.of(sqlLanguage({})),
             // Before the default keymap, which binds Mod-Enter to "insert blank line".
             Prec.highest(keymap.of([{ key: 'Mod-Enter', run: () => { onRun(); return true; } }])),

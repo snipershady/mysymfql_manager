@@ -112,7 +112,7 @@ final class ResetPasswordTest extends WebTestCase
 
         $this->assertResponseIsSuccessful();
         $this->assertSelectorExists('input[name="reset_password_confirm[newPlainPassword][first]"]');
-        $this->assertResponseHeaderSame('Referrer-Policy', 'no-referrer');
+        $this->assertSelectorExists('meta[name="referrer"][content="no-referrer"]');
     }
 
     public function testExpiredTokenIsRejected(): void

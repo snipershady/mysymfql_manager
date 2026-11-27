@@ -19,7 +19,7 @@
         Termina processo per PID
     </div>
     <div class="card-body">
-        <div class="d-flex gap-2 align-items-end" style="max-width:360px">
+        <div class="d-flex gap-2 align-items-end mw-360">
             <div class="flex-grow-1">
                 <label for="kill-pid-input" class="form-label">Process ID</label>
                 <input type="number" id="kill-pid-input" class="form-control font-monospace" {{ stimulus_target('process-list', 'pid') }}
@@ -52,15 +52,15 @@
         <table id="table-processlist" class="table table-hover align-middle w-100 table-compact" {{ stimulus_target('process-list', 'table') }}>
             <thead class="table-light">
                 <tr>
-                    <th style="width:70px">PID</th>
+                    <th class="cw-70">PID</th>
                     <th>Utente</th>
                     <th>Host</th>
                     <th>Database</th>
                     <th>Comando</th>
-                    <th style="width:70px">Tempo (s)</th>
+                    <th class="cw-70">Tempo (s)</th>
                     <th>Stato</th>
                     <th>Query</th>
-                    <th class="text-end" style="width:90px">Azioni</th>
+                    <th class="text-end cw-90">Azioni</th>
                 </tr>
             </thead>
             <tbody></tbody>

@@ -10,8 +10,21 @@
         <title>{% block title %}DB Manager{% endblock %} — MySQL Manager</title>
         <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>🗄️</text></svg>">
 
-        {# All CSS/JS through AssetMapper (importmap.php, assets/): no CDN. Before head_extra so page styles win. #}
-        {{ importmap('app') }}
+        {# All CSS/JS through AssetMapper (importmap.php, assets/): no CDN. Before head_extra so page styles win.
+           CSS is linked here, not imported from JS: AssetMapper maps CSS imports to "data:application/javascript,"
+           modules, which the Content-Security-Policy (no data: scripts) would block, taking app.js down with them. #}
+        {% for stylesheet in [
+            'vendor/bootstrap/dist/css/bootstrap.min.css',
+            'vendor/@fortawesome/fontawesome-free/css/all.min.css',
+            'vendor/datatables.net-bs5/css/dataTables.bootstrap5.min.css',
+            'vendor/sweetalert2/dist/sweetalert2.min.css',
+            'styles/app.css',
+        ] %}
+            <link rel="stylesheet" href="{{ asset(stylesheet) }}" data-turbo-track="reload">
+        {% endfor %}
+        {# Nonce for the inline import map; csp-nonce is read by Turbo (progress bar), Altcha and CodeMirror for their <style>. #}
+        <meta name="csp-nonce" content="{{ csp_nonce('style') }}">
+        {{ importmap('app', {nonce: csp_nonce('script')}) }}
 
         {% block head_extra %}{% endblock %}
 

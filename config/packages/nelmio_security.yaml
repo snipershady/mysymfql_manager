@@ -1,0 +1,43 @@
+nelmio_security:
+    # prevents framing of the entire site
+    clickjacking:
+        paths:
+            '^/.*': DENY
+
+    # disables content type sniffing for script resources
+    content_type:
+        nosniff: true
+
+    # Send a full URL in the `Referer` header when performing a same-origin request,
+    # only send the origin of the document to secure destination (HTTPS->HTTPS),
+    # and send no header to a less secure destination (HTTPS->HTTP).
+    # If `strict-origin-when-cross-origin` is not supported, use `no-referrer` policy,
+    # no referrer information is sent along with requests.
+    referrer_policy:
+        enabled: true
+        policies:
+            - 'no-referrer'
+            - 'strict-origin-when-cross-origin'
+
+    # Content-Security-Policy: everything is served by this application (AssetMapper, no CDN) and the
+    # templates contain no inline script or style. The only inline elements (the import map in <head>,
+    # the <style> injected by Turbo, Altcha and CodeMirror) carry the per-request nonce from csp_nonce():
+    # templates/base.html.twig and <meta name="csp-nonce">.
+    csp:
+        enabled: true
+        compat_headers: false
+        enforce:
+            level1_fallback: false
+            default-src: ['self']
+            script-src: ['self']
+            style-src: ['self']
+            # data: — Bootstrap's inline SVG icons (form-select arrow, checks) and the favicon.
+            img-src: ['self', 'data:']
+            font-src: ['self']
+            connect-src: ['self']
+            # blob: — the Altcha widget runs its proof of work in a Worker created from a Blob.
+            worker-src: ['self', 'blob:']
+            object-src: ['none']
+            base-uri: ['self']
+            form-action: ['self']
+            frame-ancestors: ['none']

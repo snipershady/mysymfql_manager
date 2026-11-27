@@ -58,7 +58,7 @@
                      class="accordion-collapse collapse {% if loop.first %}show{% endif %}"
                      data-bs-parent="#accordion-innodb">
                     <div class="accordion-body p-0">
-                        <pre class="mb-0 p-3 bg-dark text-light" style="font-size:.8rem;white-space:pre-wrap;word-break:break-word;">{{ sectionContent }}</pre>
+                        <pre class="mb-0 p-3 bg-dark text-light pre-wrap-sm">{{ sectionContent }}</pre>
                     </div>
                 </div>
             </div>
@@ -74,7 +74,7 @@
         </div>
         <div class="collapse" id="raw-status">
             <div class="card-body p-0">
-                <pre class="mb-0 p-3 bg-dark text-light" style="font-size:.75rem;white-space:pre-wrap;word-break:break-word;">{{ status.rawStatus }}</pre>
+                <pre class="mb-0 p-3 bg-dark text-light pre-wrap-xs">{{ status.rawStatus }}</pre>
             </div>
         </div>
     </div>

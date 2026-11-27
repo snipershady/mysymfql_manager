@@ -283,6 +283,29 @@ async function session(username, pages) {
     await b.close();
 }
 
+// Password reset from the e-mailed link (prepared by seed.php), without any session: a real browser POST with
+// <meta name="referrer" content="no-referrer"> (Origin: null) must still pass the stateless CSRF check.
+async function resetFlow() {
+    const b = await openBrowser();
+    const path = readFileSync(new URL('../../var/smoke/reset-path.txt', import.meta.url), 'utf8').trim();
+    b.events.length = 0;
+    await b.send('Page.navigate', { url: base + path });
+    await sleep(2000);
+    const result = await b.evaluate(`(async () => {
+        const form = document.querySelector('form[name="reset_password_confirm"]');
+        if (!form) return { ok: false, why: 'no form', path: location.pathname };
+        form.querySelector('[name="reset_password_confirm[newPlainPassword][first]"]').value = 'Smoke-Reset-passw0rd';
+        form.querySelector('[name="reset_password_confirm[newPlainPassword][second]"]').value = 'Smoke-Reset-passw0rd';
+        form.requestSubmit(); ${wait(2500)};
+        const landed = location.pathname;
+        const flash = document.body.innerText.includes('Password updated');
+        return { ok: landed === '/login' && flash, landed, flash };
+    })()`);
+    check('[anonymous] password reset link', b.events, result, result?.ok ? [] : [`reset: ${JSON.stringify(result)}`]);
+    await b.close();
+}
+
+await resetFlow();
 await session('test_admin', adminPages);
 await session('test_owner', ownerPages);
 
