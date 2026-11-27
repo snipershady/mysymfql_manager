@@ -15,6 +15,7 @@ use App\Repository\DatabaseOwnerRepository;
 use App\Security\SqlClientAccessResolver;
 use App\Service\MysqldumpManager;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -42,7 +43,8 @@ final class BackupController extends AbstractController
     #[Route(path: '/table-backup', name: 'app_schema_table_backup', methods: ['POST'])]
     public function tableBackup(
         #[MapRequestPayload] BackupTarget $input,
-        MysqldumpManager $mysqldumpManager): JsonResponse
+        MysqldumpManager $mysqldumpManager,
+        LoggerInterface $logger): JsonResponse
     {
         $name = $input->name;
         $dbName = $input->dbName;
@@ -54,12 +56,15 @@ final class BackupController extends AbstractController
         }
 
         $result = $mysqldumpManager->createBackup($sqlClient, $dbName, $table);
+        if (!$result['is_valid']) {
+            // mysqldump's error output names hosts and accounts: logged, never sent to the browser.
+            $logger->error('Backup failed: {error}', ['error' => $result['msg'], 'server' => $name, 'db' => $dbName, 'table' => $table]);
+        }
 
         return $this->json([
             'is_valid' => $result['is_valid'],
-            'message' => $result['is_valid'] ? 'Backup completato.' : 'Errore durante il backup.',
+            'message' => $result['is_valid'] ? 'Backup completato.' : "Errore durante il backup: dettagli nel log dell'applicazione.",
             'backup_filename' => basename($result['backup_filename']),
-            'msg' => $result['msg'],
         ]);
     }
 
@@ -216,7 +221,8 @@ final class BackupController extends AbstractController
         #[MapRequestPayload] RestoreBackup $input,
         #[CurrentUser] AppUser $user,
         MysqldumpManager $mysqldumpManager,
-        DatabaseOwnerRepository $databaseOwnerRepository): JsonResponse
+        DatabaseOwnerRepository $databaseOwnerRepository,
+        LoggerInterface $logger): JsonResponse
     {
         $name = $input->name;
         $dbName = $input->dbName;
@@ -236,10 +242,13 @@ final class BackupController extends AbstractController
         }
 
         $result = $mysqldumpManager->restoreBackup($sqlClient, $dbName, $selectedBackup->path);
+        if (!$result['is_valid']) {
+            $logger->error('Restore failed: {error}', ['error' => $result['msg'], 'server' => $name, 'db' => $dbName, 'backup' => $selectedBackup->id]);
+        }
 
         return $this->json([
             'is_valid' => $result['is_valid'],
-            'message' => $result['is_valid'] ? 'Ripristino completato.' : 'Errore durante il ripristino.',
+            'message' => $result['is_valid'] ? 'Ripristino completato.' : "Errore durante il ripristino: dettagli nel log dell'applicazione.",
         ]);
     }
 }

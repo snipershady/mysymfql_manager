@@ -224,6 +224,37 @@ final class MysqldumpManagerTest extends TestCase
         $this->assertStringEndsNotWith('.part', $result['backup_filename']);
     }
 
+    public function testFailedDumpReportsTheMysqldumpErrorOutput(): void
+    {
+        $result = $this->manager()->createBackup($this->persistedSqlClient(7)->setHost('127.0.0.1')->setPort(1), 'shop');
+
+        $this->assertFalse($result['is_valid']);
+        // e.g. "mysqldump: Got error: 2003: Can't connect to MySQL server on '127.0.0.1:1' (111) when trying to connect"
+        $this->assertStringContainsString('2003', $result['msg']);
+        $this->assertNotSame([], $result['output']);
+    }
+
+    public function testMissingClientBinariesAreReportedInsteadOfBreakingTheService(): void
+    {
+        $dump = $this->writeDump('7/shop/bkp_2024-01-01_00-00-01_shop_full.sql');
+        $previousPath = getenv('PATH');
+        putenv('PATH=' . $this->backupDir); // no mysqldump/mysql in there
+
+        try {
+            $manager = $this->manager(); // the constructor no longer looks for mysqldump
+            $backup = $manager->createBackup($this->persistedSqlClient(7), 'shop');
+            $restore = $manager->restoreBackup($this->persistedSqlClient(7), 'shop', $dump);
+        } finally {
+            putenv(false === $previousPath ? 'PATH' : 'PATH=' . $previousPath);
+        }
+
+        $this->assertFalse($backup['is_valid']);
+        $this->assertStringContainsString('mysqldump command was not found', $backup['msg']);
+        $this->assertSame([], glob($this->backupDir . '/7/shop/*.part') ?: []);
+        $this->assertFalse($restore['is_valid']);
+        $this->assertStringContainsString('mysql command was not found', $restore['msg']);
+    }
+
     public function testLegacyDumpIsRelocatedToTheServerAndDatabaseFolder(): void
     {
         $this->writeDump('bkp_2024-01-01_00-00-01_shop_full.sql');
@@ -265,7 +296,7 @@ final class MysqldumpManagerTest extends TestCase
         $this->manager()->relocateLegacyBackup($structured, $this->persistedSqlClient(4), 'shop');
     }
 
-    private function writeDump(string $relativePath, int $mtime = 1_700_000_000): void
+    private function writeDump(string $relativePath, int $mtime = 1_700_000_000): string
     {
         $path = $this->backupDir . '/' . $relativePath;
         if (!is_dir(\dirname($path))) {
@@ -273,6 +304,8 @@ final class MysqldumpManagerTest extends TestCase
         }
         file_put_contents($path, '-- dump');
         touch($path, $mtime);
+
+        return $path;
     }
 
     private function persistedSqlClient(int $id): SqlClient

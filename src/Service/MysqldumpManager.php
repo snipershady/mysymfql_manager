@@ -8,6 +8,8 @@ use App\Dto\BackupDump;
 use App\Entity\AppUser;
 use App\Entity\DatabaseOwner;
 use App\Entity\SqlClient;
+use Symfony\Component\Process\ExecutableFinder;
+use Symfony\Component\Process\Process;
 use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
 
 /**
@@ -21,17 +23,13 @@ final readonly class MysqldumpManager
 {
     private string $backupPath;
 
+    /**
+     * No system checks here: listing, rotation and relocation work without the MySQL client binaries,
+     * and a missing binary must not break the container (every command and page depending on this class).
+     * createBackup()/restoreBackup() report it instead.
+     */
     public function __construct(?EffectivePrimitiveTypeIdentifierService $epti = null)
     {
-        $disabledFunctions = array_map(trim(...), explode(',', \ini_get('disable_functions') ?: ''));
-        if (\in_array('exec', $disabledFunctions, strict: true)) {
-            throw new \RuntimeException('The exec() function is disabled in PHP. To enable it, remove "exec" from "disable_functions" in the php.ini file (e.g. /etc/php/8.x/fpm/php.ini) and restart PHP-FPM.');
-        }
-
-        if (!shell_exec('which mysqldump 2>/dev/null')) {
-            throw new \RuntimeException('The mysqldump command was not found in the system PATH. Install it with: "apt install mysql-client" (Debian/Ubuntu) or "yum install mysql" (RHEL/CentOS), then verify it is accessible in the PATH of the user running PHP.');
-        }
-
         $epti ??= new EffectivePrimitiveTypeIdentifierService();
 
         $this->backupPath = $epti->getStringValueFromEnv(
@@ -40,7 +38,16 @@ final readonly class MysqldumpManager
     }
 
     /**
-     * @return array{is_valid: bool, exec_result: string|false|null, output: list<string>|null, result_code: int|null, backup_filename: string, msg: string}
+     * Dumps a database (or one table) to BACKUP_PATH/{sqlClientId}/{dbName}/bkp_<date>_<db>_<table|full>.sql.
+     *
+     * The dump is written to "<name>.part" and renamed only when mysqldump succeeds, so a failed or
+     * interrupted run never leaves a truncated file that the listing would offer for restore.
+     * On failure "msg" holds mysqldump's error output (it may contain host and user names: log it, do not
+     * show it to panel users).
+     *
+     * @return array{is_valid: bool, backup_filename: string, msg: string, output: list<string>}
+     *
+     * @throws \InvalidArgumentException when a name is invalid or the SqlClient is not persisted
      */
     public function createBackup(SqlClient $sqlClient, string $dbName, ?string $table = null): array
     {
@@ -52,90 +59,111 @@ final readonly class MysqldumpManager
             throw new \InvalidArgumentException(\sprintf('Invalid table name: "%s". Only alphanumeric characters and underscores are allowed.', $table));
         }
 
-        $host = $sqlClient->getHost();
-        $user = $sqlClient->getUsername();
-        $pass = $sqlClient->getPassword();
-        $now = new \DateTime();
-        $dateString = $now->format('Y-m-d_H-i-s');
-
         $sqlClientId = $sqlClient->getId()
             ?? throw new \InvalidArgumentException('Only a persisted SqlClient can be backed up: its id is part of the backup path.');
         $backupDir = \sprintf('%s/%d/%s', $this->backupPath, $sqlClientId, $dbName);
 
         if (!$this->ensureBackupDirectory($backupDir)) {
-            $msg = \sprintf('Unable to create the backup directory: %s', $backupDir);
-
-            // throw new \RuntimeException(sprintf('Unable to create the backup directory: %s', $this->backupPath));
-            return [
-                'is_valid' => false,
-                'exec_result' => null,
-                'output' => null,
-                'result_code' => null,
-                'backup_filename' => $this->backupPath,
-                'msg' => $msg,
-            ];
+            return $this->backupFailure($this->backupPath, \sprintf('Unable to create the backup directory: %s', $backupDir));
         }
-
-        // Avoid exposing the database password in plaintext
-        $cnfFile = tempnam(sys_get_temp_dir(), 'mysqldump_');
-        if (false === $cnfFile) {
-            $msg = 'Unable to create the temporary file for mysqldump credentials.';
-
-            // throw new \RuntimeException($msg);
-            return [
-                'is_valid' => false,
-                'exec_result' => null,
-                'output' => null,
-                'result_code' => null,
-                'backup_filename' => $this->backupPath,
-                'msg' => $msg,
-            ];
-        }
-
-        file_put_contents($cnfFile, \sprintf("[client]\npassword=%s\n", addslashes((string) $pass)));
-        chmod($cnfFile, 0600);
 
         $suffix = null !== $table ? '_' . $table : '_full';
-        $backupFilename = $backupDir . '/bkp_' . $dateString . '_' . $dbName . $suffix . '.sql';
+        $backupFilename = $backupDir . '/bkp_' . new \DateTime()->format('Y-m-d_H-i-s') . '_' . $dbName . $suffix . '.sql';
         $partialFilename = $backupFilename . '.part';
+
+        $arguments = [
+            '--single-transaction', '--set-gtid-purged=OFF', '--triggers',
+            ...(null === $table ? ['--routines', '--events'] : []),
+            '--result-file=' . $partialFilename,
+            $dbName,
+            ...(null !== $table ? [$table] : []),
+        ];
+
         $completed = false;
         try {
-            $dbLevelFlags = null === $table ? '--routines --events' : '';
-            $command = \sprintf(
-                'mysqldump --defaults-extra-file=%s -h %s -P %d -u %s --single-transaction --set-gtid-purged=OFF --triggers %s %s %s > %s',
-                escapeshellarg($cnfFile),
-                escapeshellarg((string) $host),
-                $sqlClient->getPort(),
-                escapeshellarg((string) $user),
-                $dbLevelFlags,
-                escapeshellarg($dbName),
-                null !== $table ? escapeshellarg($table) : '',
-                escapeshellarg($partialFilename)
-            );
-            $output = [];
-            $resultCode = 0;
-            $execResult = exec($command, $output, $resultCode);
-
-            // The dump is written to "<name>.part" and renamed only when complete: an interrupted or failed
-            // run never leaves a truncated bkp_*.sql that the listing would offer for restore.
-            if (false !== $execResult && 0 === $resultCode && rename($partialFilename, $backupFilename)) {
-                $completed = true;
-            }
+            $run = $this->runClient('mysqldump', $sqlClient, $arguments);
+            $completed = $run['ok'] && rename($partialFilename, $backupFilename);
         } finally {
-            unlink($cnfFile);
             if (!$completed && file_exists($partialFilename)) {
                 unlink($partialFilename);
             }
         }
 
-        return [
-            'is_valid' => $completed,
-            'exec_result' => $execResult,
-            'output' => $output,
-            'result_code' => $resultCode,
-            'backup_filename' => $backupFilename,
-            'msg' => 'ok',
-        ];
+        if (!$completed) {
+            return $this->backupFailure($backupFilename, $run['error'] ?: 'Unable to rename the completed dump.', $run['output']);
+        }
+
+        return ['is_valid' => true, 'backup_filename' => $backupFilename, 'msg' => 'Backup completed.', 'output' => $run['output']];
+    }
+
+    /**
+     * @param list<string> $output
+     *
+     * @return array{is_valid: false, backup_filename: string, msg: string, output: list<string>}
+     */
+    private function backupFailure(string $backupFilename, string $msg, array $output = []): array
+    {
+        return ['is_valid' => false, 'backup_filename' => $backupFilename, 'msg' => $msg, 'output' => [] === $output ? [$msg] : $output];
+    }
+
+    /**
+     * Runs a MySQL client binary (mysqldump, mysql) against $sqlClient, without a shell: arguments are passed
+     * as an array, the password through a temporary option file (0600) instead of the command line.
+     * No timeout: a dump or restore of a large database can take hours.
+     *
+     * @param list<string>  $arguments
+     * @param resource|null $input     stream piped to the process standard input
+     *
+     * @return array{ok: bool, error: string, output: list<string>}
+     */
+    private function runClient(string $binary, SqlClient $sqlClient, array $arguments, mixed $input = null): array
+    {
+        $path = new ExecutableFinder()->find($binary);
+        if (null === $path) {
+            $error = \sprintf('The %s command was not found in the PATH of the user running PHP. Install the MySQL client (e.g. "apt install mysql-client").', $binary);
+
+            return ['ok' => false, 'error' => $error, 'output' => [$error]];
+        }
+
+        $cnfFile = tempnam(sys_get_temp_dir(), $binary . '_');
+        if (false === $cnfFile) {
+            $error = \sprintf('Unable to create the temporary credentials file for %s.', $binary);
+
+            return ['ok' => false, 'error' => $error, 'output' => [$error]];
+        }
+
+        try {
+            chmod($cnfFile, 0600);
+            file_put_contents($cnfFile, \sprintf("[client]\npassword=%s\n", addslashes((string) $sqlClient->getPassword())));
+
+            // --defaults-extra-file must be the first option.
+            $process = new Process([
+                $path,
+                '--defaults-extra-file=' . $cnfFile,
+                '-h', (string) $sqlClient->getHost(),
+                '-P', (string) $sqlClient->getPort(),
+                '-u', (string) $sqlClient->getUsername(),
+                ...$arguments,
+            ]);
+            $process->setTimeout(timeout: null);
+            if (null !== $input) {
+                $process->setInput($input);
+            }
+
+            $process->run();
+        } finally {
+            unlink($cnfFile);
+        }
+
+        $errorOutput = trim($process->getErrorOutput());
+        $output = '' === $errorOutput ? [] : (preg_split('/\R/', $errorOutput) ?: []);
+        if ($process->isSuccessful()) {
+            return ['ok' => true, 'error' => '', 'output' => $output];
+        }
+
+        $error = '' !== $errorOutput ? $errorOutput : \sprintf('%s exited with code %d.', $binary, $process->getExitCode() ?? -1);
+
+        return ['ok' => false, 'error' => $error, 'output' => [] === $output ? [$error] : $output];
     }
 
     /**
@@ -323,7 +351,13 @@ final readonly class MysqldumpManager
     }
 
     /**
-     * @return array<string, bool|string|int|list<string>>
+     * Loads a dump of BACKUP_PATH into $dbName with the mysql client (the file is streamed to its stdin).
+     * On failure "msg" holds mysql's error output (log it, do not show it to panel users).
+     *
+     * @return array{is_valid: bool, backup_filename: string, msg: string, output: list<string>}
+     *
+     * @throws \InvalidArgumentException when a name is invalid or the file is outside BACKUP_PATH
+     * @throws \RuntimeException         when the file cannot be read
      */
     public function restoreBackup(SqlClient $sqlClient, string $dbName, string $backupFilename, ?string $table = null): array
     {
@@ -340,46 +374,22 @@ final readonly class MysqldumpManager
             throw new \InvalidArgumentException('The backup file must be located in the configured backup directory.');
         }
 
-        if (!is_readable($realPath)) {
+        $dump = is_readable($realPath) ? fopen($realPath, 'r') : false;
+        if (false === $dump) {
             throw new \RuntimeException(\sprintf('The backup file is not readable: %s', $realPath));
         }
 
-        $host = $sqlClient->getHost();
-        $user = $sqlClient->getUsername();
-        $pass = $sqlClient->getPassword();
-
-        $cnfFile = tempnam(sys_get_temp_dir(), 'mysqlrestore_');
-        if (false === $cnfFile) {
-            throw new \RuntimeException('Unable to create the temporary file for mysql credentials.');
-        }
-
-        file_put_contents($cnfFile, \sprintf("[client]\npassword=%s\n", addslashes((string) $pass)));
-        chmod($cnfFile, 0600);
-
         try {
-            $command = \sprintf(
-                'mysql --defaults-extra-file=%s -h %s -P %d -u %s %s %s < %s',
-                escapeshellarg($cnfFile),
-                escapeshellarg((string) $host),
-                $sqlClient->getPort(),
-                escapeshellarg((string) $user),
-                null !== $table ? '--one-database' : '',
-                escapeshellarg($dbName),
-                escapeshellarg($realPath)
-            );
-            $output = [];
-            $resultCode = 0;
-            $execResult = exec($command, $output, $resultCode);
+            $run = $this->runClient('mysql', $sqlClient, [...(null !== $table ? ['--one-database'] : []), $dbName], $dump);
         } finally {
-            unlink($cnfFile);
+            fclose($dump);
         }
 
         return [
-            'is_valid' => false !== $execResult && 0 === $resultCode,
-            'exec_result' => $execResult,
-            'output' => $output,
-            'result_code' => $resultCode,
+            'is_valid' => $run['ok'],
             'backup_filename' => $backupFilename,
+            'msg' => $run['ok'] ? 'Restore completed.' : $run['error'],
+            'output' => $run['output'],
         ];
     }
 }
