@@ -97,8 +97,9 @@ class RegistrationController extends AbstractController
             return $this->redirectToRoute('app_default');
         }
 
+        // The form itself (not createView()): Symfony then answers 422 when it is invalid, as Turbo requires.
         return $this->render('registration/change_password.html.twig', [
-            'form' => $form->createView(),
+            'form' => $form,
         ]);
     }
 }

@@ -16,7 +16,10 @@ import 'bootstrap';
 import './lib/csrf-fetch.js';
 import './stimulus_bootstrap.js';
 
-if (document.querySelector('altcha-widget')) {
-    await import('altcha');
-    await import('altcha/i18n/it');
-}
+// Turbo Drive runs this module once: load the widget on every visit (turbo:load also fires on the first one).
+document.addEventListener('turbo:load', async () => {
+    if (document.querySelector('altcha-widget')) {
+        await import('altcha');
+        await import('altcha/i18n/it');
+    }
+});

@@ -59,7 +59,7 @@
                         </td>
                         <td class="text-muted">{{ backup.mtime|date('d/m/Y H:i:s') }}</td>
                         <td class="text-end">
-                            <a href="{{ path('app_schema_backup_download') }}?filename={{ backup.id|url_encode }}"
+                            <a href="{{ path('app_schema_backup_download') }}?filename={{ backup.id|url_encode }}" data-turbo="false"
                                class="btn btn-sm btn-outline-primary btn-download me-1"
                                title="Scarica backup">
                                 <i class="fa-solid fa-download"></i>

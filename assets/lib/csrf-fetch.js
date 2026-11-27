@@ -8,13 +8,13 @@
 import jQuery from 'jquery';
 
 (function () {
-    const meta = document.querySelector('meta[name="csrf-token"]');
-    if (!meta) return;
-    const token = meta.content;
+    // Read on every request: with Turbo Drive the page (and its <meta>) changes without reloading this module.
+    const token = () => document.querySelector('meta[name="csrf-token"]')?.content;
     const HEADER = 'X-CSRF-Token';
     const SAFE = ['GET', 'HEAD', 'OPTIONS'];
 
     const needsToken = (method, url) =>
+        Boolean(token()) &&
         !SAFE.includes((method || 'GET').toUpperCase()) &&
         new URL(url, window.location.href).origin === window.location.origin;
 
@@ -25,7 +25,7 @@ import jQuery from 'jquery';
         const url = isRequest ? input.url : String(input);
         if (needsToken(method, url)) {
             const headers = new Headers(init.headers || (isRequest ? input.headers : undefined));
-            headers.set(HEADER, token);
+            headers.set(HEADER, token());
             init = { ...init, headers };
         }
         return originalFetch(input, init);
@@ -34,7 +34,7 @@ import jQuery from 'jquery';
     // jQuery requests (none at the moment: pages use fetch()) get the header too.
     jQuery.ajaxPrefilter(function (options, originalOptions, jqXHR) {
         if (needsToken(options.type, options.url)) {
-            jqXHR.setRequestHeader(HEADER, token);
+            jqXHR.setRequestHeader(HEADER, token());
         }
     });
 })();

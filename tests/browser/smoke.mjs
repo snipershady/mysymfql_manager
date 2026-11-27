@@ -42,10 +42,38 @@ const adminPages = [
 const ownerPages = [
     { path: '/', scenario: 'dashboard' },
     { path: '/schema/databases', scenario: 'databases' },
+    { path: '/', scenario: 'turboNavigation' },
+    { path: '/change-password', scenario: 'turboForm', allowStatus: [422] },
 ];
 
 // --- Scenarios (run in the page; libraries are imported through the page's import map) ---------------
 const scenarios = {
+    // Turbo Drive: a sidebar link must not reload the page, and the controllers of the new page must work.
+    turboNavigation: () => `(async () => {
+        window.__noReload = 'still-here';
+        document.querySelector('#sidebar a[href="/schema/databases"]').click(); ${wait(2500)};
+        const onDatabases = location.pathname === '/schema/databases';
+        const sel = document.getElementById('select-sql-client');
+        sel.value = '${SERVER}'; sel.dispatchEvent(new Event('change', { bubbles: true })); ${wait(2500)};
+        const rows = document.querySelectorAll('table.dataTable tbody tr').length;
+        document.querySelector('#sidebar a[href="/"]').click(); ${wait(2000)};
+        const backOnDashboard = location.pathname === '/' && !!document.getElementById('server-select');
+        const noReload = window.__noReload === 'still-here';
+        const turbo = !!window.Turbo;
+        return { ok: turbo && onDatabases && rows > 0 && backOnDashboard && noReload, turbo, onDatabases, rows, backOnDashboard, noReload };
+    })()`,
+    // Turbo form submission answered with 422: the form is re-rendered with its errors, without a reload.
+    turboForm: () => `(async () => {
+        window.__noReload = 'still-here';
+        const form = document.querySelector('form[name="change_password"]');
+        form.querySelector('[name="change_password[oldPlainPassword]"]').value = 'whatever';
+        form.querySelector('[name="change_password[newPlainPassword][first]"]').value = 'New-passw0rd-1';
+        form.querySelector('[name="change_password[newPlainPassword][second]"]').value = 'Different-passw0rd';
+        form.requestSubmit(); ${wait(2500)};
+        const error = document.body.innerText.includes('the passwords do not match');
+        const noReload = window.__noReload === 'still-here';
+        return { ok: error && noReload, error, noReload };
+    })()`,
     tables: () => `(async () => {
         document.querySelector('[data-action="tables#showCreate"]').click(); ${wait(1500)};
         const ddl = document.getElementById('modalShowCreateContent')?.textContent ?? '';
@@ -174,26 +202,28 @@ async function openBrowser() {
 const host = new URL(base).host;
 let failures = 0;
 
-function problems(events) {
+function problems(events, allowStatus = []) {
     const url = (u) => { try { return new URL(u); } catch { return null; } };
     return {
         exceptions: events.filter((e) => e.method === 'Runtime.exceptionThrown')
             .map((e) => e.params.exceptionDetails.exception?.description?.split('\n')[0] ?? e.params.exceptionDetails.text),
         consoleErrors: events.filter((e) => e.method === 'Runtime.consoleAPICalled' && e.params.type === 'error')
             .map((e) => e.params.args.map((a) => a.value ?? a.description).join(' ')),
-        logErrors: events.filter((e) => e.method === 'Log.entryAdded' && e.params.entry.level === 'error')
+        logErrors: events.filter((e) => e.method === 'Log.entryAdded' && e.params.entry.level === 'error'
+                && !allowStatus.some((status) => e.params.entry.text.includes(`status of ${status} `)))
             .map((e) => `${e.params.entry.text} ${e.params.entry.url ?? ''}`),
         dialogs: events.filter((e) => e.method === 'Page.javascriptDialogOpening')
             .map((e) => `${e.params.type}: ${e.params.message}`),
         externalHosts: [...new Set(events.filter((e) => e.method === 'Network.requestWillBeSent')
             .map((e) => url(e.params.request.url)).filter((u) => u && /^https?:$/.test(u.protocol) && u.host !== host).map((u) => u.host))],
-        failedRequests: events.filter((e) => e.method === 'Network.responseReceived' && e.params.response.status >= 400 && url(e.params.response.url)?.host === host)
+        failedRequests: events.filter((e) => e.method === 'Network.responseReceived' && e.params.response.status >= 400
+                && !allowStatus.includes(e.params.response.status) && url(e.params.response.url)?.host === host)
             .map((e) => `${e.params.response.status} ${url(e.params.response.url).pathname}`),
     };
 }
 
-function check(label, events, extra = {}, assertions = []) {
-    const found = problems(events);
+function check(label, events, extra = {}, assertions = [], allowStatus = []) {
+    const found = problems(events, allowStatus);
     const errors = [...Object.entries(found).filter(([, v]) => v.length).map(([k, v]) => `${k}: ${v.join(' | ')}`), ...assertions];
     console.log(`${errors.length ? 'FAIL' : 'ok  '} ${label} ${Object.keys(extra).length ? JSON.stringify(extra) : ''}`);
     for (const e of errors) console.log(`       ${e}`);
@@ -248,7 +278,7 @@ async function session(username, pages) {
             result = await b.evaluate(scenarios[page.scenario]());
             if (!result?.ok) assertions.push(`scenario ${page.scenario}: ${JSON.stringify(result)}`);
         }
-        check(`[${username}] ${page.path}${page.scenario ? ` (${page.scenario})` : ''}`, b.events, page.expect ? { dt: counts.dt, rows: counts.rows, cm: counts.cm } : {}, assertions);
+        check(`[${username}] ${page.path}${page.scenario ? ` (${page.scenario})` : ''}`, b.events, page.expect ? { dt: counts.dt, rows: counts.rows, cm: counts.cm } : {}, assertions, page.allowStatus ?? []);
     }
     await b.close();
 }
