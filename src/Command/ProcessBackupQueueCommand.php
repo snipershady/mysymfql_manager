@@ -19,8 +19,9 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 /**
  * Processes one queue entry per run, oldest first (FIFO).
  *
- * Entry states (no schema change): pending = !isDequeued; done = isDequeued && completedDate;
- * failed or interrupted = isDequeued && completedDate === null (logged, never retried automatically).
+ * The entry goes pending → running (atomic claim) → done, or failed with the native error output shown in the
+ * dashboard (also logged). Failed entries are never retried automatically: a user puts them back from the
+ * dashboard. An entry left running by an interrupted run stays running.
  *
  * @see \App\Tests\Command\ProcessBackupQueueCommandTest
  */
@@ -53,9 +54,8 @@ class ProcessBackupQueueCommand extends Command
         }
 
         // Atomic claim: an overlapping run that picked the same entry gets false and stops here.
-        // From now on the entry is out of the queue whatever happens, so a failing entry can no
-        // longer block the queue: completedDate stays null for failed (or interrupted) runs.
-        if (!$this->backupQueueRepository->claim($entry)) {
+        // From now on the entry is out of the queue whatever happens, so a failing entry never blocks the queue.
+        if (!$this->backupQueueRepository->claim($entry, new \DateTime())) {
             $io->writeln('Entry already taken by another worker.');
 
             return Command::SUCCESS;
@@ -65,11 +65,11 @@ class ProcessBackupQueueCommand extends Command
         $dbName = $entry->getDbName();
         $table = $entry->getTable();
         if (!$sqlClient instanceof SqlClient || null === $dbName) {
-            // Claimed but unusable (should not happen: both columns are NOT NULL): leave it as failed.
+            // Claimed but unusable (should not happen: both columns are NOT NULL).
             $io->writeln('<fg=red>Invalid queue entry: missing server or database.</>');
             $this->logger->error('Invalid backup queue entry.', ['entry' => $entry->getId()]);
 
-            return Command::FAILURE;
+            return $this->fail($entry, 'Richiesta non valida: server o database mancante.');
         }
 
         $io->write(\sprintf(
@@ -92,19 +92,26 @@ class ProcessBackupQueueCommand extends Command
 
                 $this->logger->error('Queued backup failed.', ['entry' => $entry->getId(), 'output' => $result['output']]);
 
-                return Command::FAILURE;
+                return $this->fail($entry, $result['msg']);
             }
         } catch (\Throwable $throwable) {
             $io->writeln(\sprintf('<fg=red>ERROR: %s</>', $throwable->getMessage()));
             $this->logger->error('Queued backup failed.', ['entry' => $entry->getId(), 'exception' => $throwable]);
 
-            return Command::FAILURE;
+            return $this->fail($entry, $throwable->getMessage());
         }
 
-        $entry->setCompletedDate(new \DateTime());
-
+        $entry->markDone(new \DateTime());
         $this->entityManager->flush();
 
         return Command::SUCCESS;
+    }
+
+    private function fail(BackupQueue $entry, string $error): int
+    {
+        $entry->markFailed($error);
+        $this->entityManager->flush();
+
+        return Command::FAILURE;
     }
 }

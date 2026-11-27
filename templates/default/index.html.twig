@@ -131,17 +131,52 @@
     </div>
 
     <div class="col-lg-4">
-        <div class="card">
+        <div class="card" id="backup-queue">
             <div class="card-header d-flex align-items-center gap-2">
-                <i class="fa-solid fa-clipboard-list text-primary"></i>
-                Attività recente
+                <i class="fa-solid fa-clock-rotate-left text-primary"></i>
+                Coda backup
+                <span class="text-muted small ms-auto">ultime {{ backup_queue|length }}</span>
             </div>
-            <div class="card-body">
-                <p class="text-muted text-center py-3 mb-0">
-                    <i class="fa-solid fa-clock-rotate-left fa-2x d-block mb-2 opacity-25"></i>
-                    Nessuna attività recente
-                </p>
-            </div>
+            {% for message in app.flashes(constant('App\\Controller\\BackupQueueController::FLASH')) %}
+                <div class="alert alert-info small rounded-0 mb-0 py-2">{{ message }}</div>
+            {% endfor %}
+            {% if backup_queue is empty %}
+                <div class="card-body">
+                    <p class="text-muted text-center py-3 mb-0">
+                        <i class="fa-solid fa-clock-rotate-left fa-2x d-block mb-2 opacity-25"></i>
+                        Nessun backup in coda
+                    </p>
+                </div>
+            {% else %}
+                <ul class="list-group list-group-flush">
+                    {% for entry in backup_queue %}
+                        <li class="list-group-item small" data-queue-status="{{ entry.status.value }}">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="font-monospace text-truncate">{{ entry.dbName }}{% if entry.table %}.{{ entry.table }}{% endif %}</span>
+                                <span class="badge text-bg-{{ entry.status.color }} ms-auto">{{ entry.status.label }}</span>
+                            </div>
+                            <div class="text-muted">
+                                {{ entry.sqlClient.name }} · richiesto {{ entry.requestDate|date('d/m/Y H:i') }}
+                                {% if entry.status.value == 'running' and entry.startedDate %} · avviato {{ entry.startedDate|date('d/m/Y H:i') }}{% endif %}
+                                {% if entry.status.value == 'done' and entry.completedDate %} · completato {{ entry.completedDate|date('d/m/Y H:i') }}{% endif %}
+                                {% if entry.attempts > 1 %} · {{ entry.attempts }} tentativi{% endif %}
+                            </div>
+                            {% if entry.status.value == 'failed' %}
+                                <details class="mt-1">
+                                    <summary class="text-danger">Errore</summary>
+                                    <pre class="queue-error mb-1">{{ entry.error }}</pre>
+                                </details>
+                                <form method="post" action="{{ path('app_backup_queue_retry', {id: entry.id}) }}" class="mt-1">
+                                    <input type="hidden" name="_token" value="{{ csrf_token(constant('App\\Controller\\BackupQueueController::CSRF_RETRY')) }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">
+                                        <i class="fa-solid fa-rotate-right me-1"></i>Riprova
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
         </div>
     </div>
 </div>

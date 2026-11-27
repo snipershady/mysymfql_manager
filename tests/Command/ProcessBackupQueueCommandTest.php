@@ -7,6 +7,7 @@ namespace App\Tests\Command;
 use App\Command\ProcessBackupQueueCommand;
 use App\Entity\BackupQueue;
 use App\Entity\SqlClient;
+use App\Enum\BackupQueueStatusEnum;
 use App\Repository\BackupQueueRepository;
 use App\Service\MysqldumpManager;
 use Doctrine\ORM\EntityManagerInterface;
@@ -26,6 +27,8 @@ final class ProcessBackupQueueCommandTest extends TestCase
     /** @var list<string> */
     private array $logged = [];
 
+    private int $flushes = 0;
+
     public function testEmptyQueueIsASuccess(): void
     {
         $tester = $this->tester(entry: null, claimed: false);
@@ -41,19 +44,22 @@ final class ProcessBackupQueueCommandTest extends TestCase
 
         $this->assertSame(Command::SUCCESS, $tester->execute([]));
         $this->assertStringContainsString('already taken', $tester->getDisplay());
-        $this->assertNull($entry->getCompletedDate());
+        $this->assertSame(BackupQueueStatusEnum::PENDING, $entry->getStatus());
         $this->assertSame([], $this->logged);
     }
 
-    public function testFailedBackupLeavesTheEntryOutOfTheQueueWithoutCompletionDate(): void
+    public function testFailedBackupIsMarkedFailedWithItsErrorAndSaved(): void
     {
         $entry = $this->entry();
         $tester = $this->tester($entry, claimed: true);
 
         $this->assertSame(Command::FAILURE, $tester->execute([]));
-        $this->assertTrue($entry->isDequeued());
+        $this->assertSame(BackupQueueStatusEnum::FAILED, $entry->getStatus());
         $this->assertNull($entry->getCompletedDate());
+        // The SqlClient is not persisted: MysqldumpManager refuses it, and that message is what the dashboard shows.
+        $this->assertStringContainsString('persisted SqlClient', (string) $entry->getError());
         $this->assertSame(['Queued backup failed.'], $this->logged);
+        $this->assertSame(1, $this->flushes);
     }
 
     private function entry(): BackupQueue
@@ -69,7 +75,7 @@ final class ProcessBackupQueueCommandTest extends TestCase
         $repository->method('findOldestPending')->willReturn($entry);
         $repository->method('claim')->willReturnCallback(static function (BackupQueue $e) use ($claimed): bool {
             if ($claimed) {
-                $e->setIsDequeued(isDequeued: true);
+                $e->setStatus(BackupQueueStatusEnum::RUNNING)->setAttempts($e->getAttempts() + 1);
             }
 
             return $claimed;
@@ -88,10 +94,15 @@ final class ProcessBackupQueueCommandTest extends TestCase
             }
         };
 
+        $entityManager = $this->createStub(EntityManagerInterface::class);
+        $entityManager->method('flush')->willReturnCallback(function (): void {
+            ++$this->flushes;
+        });
+
         return new CommandTester(new ProcessBackupQueueCommand(
             $repository,
             new MysqldumpManager(sys_get_temp_dir() . '/process_backup_queue_test'), // never written: the dump fails before
-            $this->createStub(EntityManagerInterface::class),
+            $entityManager,
             $logger,
         ));
     }

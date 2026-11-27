@@ -8,7 +8,9 @@ use App\Dto\BackupDump;
 use App\Dto\BackupOutcome;
 use App\Entity\AppUser;
 use App\Entity\BackupQueue;
+use App\Entity\DatabaseOwner;
 use App\Entity\SqlClient;
+use App\Repository\BackupQueueRepository;
 use App\Repository\DatabaseOwnerRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -31,6 +33,7 @@ final readonly class BackupService
     public function __construct(
         private MysqldumpManager $mysqldumpManager,
         private DatabaseOwnerRepository $databaseOwnerRepository,
+        private BackupQueueRepository $backupQueueRepository,
         private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {
@@ -100,6 +103,48 @@ final readonly class BackupService
     }
 
     /**
+     * The most recent queued backups $user may see, newest first (dashboard): admins see every request,
+     * other users those on databases they own (same rule as the dumps).
+     *
+     * @return list<BackupQueue>
+     */
+    public function recentQueue(AppUser $user, int $limit = 10): array
+    {
+        return $this->backupQueueRepository->findRecentVisibleTo($user, $this->isAdmin($user), $limit);
+    }
+
+    /**
+     * A queued backup $user may see, by id; null when it does not exist or is not visible (404 in both cases).
+     */
+    public function findVisibleQueueEntry(AppUser $user, int $id): ?BackupQueue
+    {
+        $entry = $this->backupQueueRepository->find($id);
+        if (!$entry instanceof BackupQueue) {
+            return null;
+        }
+
+        if ($this->isAdmin($user)) {
+            return $entry;
+        }
+
+        $serverId = $entry->getSqlClient()?->getId();
+        $owned = null !== $serverId && array_any(
+            $this->databaseOwnerRepository->findAllByOwner($user),
+            static fn (DatabaseOwner $owner): bool => $owner->getSqlClient()?->getId() === $serverId && $owner->getDbName() === $entry->getDbName(),
+        );
+
+        return $owned ? $entry : null;
+    }
+
+    /**
+     * Puts a failed queued backup back in the queue; false when it is not failed (any more).
+     */
+    public function retry(BackupQueue $entry): bool
+    {
+        return $this->backupQueueRepository->retry($entry);
+    }
+
+    /**
      * Loads a visible dump into $dbName.
      */
     public function restore(SqlClient $sqlClient, string $dbName, BackupDump $dump): BackupOutcome
@@ -112,6 +157,11 @@ final readonly class BackupService
         $this->logger->error('Restore failed: {error}', ['error' => $result['msg'], 'server' => $sqlClient->getName(), 'db' => $dbName, 'backup' => $dump->id]);
 
         return BackupOutcome::failure($dump->filename, $result['msg']);
+    }
+
+    private function isAdmin(AppUser $user): bool
+    {
+        return \in_array('ROLE_ADMIN', $user->getRoles(), strict: true);
     }
 
     public function delete(BackupDump $dump): bool

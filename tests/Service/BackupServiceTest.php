@@ -10,6 +10,8 @@ use App\Entity\AppUser;
 use App\Entity\BackupQueue;
 use App\Entity\DatabaseOwner;
 use App\Entity\SqlClient;
+use App\Enum\BackupQueueStatusEnum;
+use App\Repository\BackupQueueRepository;
 use App\Repository\DatabaseOwnerRepository;
 use App\Service\BackupService;
 use App\Service\MysqldumpManager;
@@ -112,7 +114,18 @@ final class BackupServiceTest extends TestCase
         $this->assertSame('orders', $entry->getTable());
         $this->assertSame($user, $entry->getOwner());
         $this->assertSame($sqlClient, $entry->getSqlClient());
-        $this->assertFalse($entry->isDequeued());
+        $this->assertSame(BackupQueueStatusEnum::PENDING, $entry->getStatus());
+    }
+
+    public function testQueueEntriesAreVisibleToAdminsAndToTheOwnersOfTheirDatabase(): void
+    {
+        $entry = new BackupQueue()->setSqlClient($this->sqlClient(7))->setDbName('shop');
+        $owner = new AppUser()->setRoles(['ROLE_USER']);
+
+        $this->assertSame($entry, $this->service(queue: [42 => $entry])->findVisibleQueueEntry($this->admin(), 42));
+        $this->assertSame($entry, $this->service(owned: [[7, 'shop']], queue: [42 => $entry])->findVisibleQueueEntry($owner, 42));
+        $this->assertNull($this->service(owned: [[7, 'crm'], [8, 'shop']], queue: [42 => $entry])->findVisibleQueueEntry($owner, 42), 'same name on another server, or another database');
+        $this->assertNull($this->service(queue: [42 => $entry])->findVisibleQueueEntry($this->admin(), 43), 'unknown id');
     }
 
     public function testFailedBackupReturnsAndLogsTheNativeError(): void
@@ -148,9 +161,13 @@ final class BackupServiceTest extends TestCase
 
     /**
      * @param list<array{int, string}> $owned (server id, database) pairs owned by the user
+     * @param array<int, BackupQueue>  $queue queue entries by id
      */
-    private function service(array $owned = []): BackupService
+    private function service(array $owned = [], array $queue = []): BackupService
     {
+        $queueRepository = $this->createStub(BackupQueueRepository::class);
+        $queueRepository->method('find')->willReturnCallback(static fn (mixed $id): ?BackupQueue => \is_int($id) ? ($queue[$id] ?? null) : null);
+
         $owners = $this->createStub(DatabaseOwnerRepository::class);
         $owners->method('findAllByOwner')->willReturn(array_map(
             fn (array $pair): DatabaseOwner => new DatabaseOwner()->setDbName($pair[1])->setSqlClient($this->sqlClient($pair[0])),
@@ -179,7 +196,7 @@ final class BackupServiceTest extends TestCase
             }
         };
 
-        return new BackupService(new MysqldumpManager($this->backupDir), $owners, $entityManager, $logger);
+        return new BackupService(new MysqldumpManager($this->backupDir), $owners, $queueRepository, $entityManager, $logger);
     }
 
     private function admin(): AppUser

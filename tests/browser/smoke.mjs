@@ -27,7 +27,7 @@ const adminPages = [
     { path: `/schema/transactions?${S}`, expect: { dt: 1 } },
     { path: `/schema/engine-status?${S}` },
     { path: `/schema/db-users?${S}`, expect: { dt: 1, rows: 1 }, scenario: 'dbUsers' },
-    { path: `/schema/db-users?${D}`, expect: { dt: 1, rows: 1 } },
+    { path: `/schema/db-users?${D}`, expect: { dt: 1, rows: 1 }, scenario: 'grants' },
     { path: '/schema/backup-list' },
     { path: `/schema/table-restore?${D}&table=jujutsu_kaisen_cast` },
     { path: '/sqlclient' },
@@ -95,13 +95,45 @@ const scenarios = {
         const singlesDisabled = [...document.querySelectorAll('#modal-create-user [data-privileges-target="single"]')].every(cb => cb.disabled);
         return { ok: dbs > 0 && customShown && singlesDisabled, dbs, customShown, singlesDisabled };
     })()`,
+    // Grant modal end to end (account smoke_grant, created by seed.php with SELECT on the demo database):
+    // the JSON built by the modal replaces the grants, then unchecking the database revokes them.
+    grants: () => `(async () => {
+        const grantsOnServer = async () => (await (await fetch('/schema/db-user-grants-data?' + new URLSearchParams({ name: '${SERVER}', username: 'smoke_grant', user_host: '%' }))).json()).grants;
+        const search = document.querySelector('.dt-search input');
+        search.value = 'smoke_grant'; search.dispatchEvent(new Event('input', { bubbles: true })); ${wait(800)};
+        const open = async () => { document.querySelector('[data-action="db-users#openGrants"][data-user="smoke_grant"]').click(); ${wait(2000)}; };
+        const save = async () => { document.getElementById('btn-grant-submit').click(); ${wait(2500)}; document.querySelector('.swal2-confirm')?.click(); ${wait(500)}; };
+
+        await open();
+        const box = document.querySelector('#grant-db-list input[value="${DB}"]');
+        const preChecked = box?.checked === true && document.getElementById('grant-priv-select').checked;
+        document.getElementById('grant-priv-insert').click();
+        document.getElementById('grant-priv-update').click();
+        await save();
+        const replaced = JSON.stringify((await grantsOnServer()).map(g => [g.db, g.privileges]));
+
+        await open();
+        document.querySelector('#grant-db-list input[value="${DB}"]').click(); // uncheck: revoke
+        await save();
+        const revoked = (await grantsOnServer()).length;
+
+        const expected = JSON.stringify([['${DB}', ['SELECT', 'INSERT', 'UPDATE']]]);
+        return { ok: preChecked && replaced === expected && 0 === revoked, preChecked, replaced, revoked };
+    })()`,
     dashboard: () => `(async () => {
         const sel = document.querySelector('select');
         if (!sel) return { ok: false, why: 'no server select' };
         sel.value = [...sel.options].find(o => o.textContent.includes('${SERVER}'))?.value ?? '';
         sel.dispatchEvent(new Event('change', { bubbles: true })); ${wait(2500)};
-        const text = document.body.innerText;
-        return { ok: text.includes('${DB}'), why: 'database list after choosing the server' };
+        const databases = document.body.innerText.includes('${DB}');
+        // Backup queue card (seed.php adds a failed entry): retry through a Turbo form submission.
+        window.__noReload = 'still-here';
+        const failed = !!document.querySelector('#backup-queue [data-queue-status="failed"]');
+        document.querySelector('#backup-queue form button').click(); ${wait(2500)};
+        const flash = document.querySelector('#backup-queue .alert')?.textContent.includes('rimesso in coda') ?? false;
+        const pending = !!document.querySelector('#backup-queue [data-queue-status="pending"]');
+        const noReload = window.__noReload === 'still-here';
+        return { ok: databases && failed && flash && pending && noReload, databases, failed, flash, pending, noReload };
     })()`,
     databases: () => `(async () => {
         const sel = document.getElementById('select-sql-client');

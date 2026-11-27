@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 /*
  * Prepares the browser smoke test (tests/browser/run.sh): rebuilds the test catalog with its fixtures
- * and creates, on the managed MySQL server, the demo database the pages show ("up"), or drops it ("down").
+ * and creates, on the managed MySQL server, the demo database the pages show and the account whose grants the
+ * "grants" scenario edits ("up"), or drops them ("down").
  */
 use App\Entity\AppUser;
+use App\Entity\BackupQueue;
 use App\Entity\SqlClient;
 use App\Kernel;
 use App\RepositoryPDO\DatabaseSchemaRepository;
 use App\RepositoryPDO\DemoDataRepository;
+use App\RepositoryPDO\MysqlAccountRepository;
 use App\Security\PasswordReset\PasswordResetTokenManager;
 use App\Tests\Fixtures\TestCatalog;
 use Doctrine\ORM\EntityManagerInterface;
@@ -37,7 +40,9 @@ $sqlClient = $entityManager->getRepository(SqlClient::class)->findOneBy(['name' 
 assert($sqlClient instanceof SqlClient);
 $remote = new DatabaseSchemaRepository($sqlClient);
 $demoData = new DemoDataRepository($sqlClient);
+$accounts = new MysqlAccountRepository($sqlClient);
 $dbName = (string) $_ENV['TEST_DB_NAME_ONE'];
+$grantAccount = 'smoke_grant'; // tests/browser/smoke.mjs, scenario "grants"
 
 if ('up' === $action) {
     // Password-reset link for test_disabled (never used to log in by the smoke test), opened by smoke.mjs.
@@ -52,7 +57,20 @@ if ('up' === $action) {
     $remote->useDbName($dbName);
     $demoData->createDummyTable();
     $demoData->populateDummiTable();
+
+    $accounts->dropUser($grantAccount);
+    $accounts->createUser($grantAccount, 'Smoke-' . bin2hex(random_bytes(8)));
+    $accounts->grantPrivileges($dbName, $grantAccount, 'SELECT');
+    $accounts->flushPrivileges();
+
+    // A failed queued backup of test_owner: the dashboard scenario retries it.
+    $owner = $entityManager->getRepository(AppUser::class)->findOneBy(['username' => TestCatalog::OWNER]);
+    assert($owner instanceof AppUser);
+    $entityManager->persist(new BackupQueue()->setSqlClient($sqlClient)->setDbName($dbName)->setOwner($owner)
+        ->setAttempts(1)->markFailed('mysqldump: Got error: 2003: smoke test'));
+    $entityManager->flush();
 } else {
+    $accounts->dropUser($grantAccount);
     $remote->dropDatabase($dbName);
 }
 

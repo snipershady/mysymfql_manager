@@ -77,3 +77,12 @@
 .pre-wrap-sm { font-size: .8rem; white-space: pre-wrap; word-break: break-word; }
 .pre-wrap-xs { font-size: .75rem; white-space: pre-wrap; word-break: break-word; }
 .stat-icon { width: 48px; height: 48px; flex-shrink: 0; font-size: 1.25rem; }
+
+/* Dashboard: native error of a failed queued backup */
+.queue-error {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: .8rem;
+    max-height: 12rem;
+    overflow-y: auto;
+}

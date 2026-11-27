@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\BackupQueueStatusEnum;
 use App\Repository\BackupQueueRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
+ * A backup requested from the panel and run by app:process-backup-queue (cron, FIFO).
+ *
+ * @see BackupQueueStatusEnum for the lifecycle
  * @see \App\Tests\Entity\BackupQueueTest
  */
 #[ORM\Entity(repositoryClass: BackupQueueRepository::class)]
@@ -32,8 +37,19 @@ class BackupQueue
     #[ORM\Column(name: 'table_name', length: 63, nullable: true)]
     private ?string $tableName = null;
 
-    #[ORM\Column]
-    private bool $isDequeued = false;
+    #[ORM\Column(length: 15, enumType: BackupQueueStatusEnum::class, options: ['default' => 'pending'])]
+    private BackupQueueStatusEnum $status = BackupQueueStatusEnum::PENDING;
+
+    /** Number of times a worker has taken the entry (a retry from the dashboard runs it again). */
+    #[ORM\Column(options: ['default' => 0])]
+    private int $attempts = 0;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTime $startedDate = null;
+
+    /** Native error output of the last failed run (mysqldump stderr or exception message). */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $error = null;
 
     #[ORM\Column]
     private ?\DateTime $requestDate;
@@ -87,14 +103,73 @@ class BackupQueue
         return $this;
     }
 
-    public function isDequeued(): ?bool
+    public function getStatus(): BackupQueueStatusEnum
     {
-        return $this->isDequeued;
+        return $this->status;
     }
 
-    public function setIsDequeued(bool $isDequeued): static
+    public function setStatus(BackupQueueStatusEnum $status): static
     {
-        $this->isDequeued = $isDequeued;
+        $this->status = $status;
+
+        return $this;
+    }
+
+    public function getAttempts(): int
+    {
+        return $this->attempts;
+    }
+
+    public function setAttempts(int $attempts): static
+    {
+        $this->attempts = $attempts;
+
+        return $this;
+    }
+
+    public function getStartedDate(): ?\DateTime
+    {
+        return $this->startedDate;
+    }
+
+    public function setStartedDate(?\DateTime $startedDate): static
+    {
+        $this->startedDate = $startedDate;
+
+        return $this;
+    }
+
+    public function getError(): ?string
+    {
+        return $this->error;
+    }
+
+    public function setError(?string $error): static
+    {
+        $this->error = $error;
+
+        return $this;
+    }
+
+    /**
+     * The worker finished the dump.
+     */
+    public function markDone(\DateTime $completedDate): static
+    {
+        $this->status = BackupQueueStatusEnum::DONE;
+        $this->completedDate = $completedDate;
+        $this->error = null;
+
+        return $this;
+    }
+
+    /**
+     * The worker could not complete the dump: $error is shown in the dashboard.
+     */
+    public function markFailed(string $error): static
+    {
+        $this->status = BackupQueueStatusEnum::FAILED;
+        $this->error = '' === trim($error) ? 'Errore sconosciuto.' : trim($error);
 
         return $this;
     }

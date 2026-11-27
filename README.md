@@ -497,10 +497,15 @@ php bin/console app:process-backup-queue
 
 1. Calls `BackupQueueRepository::findOldestPending()` to fetch the **oldest** pending entry (FIFO: backups run in the order they were requested).
 2. If the queue is empty, prints a message and exits with `SUCCESS`.
-3. Claims the entry atomically (`BackupQueueRepository::claim()`, a conditional `UPDATE`): if an overlapping cron run already took it, exits with `SUCCESS` without doing anything.
+3. Claims the entry atomically (`BackupQueueRepository::claim()`, a conditional `UPDATE` that sets it `running` and counts the attempt): if an overlapping cron run already took it, exits with `SUCCESS` without doing anything.
 4. Runs `mysqldump` via `MysqldumpManager::createBackup()` using the server, database, and optional table stored in the entry.
-5. On success: sets `completedDate = now()` on the entry and flushes to the database.
-6. On failure: logs the error and exits with `FAILURE`. The entry stays out of the queue with an empty `completedDate` (failed), so a broken entry never blocks the ones behind it; it is not retried automatically.
+5. On success: marks the entry `done` with `completedDate = now()`.
+6. On failure: marks the entry `failed` with mysqldump's error output, logs it and exits with `FAILURE`. A failed entry never blocks the ones behind it and is not retried automatically.
+
+The dashboard ("Coda backup" card) lists the latest requests the user may see (admins: all; other users: those on
+the databases they own) with their status (*In attesa*, *In corso*, *Completato*, *Fallito*), the error of failed
+ones and a **Riprova** button that puts a failed request back in the queue. An entry left *In corso* by an
+interrupted run (e.g. the server rebooted during the dump) stays so: the start date shows how long ago it began.
 
 **Output format**
 
