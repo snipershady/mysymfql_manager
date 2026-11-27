@@ -55,19 +55,21 @@
     overflow-y: auto;
 }
 
-/* Utility classes replacing inline style="" attributes (forbidden by the Content-Security-Policy). */
+/* Utility classes replacing inline style="" attributes (forbidden by the Content-Security-Policy).
+   Column classes (cw-<px>) are minimum widths: a fixed width on a header cell caps the column in the
+   automatic table layout, so the action buttons wrapped on several lines (very tall rows). */
 .cw-35p { width: 35%; }
-.cw-70 { width: 70px; }
-.cw-90 { width: 90px; }
-.cw-100 { width: 100px; }
-.cw-110 { width: 110px; }
-.cw-120 { width: 120px; }
-.cw-130 { width: 130px; }
-.cw-140 { width: 140px; }
-.cw-160 { width: 160px; }
-.cw-190 { width: 190px; }
-.cw-230 { width: 230px; }
-.cw-240 { width: 240px; }
+.cw-70 { min-width: 70px; }
+.cw-90 { min-width: 90px; }
+.cw-100 { min-width: 100px; }
+.cw-110 { min-width: 110px; }
+.cw-120 { min-width: 120px; }
+.cw-130 { min-width: 130px; }
+.cw-140 { min-width: 140px; }
+.cw-160 { min-width: 160px; }
+.cw-190 { min-width: 190px; }
+.cw-230 { min-width: 230px; }
+.cw-240 { min-width: 240px; }
 .mw-360 { max-width: 360px; }
 .mw-540 { max-width: 540px; }
 .fs-small-08 { font-size: .8rem; }
