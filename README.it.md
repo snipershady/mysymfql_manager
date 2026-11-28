@@ -44,6 +44,11 @@ mysymfql_manager è un'applicazione web che consente di gestire uno o più serve
 - Eliminazione utente MySQL
 - Cambio password utente MySQL
 
+### Query console
+- Editor SQL (CodeMirror 6) con completamento basato sullo schema, EXPLAIN / EXPLAIN ANALYZE
+- Export del risultato mostrato in **CSV** (RFC 4180, UTF-8 con BOM) o **JSON**, generato nel browser: la query non viene rieseguita
+- **Storico** delle proprie query sul database (dall'audit log: ultimi 90 giorni, password oscurate); un clic rimette l'istruzione nell'editor, senza eseguirla
+
 ### Monitoraggio del server
 - Lista dei processi con terminazione del processo tramite ID
 - Stato del motore InnoDB (solo admin)
@@ -59,6 +64,7 @@ mysymfql_manager è un'applicazione web che consente di gestire uno o più serve
   MySQL nativo, negata, dati non validi) e i parametri non segreti; le password non vengono mai salvate (i letterali di
   `IDENTIFIED BY`, `PASSWORD …` nell'SQL sono oscurati)
 - Pagina `/admin/audit-log` (solo admin) con filtri per utente, server, azione, esito e periodo
+- Pagina **Verifica grant** (`/admin/server-grants`) e comando `app:check-server-grants`: segnalano gli account dei server con grant oltre i database dei loro utenti
 - Al massimo 90 giorni di storico, eliminati da `app:audit-prune` (cron)
 
 ---
@@ -534,6 +540,25 @@ Per eseguire un backup notturno di un database specifico alle 03:00:
 ```
 
 ---
+
+### `app:check-server-grants` — Verifica i grant degli account dei server
+
+La query console esegue SQL con l'account MySQL del server: per gli utenti non admin i suoi grant sono l'unica
+barriera verso i database non assegnati. Il comando (e la pagina **Verifica grant**, `/admin/server-grants`, solo admin)
+legge i grant di ogni account con `SHOW GRANTS` (nessun privilegio richiesto) e li confronta con i database assegnati
+nel pannello.
+
+```bash
+php bin/console app:check-server-grants [<nome>]
+```
+
+| Gravità | Quando |
+|---|---|
+| **danger** | privilegi globali (`ON *.*`), ruoli, `PROXY`, grant con wildcard (`` `app_%`.* ``), grant su database non assegnati a nessun utente del server, account condiviso da utenti non admin con database diversi, server non raggiungibile |
+| warning | `WITH GRANT OPTION`, righe di grant non riconosciute |
+| info | server usato solo da admin (privilegi ampi attesi) |
+
+Codice d'uscita `1` quando un server ha un rilievo *danger*: si può lanciare da cron o da un sistema di monitoraggio.
 
 ### `app:backup-relocate` — Assegna i backup legacy a un server
 

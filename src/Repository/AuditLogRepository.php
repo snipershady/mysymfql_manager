@@ -100,6 +100,48 @@ class AuditLogRepository extends ServiceEntityRepository
     }
 
     /**
+     * Query console history of one user on one database: the most recent distinct statements (the latest run of
+     * each), newest first. Built on the audit log, so it has the same retention (MAX_RETENTION_DAYS) and the same
+     * redaction (passwords shown as '***').
+     *
+     * @return list<array{sql: string, occurred_at: \DateTimeImmutable, outcome: AuditOutcomeEnum}>
+     */
+    public function recentQueries(int $actorId, string $serverName, string $dbName, int $limit = 30): array
+    {
+        /** @var list<AuditLogEntry> $entries */
+        $entries = $this->createQueryBuilder('a')
+            ->andWhere('a.action = :action')
+            ->andWhere('a.actorId = :actor')
+            ->andWhere('a.serverName = :server')
+            ->andWhere('a.dbName = :db')
+            ->setParameter('action', AuditActionEnum::QUERY_EXECUTE)
+            ->setParameter('actor', $actorId)
+            ->setParameter('server', $serverName)
+            ->setParameter('db', $dbName)
+            ->orderBy('a.occurredAt', \SortDirection::Descending)
+            ->addOrderBy('a.id', \SortDirection::Descending)
+            // Repeated statements collapse into one item: read more rows than the items returned.
+            ->setMaxResults($limit * 10)
+            ->getQuery()
+            ->getResult();
+
+        $history = [];
+        foreach ($entries as $entry) {
+            $sql = $entry->getDetails()['sql'] ?? null;
+            if (!\is_string($sql) || isset($history[$sql])) {
+                continue;
+            }
+
+            $history[$sql] = ['sql' => $sql, 'occurred_at' => $entry->getOccurredAt(), 'outcome' => $entry->getOutcome()];
+            if (\count($history) >= $limit) {
+                break;
+            }
+        }
+
+        return array_values($history);
+    }
+
+    /**
      * Number of entries older than $cutoff and the date of the oldest one.
      *
      * @return array{count: int, oldest: ?\DateTimeImmutable}

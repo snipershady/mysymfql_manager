@@ -1,0 +1,65 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Verifica grant dei server{% endblock %}
+{% block page_title %}Verifica grant dei server{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item active">Verifica grant</li>
+{% endblock %}
+
+{% block content %}
+<div class="alert alert-light border small">
+    <i class="fa-solid fa-circle-info text-primary me-1"></i>
+    La query console esegue SQL con l'account MySQL del server: per gli utenti non admin i grant di quell'account sono
+    l'unica barriera verso i database che non gli sono assegnati. Ogni server deve avere un account con grant
+    <strong>solo</strong> sui database dei suoi utenti, senza privilegi globali, e non va condiviso fra utenti con
+    database diversi.
+</div>
+
+{% if reports is empty %}
+    <p class="text-muted text-center py-4">Nessun server registrato.</p>
+{% endif %}
+
+{% for report in reports %}
+    {% set severity = report.severity %}
+    <div class="card mb-3" data-server-grants="{{ report.serverName }}" data-severity="{{ severity.value }}">
+        <div class="card-header d-flex align-items-center gap-2">
+            <i class="fa-solid fa-server text-secondary"></i>
+            <span class="fw-semibold">{{ report.serverName }}</span>
+            {% if report.account %}<span class="font-monospace small text-muted">{{ report.account }}</span>{% endif %}
+            <span class="badge text-bg-{{ severity.color }} ms-auto">{{ severity.label }}</span>
+        </div>
+        <div class="card-body small">
+            {% if report.error %}
+                <p class="text-danger mb-1">Impossibile verificare il server:</p>
+                <pre class="audit-detail mb-0">{{ report.error }}</pre>
+            {% else %}
+                <ul class="list-unstyled mb-3">
+                    {% for finding in report.findings %}
+                        <li class="mb-1">
+                            <span class="badge text-bg-{{ finding.severity.color }} me-1">{{ finding.severity.label }}</span>
+                            {{ finding.message }}
+                        </li>
+                    {% endfor %}
+                </ul>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="text-muted">Utenti non admin</div>
+                        {{ report.nonAdminUsers is empty ? '-' : report.nonAdminUsers|join(', ') }}
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-muted">Database assegnati</div>
+                        <span class="font-monospace">{{ report.assignedDbs is empty ? '-' : report.assignedDbs|join(', ') }}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <details>
+                            <summary class="text-muted">SHOW GRANTS ({{ report.grants|length }})</summary>
+                            <pre class="audit-detail font-monospace">{{ report.grants|join("\n") }}</pre>
+                        </details>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+{% endfor %}
+{% endblock %}

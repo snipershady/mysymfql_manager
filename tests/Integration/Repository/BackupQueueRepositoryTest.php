@@ -76,6 +76,26 @@ final class BackupQueueRepositoryTest extends KernelTestCase
         $this->assertSame(['running', 1, '2026-11-27 10:00:00'], $this->row($entry));
     }
 
+    public function testOnlyEntriesRunningForTooLongAreMarkedFailed(): void
+    {
+        $interrupted = $this->enqueue('2026-11-27 08:00:00');
+        $this->assertTrue($this->repository->claim($interrupted, new \DateTime('2026-11-27 08:00:00')));
+        $recent = $this->enqueue('2026-11-27 09:00:00');
+        $this->assertTrue($this->repository->claim($recent, new \DateTime('2026-11-27 19:00:00')));
+        $pending = $this->enqueue('2026-11-27 07:00:00');
+
+        $this->assertSame(1, $this->repository->failStale(new \DateTime('2026-11-27 12:00:00'), 'Interrotto.'));
+
+        $this->assertSame(['failed', 1, '2026-11-27 08:00:00'], $this->row($interrupted));
+        $this->assertSame('running', $this->row($recent)[0]);
+        $this->assertSame('pending', $this->row($pending)[0]);
+        $this->assertSame('Interrotto.', $this->entityManager->getConnection()->fetchOne('SELECT error FROM backup_queue WHERE id = ?', [$interrupted->getId()]));
+
+        // Then it can be retried from the dashboard like any failed entry.
+        $this->entityManager->refresh($interrupted);
+        $this->assertTrue($this->repository->retry($interrupted));
+    }
+
     public function testOnlyAFailedEntryGoesBackToTheQueueAndKeepsItsAttempts(): void
     {
         $entry = $this->enqueue('2026-11-27 08:00:00');

@@ -255,6 +255,39 @@ readonly class MysqlAccountRepository extends AbstractManagerRepositoryPDO
         }
     }
 
+    /**
+     * The account this connection runs as (CURRENT_USER(), e.g. "panel@%") and its GRANT statements as
+     * SHOW GRANTS prints them. Needs no privilege: every account may read its own grants, so this works with
+     * the restricted accounts that cannot read the mysql schema.
+     *
+     * @return array{account: string, grants: list<string>}
+     */
+    public function currentAccountGrants(): array
+    {
+        try {
+            $account = $this->pdo->query('SELECT CURRENT_USER() AS account');
+            $grants = $this->pdo->query('SHOW GRANTS');
+            if (false === $account || false === $grants) {
+                throw new RepositoryException(__METHOD__ . ' query failed');
+            }
+
+            $lines = [];
+            foreach ($this->fetchAllAssoc($grants) as $row) {
+                $line = array_values($row)[0] ?? null;
+                if (\is_string($line)) {
+                    $lines[] = $line;
+                }
+            }
+
+            return [
+                'account' => $this->epti->getStringValueFromArray('account', $this->fetchOneAssoc($account), forceString: true),
+                'grants' => $lines,
+            ];
+        } catch (\PDOException $pdoException) {
+            throw new RepositoryException(__METHOD__ . $pdoException->getMessage(), 0, $pdoException);
+        }
+    }
+
     public function revokeAllPrivilegesOnDb(string $dbName, string $username, string $host = '%'): bool
     {
         $query = \sprintf(

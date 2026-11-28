@@ -13,6 +13,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -21,7 +22,11 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  *
  * The entry goes pending → running (atomic claim) → done, or failed with the native error output shown in the
  * dashboard (also logged). Failed entries are never retried automatically: a user puts them back from the
- * dashboard. An entry left running by an interrupted run stays running.
+ * dashboard ("Riprova").
+ *
+ * An entry left "running" by a killed worker (OOM, reboot) would stay so forever: every run first marks as failed
+ * the entries running for more than --stale-after hours (default 12, longer than any expected dump), so they get
+ * the retry button. If such a dump was in fact still running and completes later, its entry ends up "done".
  *
  * @see \App\Tests\Command\ProcessBackupQueueCommandTest
  */
@@ -40,10 +45,34 @@ class ProcessBackupQueueCommand extends Command
         parent::__construct();
     }
 
+    public const int DEFAULT_STALE_HOURS = 12;
+
+    #[\Override]
+    protected function configure(): void
+    {
+        $this->addOption('stale-after', mode: InputOption::VALUE_REQUIRED, description: 'Hours after which an entry still running is considered interrupted and marked failed', default: (string) self::DEFAULT_STALE_HOURS);
+    }
+
     #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+
+        $staleAfter = $input->getOption('stale-after');
+        if (!ctype_digit($staleAfter) || (int) $staleAfter < 1) {
+            $io->error('--stale-after must be an integer >= 1 (hours).');
+
+            return Command::INVALID;
+        }
+
+        $stale = $this->backupQueueRepository->failStale(
+            new \DateTime(\sprintf('-%d hours', (int) $staleAfter)),
+            \sprintf('Interrotto: l\'esecuzione è rimasta in corso per più di %d ore (worker terminato, riavvio). Usa "Riprova" per rimetterlo in coda.', (int) $staleAfter),
+        );
+        if ($stale > 0) {
+            $io->writeln(\sprintf('<fg=yellow>%d interrupted entr%s (running for more than %d hours) marked as failed.</>', $stale, 1 === $stale ? 'y' : 'ies', (int) $staleAfter));
+            $this->logger->warning('Backup queue: {count} interrupted entries marked as failed.', ['count' => $stale, 'stale_after_hours' => (int) $staleAfter]);
+        }
 
         $entry = $this->backupQueueRepository->findOldestPending();
 

@@ -37,6 +37,7 @@ const adminPages = [
     { path: '/admin/database-owner', expect: { dt: 1, rows: 1 } },
     { path: '/admin/database-owner/new' },
     { path: '/admin/audit-log' },
+    { path: '/admin/server-grants' },
     { path: '/change-password' },
 ];
 // The databases page only lists servers the user owns: test_owner owns server_locale.
@@ -165,7 +166,23 @@ const scenarios = {
         const shortcut = runScopeHandlers(view, new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', ctrlKey: true, keyCode: 13 }), 'editor');
         ${wait(2500)};
         const cells = [...document.querySelectorAll('#query-result-table td')].map(c => c.textContent.trim());
-        return { ok: labels.includes('jujutsu_kaisen_cast') && shortcut && cells.includes('42'), labels: labels.slice(0, 3), shortcut, cells };
+        // Export: built in the browser from the result shown (capture the Blob instead of saving a file).
+        const blobs = [];
+        const createObjectURL = URL.createObjectURL;
+        URL.createObjectURL = (blob) => { blobs.push(blob); return createObjectURL.call(URL, blob); };
+        document.getElementById('btn-export-csv').click();
+        document.getElementById('btn-export-json').click();
+        URL.createObjectURL = createObjectURL;
+        const csv = blobs[0] ? await blobs[0].text() : ''; // text() drops the UTF-8 BOM: check it on the bytes
+        const bom = blobs[0] ? [...new Uint8Array(await blobs[0].slice(0, 3).arrayBuffer())].join(',') === '239,187,191' : false;
+        const json = blobs[1] ? JSON.parse(await blobs[1].text()) : null;
+        const exported = bom && csv === 'answer\\r\\n42\\r\\n' && Array.isArray(json) && String(json[0]?.answer) === '42';
+        // History (from the audit log): the statement just run, back in the editor with a click.
+        const item = document.querySelector('#query-history-list [data-action="query#useHistory"]');
+        view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '' } });
+        item?.click();
+        const history = !!item && view.state.doc.toString() === 'SELECT 41 + 1 AS answer';
+        return { ok: labels.includes('jujutsu_kaisen_cast') && shortcut && cells.includes('42') && exported && history, labels: labels.slice(0, 3), shortcut, cells, exported, csv, history };
     })()`,
 };
 

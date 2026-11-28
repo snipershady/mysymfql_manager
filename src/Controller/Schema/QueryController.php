@@ -7,9 +7,12 @@ namespace App\Controller\Schema;
 use App\Attribute\Audited;
 use App\Dto\Input\DatabaseTarget;
 use App\Dto\Input\SqlStatement;
+use App\Entity\AppUser;
 use App\Entity\SqlClient;
 use App\Enum\AuditActionEnum;
+use App\Enum\AuditOutcomeEnum;
 use App\Exception\RepositoryException;
+use App\Repository\AuditLogRepository;
 use App\RepositoryPDO\ManagedServerRepositoryFactory;
 use App\Security\SqlClientAccessResolver;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -18,9 +21,13 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\MapQueryString;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 /**
- * SQL console of a database: page, schema for the autocompletion, execution.
+ * SQL console of a database: page, schema for the autocompletion, execution, history.
+ *
+ * History: the current user's own statements on this database, read from the audit log (same 90-day retention,
+ * passwords shown as '***'). Same access rule as the console; no MySQL privilege (catalog only).
  *
  * Panel access: server/database ownership through SqlClientAccessResolver (admins see everything);
  * input mapped to the DTOs of App\Dto\Input; routes under /schema (names unchanged).
@@ -50,6 +57,25 @@ final class QueryController extends AbstractController
             'name' => $name,
             'db_name' => $dbName,
         ]);
+    }
+
+    #[Route(path: '/query-history', name: 'app_schema_query_history', methods: ['GET'])]
+    public function queryHistory(
+        #[MapQueryString(validationFailedStatusCode: Response::HTTP_UNPROCESSABLE_ENTITY)] DatabaseTarget $input,
+        #[CurrentUser] AppUser $user,
+        AuditLogRepository $auditLog,
+    ): JsonResponse {
+        if (!$this->access->database($input->name, $input->dbName) instanceof SqlClient) {
+            return $this->json(['error' => 'Server non trovato o accesso negato.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $history = $auditLog->recentQueries((int) $user->getId(), $input->name, $input->dbName);
+
+        return $this->json(['history' => array_map(static fn (array $item): array => [
+            'sql' => $item['sql'],
+            'occurred_at' => $item['occurred_at']->format(\DATE_ATOM),
+            'ok' => AuditOutcomeEnum::SUCCESS === $item['outcome'],
+        ], $history)]);
     }
 
     #[Route(path: '/columns-get-data', name: 'app_schema_columns_get_data', methods: ['GET'])]

@@ -14,7 +14,7 @@
 {% endblock %}
 
 {% block content %}
-<div {{ stimulus_controller('query', {name: name, db: db_name, columnsUrl: path('app_schema_columns_get_data', {name: name, db_name: db_name}), executeUrl: path('app_schema_query_execute')}) }}>
+<div {{ stimulus_controller('query', {name: name, db: db_name, columnsUrl: path('app_schema_columns_get_data', {name: name, db_name: db_name}), executeUrl: path('app_schema_query_execute'), historyUrl: path('app_schema_query_history', {name: name, db_name: db_name})}) }}>
 
 
     <div class="row g-3">
@@ -24,6 +24,17 @@
                     <i class="fa-solid fa-table text-primary me-1"></i>Tabelle
                 </div>
                 <div id="query-tables-list" class="list-group list-group-flush query-tables-list" {{ stimulus_target('query', 'tables') }}>
+                    <div class="list-group-item text-muted small">
+                        <i class="fa-solid fa-spinner fa-spin me-1"></i>Caricamento…
+                    </div>
+                </div>
+            </div>
+            <div class="card mt-3">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <span><i class="fa-solid fa-clock-rotate-left text-primary me-1"></i>Storico</span>
+                    <span class="text-muted small" title="Le tue query su questo database, dall'audit log (ultimi 90 giorni, password oscurate)">le tue query</span>
+                </div>
+                <div id="query-history-list" class="list-group list-group-flush query-tables-list" {{ stimulus_target('query', 'history') }}>
                     <div class="list-group-item text-muted small">
                         <i class="fa-solid fa-spinner fa-spin me-1"></i>Caricamento…
                     </div>
@@ -76,7 +87,17 @@
     <div id="query-result-card" class="card d-none mt-3" {{ stimulus_target('query', 'card') }}>
         <div class="card-header d-flex align-items-center justify-content-between gap-2">
             <span><i class="fa-solid fa-table-list text-primary me-1"></i>Risultati</span>
-            <span id="query-result-count" class="badge bg-secondary" {{ stimulus_target('query', 'count') }}></span>
+            <div class="d-flex align-items-center gap-2">
+                <span id="query-result-count" class="badge bg-secondary" {{ stimulus_target('query', 'count') }}></span>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Esporta il risultato">
+                    <button type="button" id="btn-export-csv" class="btn btn-outline-secondary" title="Scarica il risultato in CSV" {{ stimulus_target('query', 'export') }} {{ stimulus_action('query', 'exportCsv') }}>
+                        <i class="fa-solid fa-file-csv me-1"></i>CSV
+                    </button>
+                    <button type="button" id="btn-export-json" class="btn btn-outline-secondary" title="Scarica il risultato in JSON" {{ stimulus_target('query', 'export') }} {{ stimulus_action('query', 'exportJson') }}>
+                        <i class="fa-solid fa-file-code me-1"></i>JSON
+                    </button>
+                </div>
+            </div>
         </div>
         <div class="card-body">
             <div id="query-result-table-wrap" class="table-responsive" {{ stimulus_target('query', 'tableWrap') }}>

@@ -89,6 +89,11 @@
             <i class="fa-solid fa-clipboard-list"></i>
             <span>Audit log</span>
         </a>
+        <a href="{{ path('app_server_grants') }}"
+           class="nav-link {% if app.request.attributes.get('_route') == 'app_server_grants' %}active{% endif %}">
+            <i class="fa-solid fa-user-shield"></i>
+            <span>Verifica grant</span>
+        </a>
         {% endif %}
     </div>
 

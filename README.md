@@ -56,6 +56,11 @@ mysymfql_manager is a web application that allows you to manage one or more remo
 - Drop MySQL user
 - Change MySQL user password
 
+### Query console
+- SQL editor (CodeMirror 6) with schema-aware completion, EXPLAIN / EXPLAIN ANALYZE
+- Export of the result shown as **CSV** (RFC 4180, UTF-8 with BOM) or **JSON**, built in the browser: the query is never run again
+- **History** of your own queries on the database (from the audit log: last 90 days, passwords masked); a click puts the statement back in the editor, it is not run automatically
+
 ### Server Monitoring
 - Process list with process termination by ID
 - InnoDB engine status (admins only)
@@ -70,6 +75,7 @@ mysymfql_manager is a web application that allows you to manage one or more remo
   error, denied, invalid data) and the non-secret parameters; passwords are never stored (the literals of
   `IDENTIFIED BY`, `PASSWORD …` in the SQL are masked)
 - `/admin/audit-log` page (admins only) with filters by user, server, action, outcome and period
+- **Verifica grant** page (`/admin/server-grants`) and `app:check-server-grants`: report the server accounts whose grants go beyond the databases of their users
 - At most 90 days of history, removed by `app:audit-prune` (cron)
 
 ---
@@ -558,10 +564,14 @@ The command is designed to be called once per invocation — schedule it frequen
 php bin/console app:process-backup-queue
 ```
 
-**No arguments or options.**
+| Option | Description |
+|---|---|
+| `--stale-after=<hours>` | Entries still *running* for more than this many hours are marked *failed* (default `12`) |
 
 **What it does**
 
+0. Marks as `failed` the entries still `running` for more than `--stale-after` hours: their worker was killed (OOM,
+   reboot) and will never complete them. They get the **Riprova** button in the dashboard.
 1. Calls `BackupQueueRepository::findOldestPending()` to fetch the **oldest** pending entry (FIFO: backups run in the order they were requested).
 2. If the queue is empty, prints a message and exits with `SUCCESS`.
 3. Claims the entry atomically (`BackupQueueRepository::claim()`, a conditional `UPDATE` that sets it `running` and counts the attempt): if an overlapping cron run already took it, exits with `SUCCESS` without doing anything.
@@ -572,7 +582,8 @@ php bin/console app:process-backup-queue
 The dashboard ("Coda backup" card) lists the latest requests the user may see (admins: all; other users: those on
 the databases they own) with their status (*In attesa*, *In corso*, *Completato*, *Fallito*), the error of failed
 ones and a **Riprova** button that puts a failed request back in the queue. An entry left *In corso* by an
-interrupted run (e.g. the server rebooted during the dump) stays so: the start date shows how long ago it began.
+interrupted run (e.g. the server rebooted during the dump) becomes *Fallito* at the first cron run after
+`--stale-after` hours, with the reason as error, and can then be retried.
 
 **Output format**
 
@@ -608,6 +619,25 @@ Or every 5 minutes if a slight delay is acceptable:
 > The command processes **one entry per run**. If multiple backups are queued they will be handled in successive cron ticks. This avoids overlapping long-running `mysqldump` processes.
 
 ---
+
+### `app:check-server-grants` — Check the grants of the server accounts
+
+The query console runs SQL with the MySQL account of the server: for non-admin users its grants are the only barrier
+towards the databases not assigned to them. This command (and the **Verifica grant** page, `/admin/server-grants`,
+admins only) reads the grants of each server account with `SHOW GRANTS` (no privilege needed) and compares them with
+the databases assigned in the panel.
+
+```bash
+php bin/console app:check-server-grants [<name>]
+```
+
+| Severity | When |
+|---|---|
+| **danger** | global privileges (`ON *.*`), roles, `PROXY`, wildcard grants (`` `app_%`.* ``), grants on databases not assigned to any user of the server, one account shared by non-admin users with different databases, server unreachable |
+| warning | `WITH GRANT OPTION`, grant lines not recognized |
+| info | the server is used only by admins (broad privileges are expected) |
+
+Exit code `1` when a server has a *danger* finding: it can run from cron or a monitoring system.
 
 ### `app:backup-relocate` — Assign legacy backups to a server
 

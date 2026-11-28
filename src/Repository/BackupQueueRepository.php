@@ -73,6 +73,27 @@ class BackupQueueRepository extends ServiceEntityRepository
     }
 
     /**
+     * Marks as failed, with $error, the entries still "running" that started before $startedBefore: their worker
+     * was killed (OOM, reboot, deploy) and will never complete them. Conditional UPDATE: an entry completed in the
+     * meantime is left alone. Returns how many entries were marked.
+     */
+    public function failStale(\DateTime $startedBefore, string $error): int
+    {
+        return $this->createQueryBuilder('b')
+            ->update()
+            ->set('b.status', ':failed')
+            ->set('b.error', ':error')
+            ->where('b.status = :running')
+            ->andWhere('b.startedDate < :before')
+            ->setParameter('failed', BackupQueueStatusEnum::FAILED)
+            ->setParameter('running', BackupQueueStatusEnum::RUNNING)
+            ->setParameter('error', $error)
+            ->setParameter('before', $startedBefore)
+            ->getQuery()
+            ->execute();
+    }
+
+    /**
      * Puts a failed entry back in the queue, keeping its attempts; false when it is not failed (any more):
      * a conditional UPDATE, so a double click or two users never queue it twice.
      */
