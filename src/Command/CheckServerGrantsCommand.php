@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Entity\SqlClient;
+use App\Enum\SeverityEnum;
 use App\Repository\SqlClientRepository;
-use App\Security\Grants\GrantFindingSeverityEnum;
 use App\Service\ServerGrantAudit;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -68,7 +68,7 @@ final class CheckServerGrantsCommand extends Command
         $failed = false;
         foreach ($reports as $report) {
             $severity = $report->severity();
-            $failed = $failed || GrantFindingSeverityEnum::DANGER === $severity;
+            $failed = $failed || SeverityEnum::DANGER === $severity;
             $io->section(\sprintf('%s %s — %s', $report->serverName, $report->account ?? '', strtoupper($severity->value)));
             if (null !== $report->error) {
                 $io->writeln('  <fg=red>' . $report->error . '</>');

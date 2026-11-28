@@ -7,7 +7,7 @@ namespace App\Tests\Security\Grants;
 use App\Entity\AppUser;
 use App\Entity\DatabaseOwner;
 use App\Entity\SqlClient;
-use App\Security\Grants\GrantFindingSeverityEnum;
+use App\Enum\SeverityEnum;
 use App\Security\Grants\GrantStatementParser;
 use App\Security\Grants\ParsedGrants;
 use App\Security\Grants\ServerGrantChecker;
@@ -18,7 +18,7 @@ use PHPUnit\Framework\TestCase;
 
 #[CoversClass(ServerGrantChecker::class)]
 #[CoversClass(ServerGrantReport::class)]
-#[CoversClass(GrantFindingSeverityEnum::class)]
+#[CoversClass(SeverityEnum::class)]
 #[UsesClass(GrantStatementParser::class)]
 #[UsesClass(ParsedGrants::class)]
 final class ServerGrantCheckerTest extends TestCase
@@ -35,7 +35,7 @@ final class ServerGrantCheckerTest extends TestCase
             $this->assign($server, $mario, 'shop_log'),
         ]);
 
-        $this->assertSame(GrantFindingSeverityEnum::OK, $report->severity());
+        $this->assertSame(SeverityEnum::OK, $report->severity());
         $this->assertSame(['mario'], $report->nonAdminUsers);
         $this->assertSame(['shop', 'shop_log'], $report->assignedDbs);
         $this->assertSame('p@%', $report->account);
@@ -48,7 +48,7 @@ final class ServerGrantCheckerTest extends TestCase
 
         $report = $this->check($server, ['GRANT ALL PRIVILEGES ON *.* TO `p`@`%` WITH GRANT OPTION'], [$this->assign($server, $admin, 'shop')]);
 
-        $this->assertSame(GrantFindingSeverityEnum::INFO, $report->severity());
+        $this->assertSame(SeverityEnum::INFO, $report->severity());
         $this->assertStringContainsString('Usato solo da admin', $report->findings[0]['message']);
         $this->assertSame([], $report->nonAdminUsers);
 
@@ -70,7 +70,7 @@ final class ServerGrantCheckerTest extends TestCase
             'GRANT SOMETHING NEW',
         ], [$this->assign($server, $mario, 'shop')]);
 
-        $this->assertSame(GrantFindingSeverityEnum::DANGER, $report->severity());
+        $this->assertSame(SeverityEnum::DANGER, $report->severity());
         $messages = implode("\n", array_map(static fn (array $f): string => $f['severity']->value . ' ' . $f['message'], $report->findings));
         $this->assertStringContainsString('danger Privilegi globali (SELECT, PROCESS)', $messages);
         $this->assertStringContainsString('danger Ruoli assegnati', $messages);
@@ -92,7 +92,7 @@ final class ServerGrantCheckerTest extends TestCase
 
         // luca owns the server but no database: he cannot use the query console, he is not compared.
         $report = $this->check($server, $grants, [$this->assign($server, $mario, 'shop'), $this->assign($server, $anna, 'crm')]);
-        $this->assertSame(GrantFindingSeverityEnum::DANGER, $report->severity());
+        $this->assertSame(SeverityEnum::DANGER, $report->severity());
         $this->assertStringContainsString('Account condiviso da utenti non admin con database diversi (anna, mario)', $report->findings[0]['message']);
 
         // Same databases for both: sharing the account gives nothing more.
@@ -100,7 +100,7 @@ final class ServerGrantCheckerTest extends TestCase
             $this->assign($server, $mario, 'shop'), $this->assign($server, $mario, 'crm'),
             $this->assign($server, $anna, 'crm'), $this->assign($server, $anna, 'shop'),
         ]);
-        $this->assertSame(GrantFindingSeverityEnum::OK, $same->severity());
+        $this->assertSame(SeverityEnum::OK, $same->severity());
         $this->assertSame(['anna', 'luca', 'mario'], $same->nonAdminUsers);
     }
 
@@ -108,9 +108,9 @@ final class ServerGrantCheckerTest extends TestCase
     {
         $report = new ServerGrantChecker()->unreachable($this->server(), 'SQLSTATE[HY000] [2002] Connection refused');
 
-        $this->assertSame(GrantFindingSeverityEnum::DANGER, $report->severity());
+        $this->assertSame(SeverityEnum::DANGER, $report->severity());
         $this->assertNull($report->account);
-        foreach (GrantFindingSeverityEnum::cases() as $case) {
+        foreach (SeverityEnum::cases() as $case) {
             $this->assertNotSame('', $case->label());
             $this->assertNotSame('', $case->color());
         }

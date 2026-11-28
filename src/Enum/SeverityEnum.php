@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Security\Grants;
+namespace App\Enum;
 
 /**
- * How serious a finding of the server grant check is. "danger": a non-admin user can reach databases that are
- * not assigned to them (from the query console the account's grants are the only barrier).
+ * How serious a finding is (server grant check, cockpit health checks). For the grant check, "danger" means
+ * a non-admin user can reach databases not assigned to them (from the query console the account grants are the only barrier).
  */
-enum GrantFindingSeverityEnum: string
+enum SeverityEnum: string
 {
     case OK = 'ok';
     case INFO = 'info';

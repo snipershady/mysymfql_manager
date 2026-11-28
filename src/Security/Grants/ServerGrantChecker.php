@@ -7,6 +7,7 @@ namespace App\Security\Grants;
 use App\Entity\AppUser;
 use App\Entity\DatabaseOwner;
 use App\Entity\SqlClient;
+use App\Enum\SeverityEnum;
 
 /**
  * Checks that the MySQL account of a registered server (SqlClient) cannot reach more than its panel users may
@@ -60,7 +61,7 @@ final readonly class ServerGrantChecker
         $findings = [];
         $nonAdmins = array_keys($dbsByNonAdmin);
         if ([] === $nonAdmins) {
-            $findings[] = $this->finding(GrantFindingSeverityEnum::INFO, [] === $parsed->globalPrivileges
+            $findings[] = $this->finding(SeverityEnum::INFO, [] === $parsed->globalPrivileges
                 ? 'Usato solo da admin.'
                 : \sprintf('Usato solo da admin: i privilegi globali (%s) sono accettabili.', $this->list($parsed->globalPrivileges)));
 
@@ -68,25 +69,25 @@ final readonly class ServerGrantChecker
         }
 
         if ([] !== $parsed->globalPrivileges) {
-            $findings[] = $this->finding(GrantFindingSeverityEnum::DANGER, \sprintf(
+            $findings[] = $this->finding(SeverityEnum::DANGER, \sprintf(
                 'Privilegi globali (%s): valgono su tutti i database del server, anche quelli non assegnati, e dalla query console li usano anche gli utenti non admin.',
                 $this->list($parsed->globalPrivileges),
             ));
         }
 
         if ([] !== $parsed->roles) {
-            $findings[] = $this->finding(GrantFindingSeverityEnum::DANGER, \sprintf("Ruoli assegnati all'account (%s): i loro privilegi non sono verificabili da qui.", implode(', ', $parsed->roles)));
+            $findings[] = $this->finding(SeverityEnum::DANGER, \sprintf("Ruoli assegnati all'account (%s): i loro privilegi non sono verificabili da qui.", implode(', ', $parsed->roles)));
         }
 
         if ($parsed->proxy) {
-            $findings[] = $this->finding(GrantFindingSeverityEnum::DANGER, "Privilegio PROXY: l'account può agire come altri utenti MySQL.");
+            $findings[] = $this->finding(SeverityEnum::DANGER, "Privilegio PROXY: l'account può agire come altri utenti MySQL.");
         }
 
         foreach (array_keys($parsed->databases) as $pattern) {
             if (ParsedGrants::isWildcard($pattern)) {
-                $findings[] = $this->finding(GrantFindingSeverityEnum::DANGER, \sprintf('Grant con wildcard su `%s`: copre anche database non assegnati.', $pattern));
+                $findings[] = $this->finding(SeverityEnum::DANGER, \sprintf('Grant con wildcard su `%s`: copre anche database non assegnati.', $pattern));
             } elseif (!isset($assignedDbs[ParsedGrants::literalName($pattern)])) {
-                $findings[] = $this->finding(GrantFindingSeverityEnum::DANGER, \sprintf('Grant sul database `%s`, non assegnato a nessun utente di questo server: è leggibile dalla query console.', ParsedGrants::literalName($pattern)));
+                $findings[] = $this->finding(SeverityEnum::DANGER, \sprintf('Grant sul database `%s`, non assegnato a nessun utente di questo server: è leggibile dalla query console.', ParsedGrants::literalName($pattern)));
             }
         }
 
@@ -101,22 +102,22 @@ final readonly class ServerGrantChecker
         if (\count($distinctSets) > 1) {
             $users = array_map(strval(...), array_keys($withDatabases));
             sort($users);
-            $findings[] = $this->finding(GrantFindingSeverityEnum::DANGER, \sprintf(
+            $findings[] = $this->finding(SeverityEnum::DANGER, \sprintf(
                 'Account condiviso da utenti non admin con database diversi (%s): dalla query console ognuno può raggiungere i database degli altri. Registra un server (e un account MySQL) per utente.',
                 implode(', ', $users),
             ));
         }
 
         if ($parsed->grantOption) {
-            $findings[] = $this->finding(GrantFindingSeverityEnum::WARNING, "WITH GRANT OPTION: chi usa l'account può concedere i propri privilegi ad altri account MySQL.");
+            $findings[] = $this->finding(SeverityEnum::WARNING, "WITH GRANT OPTION: chi usa l'account può concedere i propri privilegi ad altri account MySQL.");
         }
 
         foreach ($parsed->unparsed as $line) {
-            $findings[] = $this->finding(GrantFindingSeverityEnum::WARNING, 'Grant non riconosciuto, da verificare a mano: ' . $line);
+            $findings[] = $this->finding(SeverityEnum::WARNING, 'Grant non riconosciuto, da verificare a mano: ' . $line);
         }
 
         if ([] === $findings) {
-            $findings[] = $this->finding(GrantFindingSeverityEnum::OK, 'I grant coprono solo i database assegnati ai suoi utenti.');
+            $findings[] = $this->finding(SeverityEnum::OK, 'I grant coprono solo i database assegnati ai suoi utenti.');
         }
 
         return $this->report($sqlClient, $account, $findings, $grants, $nonAdmins, $assignedDbs);
@@ -131,10 +132,10 @@ final readonly class ServerGrantChecker
     }
 
     /**
-     * @param list<array{severity: GrantFindingSeverityEnum, message: string}> $findings
-     * @param list<string>                                                     $grants
-     * @param list<string>                                                     $nonAdmins
-     * @param array<string, true>                                              $assignedDbs
+     * @param list<array{severity: SeverityEnum, message: string}> $findings
+     * @param list<string>                                         $grants
+     * @param list<string>                                         $nonAdmins
+     * @param array<string, true>                                  $assignedDbs
      */
     private function report(SqlClient $sqlClient, string $account, array $findings, array $grants, array $nonAdmins, array $assignedDbs): ServerGrantReport
     {
@@ -146,9 +147,9 @@ final readonly class ServerGrantChecker
     }
 
     /**
-     * @return array{severity: GrantFindingSeverityEnum, message: string}
+     * @return array{severity: SeverityEnum, message: string}
      */
-    private function finding(GrantFindingSeverityEnum $severity, string $message): array
+    private function finding(SeverityEnum $severity, string $message): array
     {
         return ['severity' => $severity, 'message' => $message];
     }

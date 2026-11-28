@@ -113,6 +113,9 @@
         <span><i class="fa-solid fa-server text-primary me-1"></i>Seleziona server</span>
         <div class="d-flex gap-2">
             {% if is_granted('ROLE_ADMIN') %}
+            <a id="btn-open-server-cockpit" href="#" data-path="{{ path('app_schema_server_cockpit') }}" {{ stimulus_target('databases', 'serverLink') }} class="btn btn-sm btn-outline-primary disabled">
+                <i class="fa-solid fa-chart-line me-1"></i>Cockpit
+            </a>
             <a id="btn-open-engine-status" href="#" data-path="{{ path('app_schema_engine_status') }}" {{ stimulus_target('databases', 'serverLink') }} class="btn btn-sm btn-outline-info disabled">
                 <i class="fa-solid fa-gauge-high me-1"></i>Engine Status
             </a>

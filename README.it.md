@@ -49,6 +49,25 @@ mysymfql_manager è un'applicazione web che consente di gestire uno o più serve
 - Export del risultato mostrato in **CSV** (RFC 4180, UTF-8 con BOM) o **JSON**, generato nel browser: la query non viene rieseguita
 - **Storico** delle proprie query sul database (dall'audit log: ultimi 90 giorni, password oscurate); un clic rimette l'istruzione nell'editor, senza eseguirla
 
+### Cockpit (monitoraggio live)
+- **Cockpit del server** (solo admin, pulsante *Cockpit* nella pagina dei database): stato e avvisi, uptime,
+  connessioni, thread, statement al secondo e traffico (tassi calcolati fra due aggiornamenti), indicatori di
+  capacità (connessioni rispetto a `max_connections`, occupazione e hit ratio del buffer pool, tabelle temporanee su
+  disco, table cache), query più pesanti del server (performance_schema), dimensione di ogni database, stato della
+  replica, configurazione principale
+- **Cockpit dello schema** (admin e owner del database, pulsante *Cockpit* nella pagina delle tabelle): dimensioni,
+  tabelle più grandi, tabelle senza primary key, capacità `AUTO_INCREMENT`, frammentazione, indici ridondanti e mai
+  usati (schema sys), I/O per tabella, query più pesanti e sessioni di quello schema soltanto
+- Aggiornamento automatico (5/15/60 s, in pausa quando la scheda non è visibile), sola lettura; statistiche di
+  information_schema lette fresche (`information_schema_stats_expiry = 0` per la sessione)
+- **Percona Server**: rilevato automaticamente (`version_comment`); entrambi i cockpit aggiungono le statistiche
+  *userstat* (server: per utente e per client; schema: per tabella e per indice). Richiedono `userstat = ON` sul
+  server (`SET PERSIST userstat = ON`, overhead ridotto): finché è spento la sezione spiega come attivarlo. Le tabelle
+  sono lette senza presupporre le colonne, che cambiano fra le versioni di Percona. Le variabili Percona dello slow log
+  compaiono nella configurazione
+- Le sezioni che l'account del server non può leggere mostrano l'errore MySQL e il `GRANT` che le abiliterebbe (vedi
+  [Privilegi opzionali per i cockpit](#privilegi-opzionali-per-i-cockpit)); il resto continua a funzionare
+
 ### Monitoraggio del server
 - Lista dei processi con terminazione del processo tramite ID
 - Stato del motore InnoDB (solo admin)
@@ -382,6 +401,22 @@ GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER,
 ON *.* TO 'manager'@'192.168.0.2' WITH GRANT OPTION;
 FLUSH PRIVILEGES;
 ```
+
+### Privilegi opzionali per i cockpit
+
+Stato, variabili e information_schema non richiedono privilegi. Le altre sezioni dei cockpit richiedono:
+
+| Sezione | Privilegio |
+|---|---|
+| Query più pesanti, I/O per tabella, sessioni | `GRANT SELECT ON performance_schema.* TO …` |
+| Indici ridondanti e mai usati | `GRANT SELECT ON sys.* TO …` (più performance_schema) |
+| Stato della replica | `GRANT REPLICATION CLIENT ON *.* TO …` |
+| Sessioni di altri account, processi in esecuzione | `PROCESS` |
+
+⚠ Su un server usato da utenti **non admin** (un account con grant solo sui loro database, vedi
+`app:check-server-grants`) non aggiungerli: performance_schema e sys mostrano statement e tabelle di tutti gli schemi
+del server, e la verifica dei grant li segnala come *danger*. Lì il cockpit dello schema funziona comunque, con quelle
+sezioni indicate come non disponibili.
 
 ### 4. Verifica la connettività dal web server
 

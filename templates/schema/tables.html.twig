@@ -34,6 +34,10 @@
             {% endif %}
         </span>
         <div class="d-flex gap-2">
+            <a href="{{ path('app_schema_schema_cockpit', {name: name, db_name: db_name}) }}" id="btn-open-schema-cockpit"
+               class="btn btn-sm btn-outline-primary">
+                <i class="fa-solid fa-chart-line me-1"></i>Cockpit
+            </a>
             <a href="{{ path('app_schema_query', {name: name, db_name: db_name}) }}"
                class="btn btn-sm btn-outline-primary">
                 <i class="fa-solid fa-terminal me-1"></i>Esegui Query

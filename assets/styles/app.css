@@ -96,3 +96,43 @@
     overflow-y: auto;
     margin-bottom: .25rem;
 }
+
+/* Cockpits: stat tiles, meters, long SQL in tables */
+.cockpit-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+    gap: .75rem;
+}
+.cockpit-tile {
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: .5rem;
+    padding: .75rem 1rem;
+}
+.cockpit-tile-label { font-size: .8rem; color: var(--bs-secondary-color); }
+.cockpit-tile-value { font-size: 1.5rem; font-weight: 600; line-height: 1.3; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.cockpit-tile-value.cockpit-tile-value-text { font-size: 1rem; padding-top: .35rem; }
+.cockpit-tile-note { font-size: .75rem; color: var(--bs-secondary-color); }
+.cockpit-meter {
+    display: grid;
+    grid-template-columns: minmax(12rem, 1.6fr) 2fr minmax(5rem, auto);
+    align-items: center;
+    gap: .75rem;
+    font-size: .85rem;
+    margin-bottom: .6rem;
+}
+.cockpit-meter-bar { height: .5rem; border-radius: 1rem; }
+.cockpit-meter-bar .progress-bar { border-radius: 1rem; }
+.cockpit-meter-figure { text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 576px) {
+    .cockpit-meter { grid-template-columns: 1fr auto; }
+    .cockpit-meter-bar { grid-column: 1 / -1; grid-row: 2; }
+}
+.cockpit-sql {
+    display: inline-block;
+    max-width: 24rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+}

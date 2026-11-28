@@ -1,0 +1,75 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Cockpit server — {{ name }}{% endblock %}
+{% block page_title %}Cockpit server{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{{ path('app_schema_databases') }}">Database</a></li>
+    <li class="breadcrumb-item active">Cockpit {{ name }}</li>
+{% endblock %}
+
+{% block content %}
+<div {{ stimulus_controller('server-cockpit', {name: name, dataUrl: path('app_schema_server_cockpit_data', {name: name}), schemaUrl: path('app_schema_schema_cockpit')}) }}>
+    {% include 'schema/_cockpit_toolbar.html.twig' with {controller: 'server-cockpit', title: name, icon: 'fa-server'} %}
+
+    <div class="alert alert-danger d-none" role="alert" {{ stimulus_target('server-cockpit', 'error') }}></div>
+
+    <div class="card mb-3">
+        <div class="card-header"><i class="fa-solid fa-stethoscope text-primary me-1"></i>Stato</div>
+        <div class="card-body" id="cockpit-findings" {{ stimulus_target('server-cockpit', 'findings') }}>
+            <span class="text-muted small"><i class="fa-solid fa-spinner fa-spin me-1"></i>Caricamento…</span>
+        </div>
+    </div>
+
+    <div class="cockpit-tiles mb-3" id="cockpit-tiles" {{ stimulus_target('server-cockpit', 'tiles') }}></div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header"><i class="fa-solid fa-gauge-high text-primary me-1"></i>Capacità</div>
+                <div class="card-body" {{ stimulus_target('server-cockpit', 'meters') }}></div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between">
+                    <span><i class="fa-solid fa-arrow-right-arrow-left text-primary me-1"></i>Traffico</span>
+                    <span class="text-muted small">al secondo, fra due aggiornamenti</span>
+                </div>
+                <div class="card-body" {{ stimulus_target('server-cockpit', 'rates') }}></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><i class="fa-solid fa-stopwatch text-primary me-1"></i>Query più pesanti (tempo totale, da performance_schema)</div>
+        <div class="card-body" id="cockpit-top-queries" {{ stimulus_target('server-cockpit', 'topQueries') }}></div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header"><i class="fa-solid fa-database text-primary me-1"></i>Database</div>
+                <div class="card-body" {{ stimulus_target('server-cockpit', 'databases') }}></div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card mb-3">
+                <div class="card-header"><i class="fa-solid fa-clone text-primary me-1"></i>Replica</div>
+                <div class="card-body" {{ stimulus_target('server-cockpit', 'replica') }}></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><i class="fa-solid fa-sliders text-primary me-1"></i>Configurazione</div>
+                <div class="card-body" {{ stimulus_target('server-cockpit', 'config') }}></div>
+            </div>
+        </div>
+    </div>
+    <div class="card mb-3" id="cockpit-percona" hidden {{ stimulus_target('server-cockpit', 'perconaCard') }}>
+        <div class="card-header d-flex justify-content-between">
+            <span><i class="fa-solid fa-chart-column text-primary me-1"></i>Percona Server — statistiche userstat</span>
+            <span class="text-muted small" {{ stimulus_target('server-cockpit', 'perconaVersion') }}></span>
+        </div>
+        <div class="card-body" {{ stimulus_target('server-cockpit', 'percona') }}></div>
+    </div>
+</div>
+{% endblock %}

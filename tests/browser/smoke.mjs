@@ -3,8 +3,9 @@
 //
 // For every page: no uncaught JS error, no console error, no request to another host (no CDN),
 // no failed same-origin request; plus page-specific checks and interaction scenarios.
+// SMOKE_SCREENSHOTS=<dir>: also saves a full-page PNG of every page with a scenario (1440 px wide), to look at.
 import { spawn } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -24,6 +25,8 @@ const adminPages = [
     { path: `/schema/tables?${D}`, expect: { dt: 1, rows: 1 }, scenario: 'tables' },
     { path: `/schema/query?${D}`, expect: { cm: 1 }, scenario: 'query' },
     { path: `/schema/process-list?${S}`, expect: { dt: 1, rows: 1 } },
+    { path: `/schema/server-cockpit?${S}`, scenario: 'serverCockpit' },
+    { path: `/schema/schema-cockpit?${D}`, scenario: 'schemaCockpit' },
     { path: `/schema/transactions?${S}`, expect: { dt: 1 } },
     { path: `/schema/engine-status?${S}` },
     { path: `/schema/db-users?${S}`, expect: { dt: 1, rows: 1 }, scenario: 'dbUsers' },
@@ -152,6 +155,35 @@ const scenarios = {
         const swal = !!document.querySelector('.swal2-popup'); ${wait(500)};
         const italian = /elementi/.test(info);
         return { ok: rows > 0 && italian && modalShown && cta && swal, rows, info, modalShown, cta, swal };
+    })()`,
+    serverCockpit: () => `(async () => {
+        ${wait(2500)};
+        const tiles = document.querySelectorAll('#cockpit-tiles .cockpit-tile').length;
+        const findings = !document.querySelector('#cockpit-findings .fa-spinner');
+        const queries = !!document.querySelector('#cockpit-top-queries table, #cockpit-top-queries .alert, #cockpit-top-queries p');
+        const meters = [...document.querySelectorAll('.cockpit-meter .progress-bar')].every((bar) => bar.style.width !== '');
+        const severity = !!document.querySelector('#cockpit-severity .badge');
+        const databases = document.querySelectorAll('[data-server-cockpit-target="databases"] tbody tr').length;
+        // Percona Server: the card is shown and explains userstat; on stock MySQL it stays hidden.
+        const percona = document.getElementById('cockpit-percona');
+        const isPercona = [...document.querySelectorAll('[data-server-cockpit-target="config"] td')].some((td) => td.textContent.includes('Percona'));
+        const perconaOk = isPercona ? !percona.hidden && percona.textContent.includes('USER_STATISTICS') : percona.hidden;
+        // Manual refresh: a second sample turns the traffic into live rates.
+        document.querySelector('[data-action="server-cockpit#refresh"]').click(); ${wait(2000)};
+        const live = [...document.querySelectorAll('th')].some((th) => th.textContent === 'Al secondo');
+        const error = document.querySelector('[data-server-cockpit-target="error"]');
+        const noError = error.classList.contains('d-none');
+        return { ok: tiles >= 6 && findings && queries && meters && severity && live && databases > 0 && noError && perconaOk, perconaOk, tiles, findings, queries, meters, severity, live, databases, error: noError ? null : error.textContent };
+    })()`,
+    schemaCockpit: () => `(async () => {
+        ${wait(2500)};
+        const tiles = document.querySelectorAll('#cockpit-tiles .cockpit-tile').length;
+        const tables = document.querySelectorAll('#cockpit-tables tbody tr').length;
+        const severity = !!document.querySelector('#cockpit-severity .badge');
+        const sessions = !!document.querySelector('#cockpit-sessions table, #cockpit-sessions p, #cockpit-sessions .alert');
+        const error = document.querySelector('[data-schema-cockpit-target="error"]');
+        const noError = error.classList.contains('d-none');
+        return { ok: tiles >= 6 && tables > 0 && severity && sessions && noError, tiles, tables, severity, sessions, error: noError ? null : error.textContent };
     })()`,
     query: () => `(async () => {
         ${wait(1500)};
@@ -327,6 +359,13 @@ async function session(username, pages) {
         if (page.scenario) {
             result = await b.evaluate(scenarios[page.scenario]());
             if (!result?.ok) assertions.push(`scenario ${page.scenario}: ${JSON.stringify(result)}`);
+            if (process.env.SMOKE_SCREENSHOTS) {
+                mkdirSync(process.env.SMOKE_SCREENSHOTS, { recursive: true });
+                await b.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+                await sleep(500);
+                const shot = await b.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
+                writeFileSync(join(process.env.SMOKE_SCREENSHOTS, `${username}_${page.scenario}.png`), Buffer.from(shot.result?.data ?? '', 'base64'));
+            }
         }
         check(`[${username}] ${page.path}${page.scenario ? ` (${page.scenario})` : ''}`, b.events, page.expect ? { dt: counts.dt, rows: counts.rows, cm: counts.cm } : {}, assertions, page.allowStatus ?? []);
     }

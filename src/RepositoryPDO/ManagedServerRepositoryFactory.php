@@ -37,6 +37,11 @@ final readonly class ManagedServerRepositoryFactory
         return new ServerMonitorRepository($sqlClient, $this->epti);
     }
 
+    public function metrics(SqlClient $sqlClient): MetricsRepository
+    {
+        return new MetricsRepository($sqlClient, $this->epti);
+    }
+
     public function demoData(SqlClient $sqlClient): DemoDataRepository
     {
         return new DemoDataRepository($sqlClient, $this->epti);

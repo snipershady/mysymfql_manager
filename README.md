@@ -61,6 +61,24 @@ mysymfql_manager is a web application that allows you to manage one or more remo
 - Export of the result shown as **CSV** (RFC 4180, UTF-8 with BOM) or **JSON**, built in the browser: the query is never run again
 - **History** of your own queries on the database (from the audit log: last 90 days, passwords masked); a click puts the statement back in the editor, it is not run automatically
 
+### Cockpits (live monitoring)
+- **Server cockpit** (admins only, *Cockpit* button in the databases page): health findings, uptime, connections,
+  threads, statements per second and traffic (rates computed between two refreshes), capacity meters (connections
+  vs `max_connections`, buffer pool usage and hit ratio, temporary tables on disk, table cache), heaviest statements
+  of the server (performance_schema), size of every database, replication status, key configuration
+- **Schema cockpit** (admins and owners of the database, *Cockpit* button in the tables page): sizes, biggest
+  tables, tables without a primary key, `AUTO_INCREMENT` capacity, fragmentation, redundant and unused indexes
+  (sys schema), I/O per table, heaviest statements and sessions of that schema only
+- Automatic refresh (5/15/60 s, paused while the tab is hidden), read only; information_schema statistics read fresh
+  (`information_schema_stats_expiry = 0` for the session)
+- **Percona Server**: detected automatically (`version_comment`); both cockpits add the *userstat* statistics
+  (server: per user and per client; schema: per table and per index). They need `userstat = ON` on the server
+  (`SET PERSIST userstat = ON`, small overhead): until then the section explains how to enable it. The tables are
+  read without assuming their columns, which change across Percona versions. The Percona slow-log variables are
+  shown in the configuration
+- Sections the server account cannot read show MySQL's error and the `GRANT` that would enable them (see
+  [Optional privileges for the cockpits](#optional-privileges-for-the-cockpits)); the rest keeps working
+
 ### Server Monitoring
 - Process list with process termination by ID
 - InnoDB engine status (admins only)
@@ -393,6 +411,22 @@ GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER,
 ON *.* TO 'manager'@'192.168.0.2' WITH GRANT OPTION;
 FLUSH PRIVILEGES;
 ```
+
+### Optional privileges for the cockpits
+
+Status, variables and information_schema need no privilege. The other cockpit sections need:
+
+| Section | Privilege |
+|---|---|
+| Heaviest statements, I/O per table, sessions | `GRANT SELECT ON performance_schema.* TO …` |
+| Redundant and unused indexes | `GRANT SELECT ON sys.* TO …` (plus performance_schema) |
+| Replication status | `GRANT REPLICATION CLIENT ON *.* TO …` |
+| Sessions of other accounts, running processes | `PROCESS` |
+
+⚠ On a server used by **non-admin** users (one account granted only on their databases, see
+`app:check-server-grants`) do not add these: performance_schema and sys show the statements and tables of every
+schema on the server, and the grant check reports them as *danger*. There the schema cockpit works without them,
+showing those sections as not available.
 
 ### 4. Verify connectivity from the web server
 

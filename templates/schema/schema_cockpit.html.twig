@@ -1,0 +1,74 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Cockpit schema — {{ db_name }}{% endblock %}
+{% block page_title %}Cockpit schema{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{{ path('app_schema_databases') }}">Database</a></li>
+    <li class="breadcrumb-item"><a href="{{ path('app_schema_tables', {name: name, db_name: db_name}) }}">{{ db_name }}</a></li>
+    <li class="breadcrumb-item active">Cockpit</li>
+{% endblock %}
+
+{% block content %}
+<div {{ stimulus_controller('schema-cockpit', {dataUrl: path('app_schema_schema_cockpit_data', {name: name, db_name: db_name})}) }}>
+    {% include 'schema/_cockpit_toolbar.html.twig' with {controller: 'schema-cockpit', title: db_name ~ ' · ' ~ name, icon: 'fa-database'} %}
+
+    <div class="alert alert-danger d-none" role="alert" {{ stimulus_target('schema-cockpit', 'error') }}></div>
+
+    <div class="card mb-3">
+        <div class="card-header"><i class="fa-solid fa-stethoscope text-primary me-1"></i>Stato</div>
+        <div class="card-body" id="cockpit-findings" {{ stimulus_target('schema-cockpit', 'findings') }}>
+            <span class="text-muted small"><i class="fa-solid fa-spinner fa-spin me-1"></i>Caricamento…</span>
+        </div>
+    </div>
+
+    <div class="cockpit-tiles mb-3" id="cockpit-tiles" {{ stimulus_target('schema-cockpit', 'tiles') }}></div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-lg-7">
+            <div class="card h-100">
+                <div class="card-header"><i class="fa-solid fa-table text-primary me-1"></i>Tabelle più grandi</div>
+                <div class="card-body" id="cockpit-tables" {{ stimulus_target('schema-cockpit', 'tables') }}></div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="card h-100">
+                <div class="card-header"><i class="fa-solid fa-arrow-up-9-1 text-primary me-1"></i>Capacità AUTO_INCREMENT</div>
+                <div class="card-body" id="cockpit-auto-increment" {{ stimulus_target('schema-cockpit', 'autoIncrement') }}></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header"><i class="fa-solid fa-key text-primary me-1"></i>Indici ridondanti e mai usati</div>
+                <div class="card-body" {{ stimulus_target('schema-cockpit', 'indexes') }}></div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header"><i class="fa-solid fa-hard-drive text-primary me-1"></i>I/O per tabella (da performance_schema)</div>
+                <div class="card-body" {{ stimulus_target('schema-cockpit', 'tableIo') }}></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><i class="fa-solid fa-stopwatch text-primary me-1"></i>Query più pesanti su questo schema</div>
+        <div class="card-body" {{ stimulus_target('schema-cockpit', 'topQueries') }}></div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><i class="fa-solid fa-plug text-primary me-1"></i>Sessioni sullo schema</div>
+        <div class="card-body" id="cockpit-sessions" {{ stimulus_target('schema-cockpit', 'sessions') }}></div>
+    </div>
+    <div class="card mb-3" id="cockpit-percona" hidden {{ stimulus_target('schema-cockpit', 'perconaCard') }}>
+        <div class="card-header d-flex justify-content-between">
+            <span><i class="fa-solid fa-chart-column text-primary me-1"></i>Percona Server — statistiche userstat</span>
+            <span class="text-muted small" {{ stimulus_target('schema-cockpit', 'perconaVersion') }}></span>
+        </div>
+        <div class="card-body" {{ stimulus_target('schema-cockpit', 'percona') }}></div>
+    </div>
+</div>
+{% endblock %}
