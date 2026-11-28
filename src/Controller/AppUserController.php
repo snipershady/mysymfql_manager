@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Attribute\Audited;
 use App\Entity\AppUser;
+use App\Enum\AuditActionEnum;
 use App\Form\AppUserAdminType;
 use App\Form\AppUserType;
 use App\Repository\AppUserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\ExpressionLanguage\Expression;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsCsrfTokenValid;
 use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
 
 #[Route(path: '/admin/appuser')]
@@ -29,6 +33,7 @@ final class AppUserController extends AbstractController
     }
 
     #[Route(path: '/new', name: 'app_user_new', methods: ['GET', 'POST'])]
+    #[Audited(action: AuditActionEnum::APP_USER_CREATE)]
     public function new(Request $request, EntityManagerInterface $entityManager): Response
     {
         $appUser = new AppUser();
@@ -57,6 +62,7 @@ final class AppUserController extends AbstractController
     }
 
     #[Route(path: '/{id}/edit', name: 'app_user_edit', methods: ['GET', 'POST'])]
+    #[Audited(action: AuditActionEnum::APP_USER_UPDATE)]
     public function edit(
         Request $request,
         AppUser $appUser,
@@ -90,12 +96,12 @@ final class AppUserController extends AbstractController
     }
 
     #[Route(path: '/{id}', name: 'app_user_delete', methods: ['POST'])]
-    public function delete(Request $request, AppUser $appUser, EntityManagerInterface $entityManager): RedirectResponse
+    #[IsCsrfTokenValid(id: new Expression('"delete" ~ args["appUser"].getId()'))]
+    #[Audited(action: AuditActionEnum::APP_USER_DELETE)]
+    public function delete(AppUser $appUser, EntityManagerInterface $entityManager): RedirectResponse
     {
-        if ($this->isCsrfTokenValid('delete' . $appUser->getId(), $request->getPayload()->getString('_token'))) {
-            $entityManager->remove($appUser);
-            $entityManager->flush();
-        }
+        $entityManager->remove($appUser);
+        $entityManager->flush();
 
         return $this->redirectToRoute('app_user_index', [], Response::HTTP_SEE_OTHER);
     }

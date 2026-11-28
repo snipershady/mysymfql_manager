@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Controller\Schema;
 
+use App\Attribute\Audited;
 use App\Dto\Input\DatabaseTarget;
 use App\Dto\Input\TableTarget;
 use App\Entity\SqlClient;
+use App\Enum\AuditActionEnum;
 use App\RepositoryPDO\ManagedServerRepositoryFactory;
 use App\Security\SqlClientAccessResolver;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -76,6 +78,7 @@ final class TableController extends AbstractController
     }
 
     #[Route(path: '/table-empty', name: 'app_schema_table_empty', methods: ['POST'])]
+    #[Audited(action: AuditActionEnum::TABLE_EMPTY)]
     public function tableEmpty(
         #[MapRequestPayload] TableTarget $input): JsonResponse
     {
@@ -100,6 +103,7 @@ final class TableController extends AbstractController
     }
 
     #[Route(path: '/table-drop', name: 'app_schema_table_drop', methods: ['POST'])]
+    #[Audited(action: AuditActionEnum::TABLE_DROP)]
     public function tableDrop(
         #[MapRequestPayload] TableTarget $input): JsonResponse
     {
@@ -124,6 +128,7 @@ final class TableController extends AbstractController
     }
 
     #[Route(path: '/table-optimize', name: 'app_table_optimize', methods: ['POST'])]
+    #[Audited(action: AuditActionEnum::TABLE_OPTIMIZE)]
     public function tableOptimize(
         #[MapRequestPayload] TableTarget $input): JsonResponse
     {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Schema;
 
+use App\Attribute\Audited;
 use App\Dto\Input\AccountPassword;
 use App\Dto\Input\AccountTarget;
 use App\Dto\Input\GrantChanges;
@@ -13,6 +14,7 @@ use App\Dto\Input\OptionalDatabaseTarget;
 use App\Dto\MysqlUser;
 use App\Entity\AppUser;
 use App\Entity\SqlClient;
+use App\Enum\AuditActionEnum;
 use App\Exception\ProvisioningConflictException;
 use App\Exception\ProvisioningException;
 use App\RepositoryPDO\ManagedServerRepositoryFactory;
@@ -87,6 +89,7 @@ final class MysqlUserController extends AbstractController
     }
 
     #[Route(path: '/db-user-drop', name: 'app_schema_db_user_drop', methods: ['POST'])]
+    #[Audited(action: AuditActionEnum::MYSQL_USER_DROP)]
     public function dbUserDrop(
         #[MapRequestPayload] AccountTarget $input,
         #[CurrentUser] AppUser $user): JsonResponse
@@ -114,6 +117,7 @@ final class MysqlUserController extends AbstractController
     }
 
     #[Route(path: '/db-user-change-password', name: 'app_schema_db_user_change_password', methods: ['POST'])]
+    #[Audited(action: AuditActionEnum::MYSQL_USER_PASSWORD)]
     public function dbUserChangePassword(
         #[MapRequestPayload] AccountPassword $input,
         #[CurrentUser] AppUser $user): JsonResponse
@@ -142,6 +146,7 @@ final class MysqlUserController extends AbstractController
     }
 
     #[Route(path: '/db-user-create', name: 'app_schema_db_user_create', methods: ['POST'])]
+    #[Audited(action: AuditActionEnum::MYSQL_USER_CREATE)]
     public function dbUserCreate(
         #[MapRequestPayload] NewAccount $input,
         DatabaseProvisioner $provisioner): JsonResponse
@@ -191,6 +196,7 @@ final class MysqlUserController extends AbstractController
     }
 
     #[Route(path: '/db-user-grant-save', name: 'app_schema_db_user_grant_save', methods: ['POST'])]
+    #[Audited(action: AuditActionEnum::MYSQL_USER_GRANTS)]
     public function dbUserGrantSave(
         #[MapRequestPayload] GrantChanges $input,
         #[CurrentUser] AppUser $user): JsonResponse

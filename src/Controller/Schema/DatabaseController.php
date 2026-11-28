@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Controller\Schema;
 
+use App\Attribute\Audited;
 use App\Dto\Input\DatabaseTarget;
 use App\Dto\Input\NewDatabase;
 use App\Dto\Input\OptionalServer;
 use App\Dto\Input\ServerTarget;
 use App\Entity\AppUser;
 use App\Entity\SqlClient;
+use App\Enum\AuditActionEnum;
 use App\Enum\CharsetEnum;
 use App\Enum\CollationEnum;
 use App\Exception\ProvisioningConflictException;
@@ -80,6 +82,7 @@ final class DatabaseController extends AbstractController
     }
 
     #[Route(path: '/create-database', name: 'app_schema_create_database', methods: ['POST'])]
+    #[Audited(action: AuditActionEnum::DATABASE_CREATE)]
     public function createDatabase(
         #[MapRequestPayload] NewDatabase $input,
         #[CurrentUser] AppUser $user,
@@ -107,6 +110,7 @@ final class DatabaseController extends AbstractController
     }
 
     #[Route(path: '/drop-database', name: 'app_schema_drop_database', methods: ['POST'])]
+    #[Audited(action: AuditActionEnum::DATABASE_DROP)]
     public function dropDatabase(
         #[MapRequestPayload] DatabaseTarget $input,
         DatabaseProvisioner $provisioner): JsonResponse

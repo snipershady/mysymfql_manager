@@ -22,6 +22,7 @@ final readonly class AccountPassword
         public string $username,
         #[SerializedName(serializedName: 'user_host'), MysqlHost]
         public string $userHost,
+        #[\SensitiveParameter]
         #[Assert\NotBlank(message: 'Inserisci la nuova password.')]
         public string $password,
     ) {

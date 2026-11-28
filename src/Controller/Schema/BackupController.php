@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Controller\Schema;
 
+use App\Attribute\Audited;
 use App\Dto\BackupDump;
 use App\Dto\Input\BackupFile;
 use App\Dto\Input\BackupTarget;
 use App\Dto\Input\RestoreBackup;
 use App\Entity\AppUser;
 use App\Entity\SqlClient;
+use App\Enum\AuditActionEnum;
 use App\Security\SqlClientAccessResolver;
 use App\Service\BackupService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -120,6 +122,7 @@ final class BackupController extends AbstractController
     }
 
     #[Route(path: '/backup-delete', name: 'app_schema_backup_delete', methods: ['POST'])]
+    #[Audited(action: AuditActionEnum::BACKUP_DELETE)]
     public function backupDelete(
         #[MapRequestPayload] BackupFile $input,
         #[CurrentUser] AppUser $user): JsonResponse
@@ -154,6 +157,7 @@ final class BackupController extends AbstractController
     }
 
     #[Route(path: '/table-restore-exec', name: 'app_schema_table_restore_exec', methods: ['POST'])]
+    #[Audited(action: AuditActionEnum::BACKUP_RESTORE)]
     public function tableRestoreExec(
         #[MapRequestPayload] RestoreBackup $input,
         #[CurrentUser] AppUser $user): JsonResponse

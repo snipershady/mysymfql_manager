@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Controller\Schema;
 
+use App\Attribute\Audited;
 use App\Dto\Input\DatabaseTarget;
 use App\Dto\Input\SqlStatement;
 use App\Entity\SqlClient;
+use App\Enum\AuditActionEnum;
 use App\Exception\RepositoryException;
 use App\RepositoryPDO\ManagedServerRepositoryFactory;
 use App\Security\SqlClientAccessResolver;
@@ -72,6 +74,7 @@ final class QueryController extends AbstractController
     }
 
     #[Route(path: '/query-execute', name: 'app_schema_query_execute', methods: ['POST'])]
+    #[Audited(action: AuditActionEnum::QUERY_EXECUTE)]
     public function queryExecute(
         #[MapRequestPayload] SqlStatement $input): JsonResponse
     {

@@ -1,0 +1,149 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Audit log{% endblock %}
+{% block page_title %}Audit log{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item active">Audit log</li>
+{% endblock %}
+
+{% block content %}
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" action="{{ path('app_audit_log_index') }}" class="row g-2 align-items-end" data-turbo-action="advance">
+            <div class="col-sm-6 col-lg-2">
+                <label for="audit-actor" class="form-label small mb-1">Utente</label>
+                <select id="audit-actor" name="actor" class="form-select form-select-sm">
+                    <option value="">Tutti</option>
+                    {% for actor in filter_values.actors %}
+                        <option value="{{ actor }}" {{ filter.actor == actor ? 'selected' }}>{{ actor }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-sm-6 col-lg-2">
+                <label for="audit-server" class="form-label small mb-1">Server</label>
+                <select id="audit-server" name="server" class="form-select form-select-sm">
+                    <option value="">Tutti</option>
+                    {% for server in filter_values.servers %}
+                        <option value="{{ server }}" {{ filter.server == server ? 'selected' }}>{{ server }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <label for="audit-action" class="form-label small mb-1">Azione</label>
+                <select id="audit-action" name="action" class="form-select form-select-sm">
+                    <option value="">Tutte</option>
+                    {% for action in actions %}
+                        <option value="{{ action.value }}" {{ filter.action == action.value ? 'selected' }}>{{ action.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-sm-6 col-lg-1">
+                <label for="audit-outcome" class="form-label small mb-1">Esito</label>
+                <select id="audit-outcome" name="outcome" class="form-select form-select-sm">
+                    <option value="">Tutti</option>
+                    {% for outcome in outcomes %}
+                        <option value="{{ outcome.value }}" {{ filter.outcome == outcome.value ? 'selected' }}>{{ outcome.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-sm-6 col-lg-1">
+                <label for="audit-from" class="form-label small mb-1">Dal</label>
+                <input type="date" id="audit-from" name="from" value="{{ filter.from }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-sm-6 col-lg-1">
+                <label for="audit-to" class="form-label small mb-1">Al</label>
+                <input type="date" id="audit-to" name="to" value="{{ filter.to }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-lg-2 d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fa-solid fa-filter me-1"></i>Filtra
+                </button>
+                <a href="{{ path('app_audit_log_index') }}" class="btn btn-sm btn-outline-secondary">Azzera</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="fa-solid fa-clipboard-list text-primary"></i>
+        Operazioni registrate
+        <span class="text-muted small ms-auto">{{ total }} voci · storico massimo {{ retention_days }} giorni</span>
+    </div>
+    {% if total == 0 %}
+        <div class="card-body">
+            <p class="text-muted text-center py-3 mb-0">
+                <i class="fa-solid fa-clipboard-list fa-2x d-block mb-2 opacity-25"></i>
+                Nessuna operazione registrata
+            </p>
+        </div>
+    {% else %}
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0" id="table-audit-log">
+                <thead class="table-light">
+                    <tr>
+                        <th class="cw-140">Data</th>
+                        <th>Utente</th>
+                        <th>Azione</th>
+                        <th>Server / database</th>
+                        <th>Oggetto</th>
+                        <th>Esito</th>
+                        <th>Dettagli</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for entry in entries %}
+                    <tr data-audit-action="{{ entry.action.value }}" data-audit-outcome="{{ entry.outcome.value }}">
+                        <td class="small text-nowrap">{{ entry.occurredAt|date('d/m/Y H:i:s') }}</td>
+                        <td class="small">
+                            {{ entry.actorUsername }}
+                            {% if entry.ip %}<div class="text-muted font-monospace">{{ entry.ip }}</div>{% endif %}
+                        </td>
+                        <td class="small">{{ entry.action.label }}</td>
+                        <td class="small font-monospace">
+                            {{ entry.serverName ?? '-' }}{% if entry.dbName %}<div class="text-muted">{{ entry.dbName }}</div>{% endif %}
+                        </td>
+                        <td class="small font-monospace text-break">{{ entry.target ?? '-' }}</td>
+                        <td><span class="badge text-bg-{{ entry.outcome.color }}">{{ entry.outcome.label }}</span></td>
+                        <td class="small mw-540">
+                            {% if entry.details.sql is defined %}
+                                <pre class="audit-detail font-monospace">{{ entry.details.sql }}</pre>
+                            {% endif %}
+                            {% set params = entry.details ?? {} %}
+                            {% if params|filter((v, k) => k != 'sql')|length > 0 %}
+                                <details>
+                                    <summary>Parametri</summary>
+                                    <pre class="audit-detail font-monospace">{{ params|filter((v, k) => k != 'sql')|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_UNICODE') b-or constant('JSON_UNESCAPED_SLASHES')) }}</pre>
+                                </details>
+                            {% endif %}
+                            {% if entry.message %}
+                                <details {{ entry.outcome.value == 'failure' ? 'open' }}>
+                                    <summary class="text-danger">Messaggio</summary>
+                                    <pre class="audit-detail">{{ entry.message }}</pre>
+                                </details>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if pages > 1 %}
+            <div class="card-footer d-flex justify-content-between align-items-center small">
+                <span class="text-muted">Pagina {{ filter.page }} di {{ pages }}</span>
+                <nav aria-label="Pagine audit log">
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item {{ filter.page <= 1 ? 'disabled' }}">
+                            <a class="page-link" href="{{ path('app_audit_log_index', filter.query|merge({page: filter.page - 1})) }}">Precedente</a>
+                        </li>
+                        <li class="page-item {{ filter.page >= pages ? 'disabled' }}">
+                            <a class="page-link" href="{{ path('app_audit_log_index', filter.query|merge({page: filter.page + 1})) }}">Successiva</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

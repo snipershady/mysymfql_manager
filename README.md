@@ -61,6 +61,16 @@ mysymfql_manager is a web application that allows you to manage one or more remo
 - Open InnoDB transactions (`information_schema.INNODB_TRX`: thread, state, start time, locked rows) with thread termination
 - Non-admin users only see processes and transactions working on their own databases
 
+### Audit log
+- Every change made from the panel is recorded: on the managed servers (create/drop database, empty/drop/optimize
+  table, query console — every statement, reads included —, MySQL accounts created/dropped, passwords, grants, kill,
+  restore and deletion of dumps) and on the panel itself (application users, servers, database assignments)
+- Each entry: date, panel user and IP, action, server/database/object, outcome (succeeded, failed with MySQL's native
+  error, denied, invalid data) and the non-secret parameters; passwords are never stored (the literals of
+  `IDENTIFIED BY`, `PASSWORD …` in the SQL are masked)
+- `/admin/audit-log` page (admins only) with filters by user, server, action, outcome and period
+- At most 90 days of history, removed by `app:audit-prune` (cron)
+
 ---
 
 ## Requirements
@@ -590,6 +600,19 @@ deleted as well. A file that cannot be deleted is reported and logged, and the e
 
 ```cron
 30 3 * * * /usr/bin/php /path/to/mysymfql_manager/bin/console app:backup-rotate 30 --force --no-interaction >> /var/log/mysymfql_backup.log 2>&1
+```
+
+### `app:audit-prune` — Audit log rotation
+
+Deletes the audit log entries older than `--days` (default `90`, which is also the maximum: the audit log keeps at
+most three months of history). Without `--force` it only prints how many entries would be deleted.
+
+```bash
+php bin/console app:audit-prune [--days=<1-90>] [--force]
+```
+
+```cron
+45 3 * * * /usr/bin/php /path/to/mysymfql_manager/bin/console app:audit-prune --force --no-interaction >> /var/log/mysymfql_audit.log 2>&1
 ```
 
 ### `app:setup-sqlclient` — Register a MySQL server (SqlClient)

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Controller\Schema;
 
+use App\Attribute\Audited;
 use App\Dto\Input\KillProcess;
 use App\Dto\Input\ServerTarget;
 use App\Dto\ProcessList;
 use App\Entity\AppUser;
 use App\Entity\SqlClient;
+use App\Enum\AuditActionEnum;
 use App\Repository\SqlClientRepository;
 use App\RepositoryPDO\ManagedServerRepositoryFactory;
 use App\Security\SchemaVisibility;
@@ -126,6 +128,7 @@ final class MonitorController extends AbstractController
     }
 
     #[Route(path: '/kill-process', name: 'app_schema_kill_process', methods: ['POST'])]
+    #[Audited(action: AuditActionEnum::PROCESS_KILL)]
     public function killProcess(
         #[MapRequestPayload] KillProcess $input,
         #[CurrentUser] AppUser $user): JsonResponse

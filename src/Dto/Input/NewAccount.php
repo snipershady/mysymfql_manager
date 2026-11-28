@@ -25,6 +25,7 @@ final readonly class NewAccount
         public string $dbName,
         #[MysqlAccount]
         public string $username,
+        #[\SensitiveParameter]
         #[Assert\NotBlank(message: 'La password è obbligatoria.')]
         public string $password,
         #[SerializedName(serializedName: 'user_host'), MysqlHost]

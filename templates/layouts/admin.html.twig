@@ -84,6 +84,11 @@
             <i class="fa-solid fa-database"></i>
             <span>Assegnazioni database</span>
         </a>
+        <a href="{{ path('app_audit_log_index') }}"
+           class="nav-link {% if app.request.attributes.get('_route') starts with 'app_audit_log' %}active{% endif %}">
+            <i class="fa-solid fa-clipboard-list"></i>
+            <span>Audit log</span>
+        </a>
         {% endif %}
     </div>
 

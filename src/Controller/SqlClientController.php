@@ -4,18 +4,22 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Attribute\Audited;
 use App\Entity\AppUser;
 use App\Entity\SqlClient;
+use App\Enum\AuditActionEnum;
 use App\Form\SqlClientType;
 use App\Repository\SqlClientRepository;
 use App\Security\Voter\SqlClientVoter;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\ExpressionLanguage\Expression;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsCsrfTokenValid;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route(path: '/sqlclient')]
@@ -36,6 +40,7 @@ final class SqlClientController extends AbstractController
 
     #[Route(path: '/new', name: 'app_sql_client_new', methods: ['GET', 'POST'])]
     #[IsGranted(attribute: 'ROLE_ADMIN')]
+    #[Audited(action: AuditActionEnum::SQL_CLIENT_CREATE)]
     public function new(Request $request, EntityManagerInterface $entityManager): Response
     {
         $sqlClient = new SqlClient();
@@ -67,6 +72,7 @@ final class SqlClientController extends AbstractController
 
     #[Route(path: '/{id}/edit', name: 'app_sql_client_edit', methods: ['GET', 'POST'])]
     #[IsGranted(attribute: SqlClientVoter::MANAGE, subject: 'sqlClient')]
+    #[Audited(action: AuditActionEnum::SQL_CLIENT_UPDATE)]
     public function edit(Request $request, SqlClient $sqlClient, EntityManagerInterface $entityManager): Response
     {
         $form = $this->createForm(SqlClientType::class, $sqlClient, ['require_password' => false]);
@@ -87,12 +93,12 @@ final class SqlClientController extends AbstractController
 
     #[Route(path: '/{id}', name: 'app_sql_client_delete', methods: ['POST'])]
     #[IsGranted(attribute: SqlClientVoter::MANAGE, subject: 'sqlClient')]
-    public function delete(Request $request, SqlClient $sqlClient, EntityManagerInterface $entityManager): RedirectResponse
+    #[IsCsrfTokenValid(id: new Expression('"delete" ~ args["sqlClient"].getId()'))]
+    #[Audited(action: AuditActionEnum::SQL_CLIENT_DELETE)]
+    public function delete(SqlClient $sqlClient, EntityManagerInterface $entityManager): RedirectResponse
     {
-        if ($this->isCsrfTokenValid('delete' . $sqlClient->getId(), $request->getPayload()->getString('_token'))) {
-            $entityManager->remove($sqlClient);
-            $entityManager->flush();
-        }
+        $entityManager->remove($sqlClient);
+        $entityManager->flush();
 
         return $this->redirectToRoute('app_sql_client_index', [], Response::HTTP_SEE_OTHER);
     }

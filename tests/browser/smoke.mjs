@@ -36,6 +36,7 @@ const adminPages = [
     { path: '/admin/appuser' },
     { path: '/admin/database-owner', expect: { dt: 1, rows: 1 } },
     { path: '/admin/database-owner/new' },
+    { path: '/admin/audit-log' },
     { path: '/change-password' },
 ];
 // The databases page only lists servers the user owns: test_owner owns server_locale.
