@@ -58,6 +58,12 @@ final class LegacyBackupNameResolverTest extends TestCase
         $this->assertCount(2, $this->resolve('app_old_users', ['app', 'app_old'], $tables));
     }
 
+    public function testCompressedLegacyDumps(): void
+    {
+        $this->assertSame([['db' => 'shop', 'table' => null]], LegacyBackupNameResolver::resolve('bkp_2026-01-01_00-00-00_shop_full.sql.zst', ['shop'], static fn (): bool => false));
+        $this->assertSame([['db' => 'shop', 'table' => 'orders']], LegacyBackupNameResolver::resolve('bkp_2026-01-01_00-00-00_shop_orders.sql.gz', ['shop'], static fn (): bool => false));
+    }
+
     public function testDuplicateAndInvalidKnownNamesAreIgnored(): void
     {
         $this->assertSame([['db' => 'shop', 'table' => null]], $this->resolve('shop_full', ['shop', 'shop', 'bad-name', '']));

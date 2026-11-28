@@ -86,6 +86,20 @@ final class BackupRotationPolicyTest extends TestCase
         $this->assertSame([$old], new BackupRotationPolicy()->expired([$old, $recent, $other], $this->now, days: 30, keepLast: 1));
     }
 
+    public function testCompressionDoesNotSplitASeries(): void
+    {
+        $dumps = [
+            $this->dump(3, 'shop', 'full', ageDays: 40, extension: '.sql'),
+            $this->dump(3, 'shop', 'full', ageDays: 35, extension: '.sql.gz'),
+            $this->dump(3, 'shop', 'full', ageDays: 31, extension: '.sql.zst'),
+        ];
+
+        $expired = new BackupRotationPolicy()->expired($dumps, $this->now, days: 30, keepLast: 1);
+
+        $this->assertSame([$dumps[0], $dumps[1]], $expired);
+        $this->assertSame('3/shop/full', BackupRotationPolicy::seriesKey($dumps[2]));
+    }
+
     public function testRejectsAnInvalidRetention(): void
     {
         $this->expectException(\InvalidArgumentException::class);
@@ -98,11 +112,11 @@ final class BackupRotationPolicyTest extends TestCase
         new BackupRotationPolicy()->expired([], $this->now, days: 30, keepLast: -1);
     }
 
-    private function dump(?int $sqlClientId, string $db, string $scope, int $ageDays): BackupDump
+    private function dump(?int $sqlClientId, string $db, string $scope, int $ageDays, string $extension = '.sql'): BackupDump
     {
         static $sequence = 0;
         $mtime = $this->now->modify(\sprintf('-%d days', $ageDays))->getTimestamp() - ++$sequence;
-        $filename = \sprintf('bkp_%s_%s_%s.sql', date('Y-m-d_H-i-s', $mtime), $db, $scope);
+        $filename = \sprintf('bkp_%s_%s_%s%s', date('Y-m-d_H-i-s', $mtime), $db, $scope, $extension);
         $id = null === $sqlClientId ? $filename : \sprintf('%d/%s/%s', $sqlClientId, $db, $filename);
 
         return new BackupDump(

@@ -11,6 +11,7 @@ use App\Service\BackupService;
 use App\Tests\Fixtures\TestCatalog;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Symfony\Component\Process\ExecutableFinder;
+use Symfony\Component\Process\Process;
 
 /**
  * Backup cycle from the HTTP endpoints, on the real managed server and the test BACKUP_PATH:
@@ -30,7 +31,7 @@ final class BackupTest extends FunctionalTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        foreach (['mysqldump', 'mysql'] as $binary) {
+        foreach (['mysqldump', 'mysql', 'zstd'] as $binary) {
             if (null === new ExecutableFinder()->find($binary)) {
                 self::markTestSkipped($binary . ' is not installed.');
             }
@@ -70,6 +71,16 @@ final class BackupTest extends FunctionalTestCase
         $this->client->request('GET', '/schema/backup-list');
         self::assertResponseIsSuccessful();
         self::assertSelectorTextContains('body', $backup['backup_filename']);
+        self::assertSelectorTextContains('#table-backups .badge.text-bg-info', 'zstd');
+
+        // Stored compressed (default BACKUP_COMPRESSION=zstd), shown as plain SQL.
+        $this->assertStringEndsWith('.sql.zst', $backup['backup_filename']);
+        $this->client->request('GET', '/schema/backup-view', ['filename' => $id]);
+        self::assertResponseIsSuccessful();
+        self::assertResponseHeaderSame('Content-Type', 'text/plain; charset=UTF-8');
+        $sql = $this->client->getInternalResponse()->getContent();
+        $this->assertStringContainsString('CREATE TABLE `cities`', $sql);
+        $this->assertStringNotContainsString('Errore durante la lettura', $sql);
 
         $this->remote->useDbName($this->ownedDb);
         $this->remote->runQuery('DELETE FROM cities');
@@ -114,7 +125,9 @@ final class BackupTest extends FunctionalTestCase
         $filename = $this->json()['backup_filename'];
         $this->assertIsString($filename);
         $id = \sprintf('%d/%s/%s', (int) $this->sqlClient($this->server)->getId(), $this->ownedDb, $filename);
-        file_put_contents(self::env('BACKUP_PATH') . '/' . $id, "SELEC broken;\n");
+        // Overwrite the dump (compressed with the default BACKUP_COMPRESSION=zstd) with broken SQL in the same format.
+        $this->assertStringEndsWith('.sql.zst', $filename);
+        new Process(['zstd', '-q', '-f', '-o', self::env('BACKUP_PATH') . '/' . $id])->setInput("SELEC broken;\n")->mustRun();
 
         $this->schemaPost('/schema/table-restore-exec', ['name' => $this->server, 'db_name' => $this->ownedDb, 'backup_filename' => $id]);
 

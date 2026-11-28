@@ -31,7 +31,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 #[AsCommand(name: 'app:backup-rotate', description: 'Deletes the backups older than N days (keeping the most recent ones of every database)', help: <<<'TXT'
 Deletes the dumps under BACKUP_PATH whose modification time is older than <days>, except the --keep most recent
 of every series (server + database + table or full dump), so a database whose backups stopped keeps its last dump.
-Incomplete "*.sql.part" files older than <days> are deleted too.
+Incomplete "*.sql.part" files (and "*.sql.part.zst|.gz" left by an interrupted compression) older than <days> are deleted too.
+Compressed (.sql.zst, .sql.gz) and uncompressed dumps of the same database belong to the same series.
 
   php bin/console app:backup-rotate 30                  # show what would be deleted
   php bin/console app:backup-rotate 30 --force          # delete

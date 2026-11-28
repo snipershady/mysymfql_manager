@@ -63,6 +63,7 @@
                         <td>
                             <i class="fa-solid fa-file-code text-secondary me-2"></i>
                             <span class="font-monospace small">{{ backup.filename }}</span>
+                            {% if backup.compression.value != 'none' %}<span class="badge text-bg-info ms-2">{{ backup.compression.label }}</span>{% endif %}
                             {% if backup.dbName is not null %}<span class="badge text-bg-light border ms-2">#{{ backup.sqlClientId }} · {{ backup.dbName }}</span>{% else %}<span class="badge text-bg-warning ms-2" title="Backup in formato precedente: server non determinabile, visibile solo agli admin">legacy</span>{% endif %}
                         </td>
                         <td class="text-muted small">

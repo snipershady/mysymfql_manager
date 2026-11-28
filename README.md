@@ -48,6 +48,7 @@ mysymfql_manager is a web application that allows you to manage one or more remo
 ### Backup & Restore
 - Single-table backup (structure + data via `mysqldump`)
 - Table restore from backup file
+- Dumps compressed with zstd by default (gzip or none configurable), decompressed automatically for view and restore
 
 ### MySQL User Management
 - List MySQL users on a server with per-database grant flags
@@ -79,6 +80,7 @@ mysymfql_manager is a web application that allows you to manage one or more remo
 - MySQL >= 8.4.8 (application database)
 - Redis/Valkey (session/cache)
 - `mysqldump` binary available in PATH
+- `zstd` binary available in PATH (backup compression, see [Backup compression](#backup-compression-zstd))
 - Composer
 - A working SMTP relay or mailer DSN
 
@@ -124,6 +126,60 @@ mysqldump  Ver 8.4.x Distrib 8.4.x, for Linux (x86_64)
 ```
 
 > If you already have the Debian/Ubuntu default `mysql-client` package installed (from the distro repo) and need to switch to the Oracle version, remove it first: `sudo apt remove mysql-client && sudo apt autoremove`.
+
+## Backup compression (`zstd`)
+
+New dumps are compressed with **zstd** by default (`bkp_….sql.zst`): on a real 419 MB dump `zstd -3` produced
+121 MB (−71%) in 0.3 s, against 7.6 s for `gzip -6` with the same ratio. The format is chosen with
+`BACKUP_COMPRESSION` in `.env.local`:
+
+| Value | File | Tool needed |
+|---|---|---|
+| `zstd` (default) | `bkp_….sql.zst` | `zstd` |
+| `gzip` | `bkp_….sql.gz` | `gzip` (always installed) |
+| `none` | `bkp_….sql` | — |
+
+- The format of an existing dump is read from its extension: changing the setting never affects older dumps, and
+  `.sql`, `.sql.gz` and `.sql.zst` dumps are listed, viewed, restored and rotated the same way.
+- Viewing and restoring from the panel decompress automatically (a restore decompresses to a temporary
+  `bkp_restore_*.sql.part` in `BACKUP_PATH`, deleted at the end: make sure there is room for the uncompressed dump).
+- Compression never costs a backup: if the tool is missing, `BACKUP_COMPRESSION` is not valid or compression fails,
+  the dump is kept uncompressed (`.sql`) and a warning is logged (and printed by the CLI commands).
+- The download button sends the file as it is stored (compressed).
+
+### Installing `zstd` on Debian 13 (trixie)
+
+`zstd` is in Debian's official `main` repository (also on Debian 12, Ubuntu ≥ 18.04, RHEL/Rocky, Alpine):
+
+```bash
+sudo apt update
+sudo apt install zstd
+zstd --version    # *** Zstandard CLI (64-bit) v1.5.7 … ***
+```
+
+It must be in the `PATH` of the user running PHP (`www-data` for PHP-FPM, the cron user for the CLI commands):
+`/usr/bin/zstd` is. To check from the web server's point of view: `sudo -u www-data which zstd`.
+
+### Decompressing a dump from the command line
+
+```bash
+# Decompress next to the original (keeps the .zst): bkp_….sql
+zstd -d bkp_2026-11-28_03-00-00_shop_full.sql.zst
+
+# Decompress to another file / to standard output
+zstd -d bkp_2026-11-28_03-00-00_shop_full.sql.zst -o /tmp/shop.sql
+zstd -dc bkp_2026-11-28_03-00-00_shop_full.sql.zst | less
+
+# Restore straight into a database, without writing the uncompressed file
+zstd -dc bkp_2026-11-28_03-00-00_shop_full.sql.zst | mysql -h HOST -u USER -p shop
+
+# Check the integrity of a dump
+zstd -t bkp_2026-11-28_03-00-00_shop_full.sql.zst
+
+# gzip dumps (.sql.gz)
+gunzip -k bkp_2026-11-28_03-00-00_shop_full.sql.gz
+gunzip -c bkp_2026-11-28_03-00-00_shop_full.sql.gz | mysql -h HOST -u USER -p shop
+```
 
 ---
 
@@ -178,6 +234,7 @@ On the first run, since no `.env.local` file exists, the command will:
    - `APP_DB_USER` — database user (e.g. `mysymfql`)
    - `APP_DB_PASSWORD` — database password (input is hidden)
    - `BACKUP_PATH` — absolute path where table backup files will be stored (e.g. `/var/backups/mysymfql`)
+   - `BACKUP_COMPRESSION` is not asked: `zstd` by default (from `.env`), override it in `.env.local` with `gzip` or `none`
 
 3. **Ask for the mailer DSN:**
    - `MAILER_DSN` — Symfony Mailer DSN for sending emails (password reset, etc.). Press Enter to keep the default `null://null` (disables email sending).
@@ -393,7 +450,7 @@ The host value must exactly match the `host` field of an existing SqlClient entr
    - `--routines` — includes stored procedures and functions
    - `--events` — includes scheduled events
    - `--triggers` — includes triggers
-4. Saves each dump to `$BACKUP_PATH/bkp_YYYY-MM-DD_H-i-s_{dbname}_full.sql`.
+4. Saves each dump to `$BACKUP_PATH/{server id}/{dbname}/bkp_YYYY-MM-DD_H-i-s_{dbname}_full.sql.zst` (compression: see `BACKUP_COMPRESSION`).
 5. Credentials are passed via a temporary `.cnf` file (`--defaults-extra-file`) and never exposed in the process list.
 
 **Output format**
@@ -460,7 +517,7 @@ php bin/console app:backup-single localhost test1
    - `--routines` — includes stored procedures and functions
    - `--events` — includes scheduled events
    - `--triggers` — includes triggers
-4. Saves the dump to `$BACKUP_PATH/bkp_YYYY-MM-DD_H-i-s_{dbname}_full.sql`.
+4. Saves the dump to `$BACKUP_PATH/{server id}/{dbname}/bkp_YYYY-MM-DD_H-i-s_{dbname}_full.sql.zst` (compression: see `BACKUP_COMPRESSION`).
 5. Credentials are passed via a temporary `.cnf` file (`--defaults-extra-file`) and never exposed in the process list.
 
 **Output format**

@@ -14,6 +14,7 @@ use App\Enum\BackupQueueStatusEnum;
 use App\Repository\BackupQueueRepository;
 use App\Repository\DatabaseOwnerRepository;
 use App\Service\BackupService;
+use App\Service\DumpCompressor;
 use App\Service\MysqldumpManager;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -30,6 +31,7 @@ use Symfony\Component\Process\ExecutableFinder;
 #[UsesClass(BackupOutcome::class)]
 #[UsesClass(MysqldumpManager::class)]
 #[UsesClass(BackupDump::class)]
+#[UsesClass(DumpCompressor::class)]
 final class BackupServiceTest extends TestCase
 {
     private string $backupDir;
@@ -96,7 +98,11 @@ final class BackupServiceTest extends TestCase
         $dump = $service->findVisible($this->admin(), '7/shop/bkp_2026-11-27_10-00-00_shop_full.sql');
         $this->assertInstanceOf(BackupDump::class, $dump);
 
-        $this->assertSame('-- dump', $service->contents($dump));
+        $content = '';
+        $this->assertNull($service->stream($dump, static function (string $chunk) use (&$content): void {
+            $content .= $chunk;
+        }));
+        $this->assertSame('-- dump', $content);
         $this->assertTrue($service->delete($dump));
         $this->assertFileDoesNotExist($path);
         $this->assertSame([], $this->logged);

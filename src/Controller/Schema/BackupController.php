@@ -19,6 +19,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Attribute\MapQueryString;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
@@ -96,12 +97,22 @@ final class BackupController extends AbstractController
     #[Route(path: '/backup-view', name: 'app_schema_backup_view', methods: ['GET'])]
     public function backupView(
         #[MapQueryString(validationFailedStatusCode: Response::HTTP_UNPROCESSABLE_ENTITY)] BackupFile $input,
-        #[CurrentUser] AppUser $user): Response
+        #[CurrentUser] AppUser $user): StreamedResponse
     {
         $backup = $this->backups->findVisible($user, $input->filename)
             ?? throw $this->createNotFoundException('File di backup non trovato.');
 
-        return new Response($this->backups->contents($backup), Response::HTTP_OK, [
+        // Streamed (and decompressed for .sql.gz/.sql.zst): constant memory whatever the size of the dump. A read
+        // error can only show up once the response has started: it is appended as an SQL comment (and logged).
+        return new StreamedResponse(function () use ($backup): void {
+            $error = $this->backups->stream($backup, static function (string $chunk): void {
+                echo $chunk;
+                flush();
+            });
+            if (null !== $error) {
+                echo "\n-- Errore durante la lettura del backup: " . $error . "\n";
+            }
+        }, Response::HTTP_OK, [
             'Content-Type' => 'text/plain; charset=UTF-8',
             'X-Content-Type-Options' => 'nosniff',
         ]);

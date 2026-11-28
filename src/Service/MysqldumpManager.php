@@ -8,6 +8,7 @@ use App\Dto\BackupDump;
 use App\Entity\AppUser;
 use App\Entity\DatabaseOwner;
 use App\Entity\SqlClient;
+use App\Enum\BackupCompressionEnum;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
@@ -29,18 +30,20 @@ final readonly class MysqldumpManager
     public function __construct(
         #[Autowire(env: 'BACKUP_PATH')]
         private string $backupPath,
+        private DumpCompressor $compressor = new DumpCompressor(BackupCompressionEnum::NONE->value),
     ) {
     }
 
     /**
-     * Dumps a database (or one table) to BACKUP_PATH/{sqlClientId}/{dbName}/bkp_<date>_<db>_<table|full>.sql.
+     * Dumps a database (or one table) to BACKUP_PATH/{sqlClientId}/{dbName}/bkp_<date>_<db>_<table|full>.sql,
+     * then compresses it with the format of BACKUP_COMPRESSION (".sql.zst" by default, ".sql.gz", or ".sql").
      *
-     * The dump is written to "<name>.part" and renamed only when mysqldump succeeds, so a failed or
-     * interrupted run never leaves a truncated file that the listing would offer for restore.
-     * On failure "msg" holds mysqldump's error output (it may contain host and user names: log it, do not
-     * show it to panel users).
+     * The dump is written to "<name>.sql.part", compressed in place ("<name>.sql.part.zst") and renamed only at
+     * the end, so a failed or interrupted run never leaves a truncated file that the listing would offer for
+     * restore. If compression is not possible the dump is kept uncompressed and "warning" says why.
+     * On failure "msg" holds mysqldump's error output (it may contain host and user names).
      *
-     * @return array{is_valid: bool, backup_filename: string, msg: string, output: list<string>}
+     * @return array{is_valid: bool, backup_filename: string, msg: string, output: list<string>, warning?: string}
      *
      * @throws \InvalidArgumentException when a name is invalid or the SqlClient is not persisted
      */
@@ -75,12 +78,17 @@ final readonly class MysqldumpManager
         ];
 
         $completed = false;
+        $kept = ['path' => $partialFilename, 'compression' => BackupCompressionEnum::NONE, 'warning' => null];
         try {
             $run = $this->runClient('mysqldump', $sqlClient, $arguments);
-            $completed = $run['ok'] && rename($partialFilename, $backupFilename);
+            if ($run['ok']) {
+                $kept = $this->compressor->compress($partialFilename);
+                $backupFilename .= $kept['compression']->extension();
+                $completed = rename($kept['path'], $backupFilename);
+            }
         } finally {
-            if (!$completed && file_exists($partialFilename)) {
-                unlink($partialFilename);
+            if (!$completed && file_exists($kept['path'])) {
+                unlink($kept['path']);
             }
         }
 
@@ -88,7 +96,12 @@ final readonly class MysqldumpManager
             return $this->backupFailure($backupFilename, $run['error'] ?: 'Unable to rename the completed dump.', $run['output']);
         }
 
-        return ['is_valid' => true, 'backup_filename' => $backupFilename, 'msg' => 'Backup completed.', 'output' => $run['output']];
+        $result = ['is_valid' => true, 'backup_filename' => $backupFilename, 'msg' => 'Backup completed.', 'output' => $run['output']];
+        if (null !== $kept['warning']) {
+            $result['warning'] = $kept['warning'];
+        }
+
+        return $result;
     }
 
     /**
@@ -191,7 +204,7 @@ final readonly class MysqldumpManager
     }
 
     /**
-     * Every dump under BACKUP_PATH, newest first: structured dumps ({sqlClientId}/{dbName}/bkp_*.sql)
+     * Every dump under BACKUP_PATH, newest first: structured dumps ({sqlClientId}/{dbName}/bkp_*.sql[.gz|.zst])
      * plus legacy flat dumps (bkp_*.sql in the root, not attributable to a server).
      *
      * @return list<BackupDump>
@@ -203,11 +216,11 @@ final readonly class MysqldumpManager
         }
 
         $backups = [];
-        foreach (glob($this->backupPath . '/bkp_*.sql') ?: [] as $file) {
+        foreach ($this->dumpFiles($this->backupPath . '/bkp_*.sql*') as $file) {
             $backups[] = $this->toBackupDump($file, basename($file), sqlClientId: null, dbName: null);
         }
 
-        foreach (glob($this->backupPath . '/*/*/bkp_*.sql') ?: [] as $file) {
+        foreach ($this->dumpFiles($this->backupPath . '/*/*/bkp_*.sql*') as $file) {
             $relative = substr($file, \strlen($this->backupPath) + 1);
             [$serverDir, $dbDir] = explode('/', $relative, 3);
             // Only directories this class creates: numeric server id and \w+ database name.
@@ -224,8 +237,19 @@ final readonly class MysqldumpManager
     }
 
     /**
-     * Incomplete dumps ("bkp_*.sql.part", in the root or in a server/database folder). createBackup() removes
-     * its own on failure, so the ones left behind come from a killed process (OOM, reboot): never restorable.
+     * Complete dumps matching $pattern (".sql", ".sql.gz", ".sql.zst"; ".part" files excluded).
+     *
+     * @return list<string>
+     */
+    private function dumpFiles(string $pattern): array
+    {
+        return array_values(array_filter(glob($pattern) ?: [], static fn (string $file): bool => BackupCompressionEnum::isDumpFilename(basename($file))));
+    }
+
+    /**
+     * Incomplete dumps ("bkp_*.sql.part", "bkp_*.sql.part.zst|.gz" while compressing, and the temporary files of
+     * a restore, in the root or in a server/database folder). createBackup() and restoreBackup() remove their own
+     * on failure, so the ones left behind come from a killed process (OOM, reboot): never restorable.
      *
      * @return list<BackupDump>
      */
@@ -236,7 +260,8 @@ final readonly class MysqldumpManager
         }
 
         $partials = [];
-        foreach ([...glob($this->backupPath . '/bkp_*.sql.part') ?: [], ...glob($this->backupPath . '/*/*/bkp_*.sql.part') ?: []] as $file) {
+        $candidates = [...glob($this->backupPath . '/bkp_*.sql.part*') ?: [], ...glob($this->backupPath . '/*/*/bkp_*.sql.part*') ?: []];
+        foreach (array_filter($candidates, static fn (string $file): bool => 1 === preg_match('/\.sql\.part(\.gz|\.zst)?$/', $file)) as $file) {
             $partials[] = $this->toBackupDump($file, substr($file, \strlen($this->backupPath) + 1), sqlClientId: null, dbName: null);
         }
 
@@ -256,6 +281,22 @@ final readonly class MysqldumpManager
         clearstatcache(clear_realpath_cache: true, filename: $dump->path);
 
         return !file_exists($dump->path) || unlink($dump->path) || !file_exists($dump->path);
+    }
+
+    /**
+     * Passes the content of a dump to $write, decompressed, chunk by chunk (constant memory).
+     *
+     * @param callable(string): void $write
+     *
+     * @return string|null null on success, otherwise the error
+     */
+    public function streamBackup(BackupDump $dump, callable $write): ?string
+    {
+        if (!str_starts_with($dump->path, $this->backupPath . '/')) {
+            throw new \InvalidArgumentException(\sprintf('"%s" is not under BACKUP_PATH.', $dump->path));
+        }
+
+        return $this->compressor->stream($dump->path, $write);
     }
 
     /**
@@ -347,7 +388,9 @@ final readonly class MysqldumpManager
 
     /**
      * Loads a dump of BACKUP_PATH into $dbName with the mysql client (the file is streamed to its stdin).
-     * On failure "msg" holds mysql's error output (log it, do not show it to panel users).
+     * A compressed dump is first decompressed to a temporary "bkp_restore_<random>.sql.part" in BACKUP_PATH
+     * (not /tmp, often a tmpfs in RAM), deleted at the end.
+     * On failure "msg" holds the error output of mysql or of the decompressor.
      *
      * @return array{is_valid: bool, backup_filename: string, msg: string, output: list<string>}
      *
@@ -369,15 +412,41 @@ final readonly class MysqldumpManager
             throw new \InvalidArgumentException('The backup file must be located in the configured backup directory.');
         }
 
-        $dump = is_readable($realPath) ? fopen($realPath, 'r') : false;
-        if (false === $dump) {
+        if (!is_readable($realPath)) {
             throw new \RuntimeException(\sprintf('The backup file is not readable: %s', $realPath));
         }
 
+        $source = $realPath;
+        $temporary = null;
+        if (BackupCompressionEnum::NONE !== BackupCompressionEnum::fromFilename($realPath)) {
+            $temporary = \sprintf('%s/bkp_restore_%s.sql.part', $this->backupPath, bin2hex(random_bytes(8)));
+            $decompressed = $this->compressor->decompressTo($realPath, $temporary);
+            if (!$decompressed['ok']) {
+                if (file_exists($temporary)) {
+                    unlink($temporary);
+                }
+
+                return ['is_valid' => false, 'backup_filename' => $backupFilename, 'msg' => $decompressed['error'], 'output' => [$decompressed['error']]];
+            }
+
+            $source = $temporary;
+        }
+
+        $dump = fopen($source, 'r');
         try {
+            if (false === $dump) {
+                throw new \RuntimeException(\sprintf('The backup file is not readable: %s', $source));
+            }
+
             $run = $this->runClient('mysql', $sqlClient, [...(null !== $table ? ['--one-database'] : []), $dbName], $dump);
         } finally {
-            fclose($dump);
+            if (\is_resource($dump)) {
+                fclose($dump);
+            }
+
+            if (null !== $temporary && file_exists($temporary)) {
+                unlink($temporary);
+            }
         }
 
         return [

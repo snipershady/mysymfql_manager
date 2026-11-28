@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Dto;
 
+use App\Enum\BackupCompressionEnum;
 use TypeIdentifier\Service\EffectivePrimitiveTypeIdentifierService;
 
 /**
@@ -31,6 +32,12 @@ final readonly class BackupDump
         public ?int $sqlClientId = null,
         public ?string $dbName = null,
     ) {
+    }
+
+    /** Format of the dump, from its extension (.sql, .sql.gz, .sql.zst). */
+    public function compression(): BackupCompressionEnum
+    {
+        return BackupCompressionEnum::fromFilename($this->filename);
     }
 
     /**

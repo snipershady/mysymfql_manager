@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Dto\BackupDump;
+use App\Enum\BackupCompressionEnum;
 
 /**
  * Decides which dumps a rotation deletes: those older than the retention period, except the most recent
@@ -13,7 +14,8 @@ use App\Dto\BackupDump;
  *
  * A series is one kind of dump of one database on one server: the full dumps of `shop` on server 3 and the
  * dumps of its `orders` table rotate independently. Legacy flat dumps (no server) form series by file name
- * without the timestamp (`bkp_<date>_<db>_<table|full>.sql` → `<db>_<table|full>`).
+ * without the timestamp (`bkp_<date>_<db>_<table|full>.sql` → `<db>_<table|full>`). The compression is not part of
+ * the series: `.sql`, `.sql.gz` and `.sql.zst` dumps of the same database rotate together.
  *
  * Age = file modification time (the time the dump completed; preserved by app:backup-relocate).
  * Pure: no filesystem access, the caller passes the listing and the current time.
@@ -70,7 +72,7 @@ final readonly class BackupRotationPolicy
      */
     public static function seriesKey(BackupDump $dump): string
     {
-        $subject = substr($dump->filename, self::TIMESTAMP_PREFIX_LENGTH, -\strlen('.sql'));
+        $subject = substr(BackupCompressionEnum::baseName($dump->filename), self::TIMESTAMP_PREFIX_LENGTH);
 
         if (null === $dump->sqlClientId || null === $dump->dbName) {
             return 'legacy/' . $subject;

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Dto;
 
 use App\Dto\BackupDump;
+use App\Enum\BackupCompressionEnum;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -20,6 +21,12 @@ final class BackupDumpTest extends TestCase
         $this->assertSame('/var/backups/bkp.sql', $dump->path);
         $this->assertSame(2048, $dump->size);
         $this->assertSame(1_700_000_000, $dump->mtime);
+    }
+
+    public function testCompressionComesFromTheExtension(): void
+    {
+        $this->assertSame(BackupCompressionEnum::ZSTD, new BackupDump('bkp_x_full.sql.zst', '/b/bkp_x_full.sql.zst', 1, 1)->compression());
+        $this->assertSame(BackupCompressionEnum::NONE, new BackupDump('bkp_x_full.sql', '/b/bkp_x_full.sql', 1, 1)->compression());
     }
 
     public function testFromArrayWithNativeTypes(): void

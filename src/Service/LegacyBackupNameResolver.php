@@ -18,7 +18,7 @@ namespace App\Service;
  */
 final class LegacyBackupNameResolver
 {
-    private const string PATTERN = '/^bkp_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_(\w+)\.sql$/';
+    private const string PATTERN = '/^bkp_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_(\w+)\.sql(?:\.gz|\.zst)?$/';
 
     /**
      * @param list<string>                              $knownDbs    databases that may own the dump

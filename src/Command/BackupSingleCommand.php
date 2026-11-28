@@ -74,6 +74,9 @@ class BackupSingleCommand extends Command
 
                 if ($result['is_valid']) {
                     $io->writeln(\sprintf('<fg=green>OK</> <fg=gray>(%s)</>', basename((string) $result['backup_filename'])));
+                    if (isset($result['warning'])) {
+                        $io->writeln('    <fg=yellow>' . $result['warning'] . '</>');
+                    }
                     ++$success;
                 } else {
                     $io->writeln('<fg=red>FAILED</>');

@@ -8,9 +8,11 @@ use App\Dto\BackupDump;
 use App\Entity\AppUser;
 use App\Entity\DatabaseOwner;
 use App\Entity\SqlClient;
+use App\Enum\BackupCompressionEnum;
 use App\Service\MysqldumpManager;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\ExecutableFinder;
+use Symfony\Component\Process\Process;
 
 /**
  * Unit tests for {@see MysqldumpManager} that do not require a live MySQL
@@ -175,6 +177,45 @@ final class MysqldumpManagerTest extends TestCase
         $this->assertNull($backups[0]->dbName);
     }
 
+    public function testCompressedDumpsAreListedAndIncompleteOnesAreNot(): void
+    {
+        $this->writeDump('1/app/bkp_2024-01-01_00-00-01_app_full.sql.zst', mtime: 300);
+        $this->writeDump('1/app/bkp_2024-01-01_00-00-02_app_full.sql.gz', mtime: 200);
+        $this->writeDump('1/app/bkp_2024-01-01_00-00-03_app_full.sql', mtime: 100);
+        $this->writeDump('1/app/bkp_2024-01-01_00-00-04_app_full.sql.part');
+        $this->writeDump('1/app/bkp_2024-01-01_00-00-05_app_full.sql.part.zst');
+        $this->writeDump('bkp_restore_0123456789abcdef.sql.part');
+        $this->writeDump('1/app/bkp_2024-01-01_00-00-06_app_full.sql.zst.tmp');
+
+        $manager = $this->manager();
+        $listed = $manager->listAllBackups();
+
+        $this->assertSame(
+            ['bkp_2024-01-01_00-00-01_app_full.sql.zst', 'bkp_2024-01-01_00-00-02_app_full.sql.gz', 'bkp_2024-01-01_00-00-03_app_full.sql'],
+            array_map(static fn (BackupDump $b): string => $b->filename, $listed),
+        );
+        $this->assertSame(BackupCompressionEnum::ZSTD, $listed[0]->compression());
+        $partials = array_map(static fn (BackupDump $b): string => $b->id, $manager->listPartialDumps());
+        sort($partials);
+        $this->assertSame(['1/app/bkp_2024-01-01_00-00-04_app_full.sql.part', '1/app/bkp_2024-01-01_00-00-05_app_full.sql.part.zst', 'bkp_restore_0123456789abcdef.sql.part'], $partials);
+    }
+
+    public function testStreamBackupOnlyReadsDumpsUnderTheBackupPath(): void
+    {
+        $content = '';
+        $path = $this->writeDump('1/app/bkp_2024-01-01_00-00-01_app_full.sql');
+        $listed = $this->manager()->listAllBackups()[0];
+
+        $this->assertNull($this->manager()->streamBackup($listed, static function (string $chunk) use (&$content): void {
+            $content .= $chunk;
+        }));
+        $this->assertSame('-- dump', $content);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->manager()->streamBackup(new BackupDump('x.sql', '/etc/' . basename($path), 1, 1), static function (): void {
+        });
+    }
+
     public function testUnexpectedDirectoriesAreIgnored(): void
     {
         $this->writeDump('srv/app/bkp_2024-01-01_00-00-01_app_full.sql');
@@ -241,6 +282,49 @@ final class MysqldumpManagerTest extends TestCase
         $this->assertSame([], glob($this->backupDir . '/7/shop/*.part') ?: []);
         $this->assertFalse($restore['is_valid']);
         $this->assertStringContainsString('mysql command was not found', $restore['msg']);
+    }
+
+    public function testRestoreOfACompressedDumpCleansItsTemporaryFile(): void
+    {
+        if (null === new ExecutableFinder()->find('zstd')) {
+            self::markTestSkipped('zstd is not installed.');
+        }
+
+        $dump = $this->writeDump('7/shop/bkp_2024-01-01_00-00-01_shop_full.sql.zst');
+        new Process(['zstd', '-q', '-f', '-o', $dump])->setInput('-- dump')->mustRun();
+        $previousPath = getenv('PATH');
+        // zstd stays reachable, mysql does not: the dump is decompressed, then the restore fails.
+        $bin = $this->backupDir . '/bin';
+        mkdir($bin);
+        symlink(new ExecutableFinder()->find('zstd'), $bin . '/zstd');
+        putenv('PATH=' . $bin);
+
+        try {
+            $restore = $this->manager()->restoreBackup($this->persistedSqlClient(7), 'shop', $dump);
+        } finally {
+            putenv(false === $previousPath ? 'PATH' : 'PATH=' . $previousPath);
+            unlink($bin . '/zstd');
+            rmdir($bin);
+        }
+
+        $this->assertFalse($restore['is_valid']);
+        $this->assertStringContainsString('mysql command was not found', $restore['msg']);
+        $this->assertSame([], glob($this->backupDir . '/bkp_restore_*') ?: []);
+    }
+
+    public function testRestoreOfACorruptedCompressedDumpReportsTheDecompressorError(): void
+    {
+        if (null === new ExecutableFinder()->find('zstd')) {
+            self::markTestSkipped('zstd is not installed.');
+        }
+
+        $dump = $this->writeDump('7/shop/bkp_2024-01-01_00-00-01_shop_full.sql.zst'); // "-- dump": not zstd data
+
+        $restore = $this->manager()->restoreBackup($this->persistedSqlClient(7), 'shop', $dump);
+
+        $this->assertFalse($restore['is_valid']);
+        $this->assertNotSame('', $restore['msg']);
+        $this->assertSame([], glob($this->backupDir . '/bkp_restore_*') ?: []);
     }
 
     public function testLegacyDumpIsRelocatedToTheServerAndDatabaseFolder(): void

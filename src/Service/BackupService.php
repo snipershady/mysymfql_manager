@@ -57,16 +57,19 @@ final readonly class BackupService
     }
 
     /**
-     * @throws \RuntimeException when the file cannot be read
+     * Passes the SQL of a dump to $write, decompressed, chunk by chunk (constant memory). A read error is logged
+     * and returned (null on success).
+     *
+     * @param callable(string): void $write
      */
-    public function contents(BackupDump $dump): string
+    public function stream(BackupDump $dump, callable $write): ?string
     {
-        $content = file_get_contents($dump->path);
-        if (false === $content) {
-            throw new \RuntimeException(\sprintf('Unable to read the backup file "%s".', $dump->id));
+        $error = $this->mysqldumpManager->streamBackup($dump, $write);
+        if (null !== $error) {
+            $this->logger->error('Backup read failed: {error}', ['error' => $error, 'backup' => $dump->id]);
         }
 
-        return $content;
+        return $error;
     }
 
     /**

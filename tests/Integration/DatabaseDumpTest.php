@@ -8,7 +8,10 @@ use App\Entity\SqlClient;
 use App\RepositoryPDO\DatabaseSchemaRepository;
 use App\RepositoryPDO\DemoDataRepository;
 use App\RepositoryPDO\MysqlAccountRepository;
+use App\Service\DumpCompressor;
+use App\Service\MysqldumpManager;
 use App\Tests\MyKernelTestCase;
+use Symfony\Component\Process\ExecutableFinder;
 
 /**
  * Description of DatabaseDumpTest.
@@ -87,6 +90,14 @@ final class DatabaseDumpTest extends MyKernelTestCase
         $check = $msdm->createBackup($sqlClient, $this->dbNameTestingOne, $this->dummyTableOne);
         $this->assertTrue($check['is_valid']);
         $backupFilename = $check['backup_filename'];
+        if (null === new ExecutableFinder()->find('zstd')) {
+            // Without the tool the dump is kept uncompressed, never lost.
+            $this->assertStringEndsWith('.sql', $backupFilename);
+            $this->assertStringContainsString('zstd command was not found', $check['warning'] ?? '');
+        } else {
+            $this->assertStringEndsWith('.sql.zst', $backupFilename, 'default BACKUP_COMPRESSION=zstd');
+            $this->assertArrayNotHasKey('warning', $check);
+        }
 
         $msdm->restoreBackup($sqlClient, $this->dbNameTestingTwo, $backupFilename);
 
@@ -133,6 +144,24 @@ final class DatabaseDumpTest extends MyKernelTestCase
 
         $rowCount = $databaseRepositoryPdo->countTableRow($this->dummyTableTwo);
         $this->assertSame(6, $rowCount);
+    }
+
+    public function testGzipDumpAndRestore(): void
+    {
+        $sqlClient = $this->entityManager->getRepository(SqlClient::class)->findOneByName($this->serverName);
+        $this->assertInstanceOf(SqlClient::class, $sqlClient);
+        $msdm = new MysqldumpManager((string) $_ENV['BACKUP_PATH'], new DumpCompressor('gzip'));
+
+        $check = $msdm->createBackup($sqlClient, $this->dbNameTestingOne, $this->dummyTableOne);
+        $this->assertTrue($check['is_valid']);
+        $this->assertStringEndsWith('.sql.gz', $check['backup_filename']);
+
+        $restore = $msdm->restoreBackup($sqlClient, $this->dbNameTestingTwo, $check['backup_filename']);
+        $this->assertTrue($restore['is_valid'], $restore['msg']);
+
+        $databaseRepositoryPdo = new DatabaseSchemaRepository($sqlClient);
+        $databaseRepositoryPdo->useDbName($this->dbNameTestingTwo);
+        $this->assertSame(4, $databaseRepositoryPdo->countTableRow($this->dummyTableOne));
     }
 
     public function testDumpUsesThePortOfTheSqlClient(): void
