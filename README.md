@@ -228,7 +228,7 @@ into `assets/vendor/` (from the jsDelivr registry, at deploy time only: browsers
 ### One-time step: switching to versioned migrations
 
 Up to November 2026 `app:setup` **generated** the migrations on the server (`doctrine:migrations:diff`), so they were
-never versioned. The repository now ships a **baseline migration** (`Version20261126225626`) that creates the same schema.
+never versioned. The repository now ships a **baseline migration** (`Version20261128085846`) that creates the same schema.
 On an installation made before that, the tables already exist: mark the baseline as executed **instead of** running it
 (no SQL is executed on the application tables, only the `doctrine_migration_versions` bookkeeping changes):
 
@@ -237,7 +237,7 @@ On an installation made before that, the tables already exist: mark the baseline
 php bin/console doctrine:schema:validate
 # 2. Forget the old, locally generated versions and record the baseline
 php bin/console doctrine:migrations:version --delete --all --no-interaction
-php bin/console doctrine:migrations:version 'DoctrineMigrations\Version20261126225626' --add --no-interaction
+php bin/console doctrine:migrations:version 'DoctrineMigrations\Version20261128085846' --add --no-interaction
 # 3. Check: "New" must be 0, and migrate must report "Already at the latest version"
 php bin/console doctrine:migrations:status
 php bin/console doctrine:migrations:migrate --no-interaction

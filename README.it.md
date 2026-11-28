@@ -216,7 +216,7 @@ php bin/console cache:clear --env=prod
 ### Passaggio una tantum: migrazioni versionate
 
 Fino a novembre 2026 `app:setup` **generava** le migrazioni sul server (`doctrine:migrations:diff`), quindi non erano mai
-versionate. Il repository ora contiene una **migrazione baseline** (`Version20261126225626`) che crea lo stesso schema.
+versionate. Il repository ora contiene una **migrazione baseline** (`Version20261128085846`) che crea lo stesso schema.
 Su un'installazione precedente le tabelle esistono già: marcare la baseline come eseguita **invece di** eseguirla
 (nessun SQL sulle tabelle applicative, cambia solo la tabella di servizio `doctrine_migration_versions`):
 
@@ -225,7 +225,7 @@ Su un'installazione precedente le tabelle esistono già: marcare la baseline com
 php bin/console doctrine:schema:validate
 # 2. Dimenticare le vecchie versioni generate localmente e registrare la baseline
 php bin/console doctrine:migrations:version --delete --all --no-interaction
-php bin/console doctrine:migrations:version 'DoctrineMigrations\Version20261126225626' --add --no-interaction
+php bin/console doctrine:migrations:version 'DoctrineMigrations\Version20261128085846' --add --no-interaction
 # 3. Verifica: "New" deve essere 0 e migrate deve rispondere "Already at the latest version"
 php bin/console doctrine:migrations:status
 php bin/console doctrine:migrations:migrate --no-interaction
